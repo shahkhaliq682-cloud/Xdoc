@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Epilogue", sans-serif;
+  --font-syne: "Syne", sans-serif;
+  --font-mono: "Space Grotesk", monospace;
+
+  --color-primary: #0b5fff;
+  --color-health-teal: #00c9b1;
+  --color-emergency-red: #ff3b5c;
+  --color-surface-dark: #0f2236;
+  --color-bg-dark: #04111D;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-[#191b24] bg-[#faf8ff] selection:bg-[#0b5fff]/20;
+  }
+}
+
+@layer utilities {
+  .medical-cross-gradient {
+    background: linear-gradient(135deg, #00c9b1 0%, #0b5fff 100%);
+  }
+
+  .cta-gradient {
+    background: linear-gradient(to right, #00c9b1, #0b5fff);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .breathing-dot {
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0.4; transform: scale(0.8); }
+  }
+}
