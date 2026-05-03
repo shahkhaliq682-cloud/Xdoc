@@ -12,15 +12,24 @@
   --color-warning-amber: #FFB800;
   --color-success-green: #00C16A;
   --color-bg-dark: #04111D;
+  --color-surface-dark: #0F2236;
 }
 
 @layer base {
+  html, body {
+    @apply overflow-x-hidden;
+    max-width: 100vw;
+  }
   body {
     @apply font-sans text-slate-900;
   }
 }
 
 @layer utilities {
+  .hero-gradient {
+    background: linear-gradient(135deg, #04111D 0%, #0F2236 100%);
+  }
+
   .medical-cross-gradient {
     background: linear-gradient(135deg, #0B5FFF 0%, #00C9B1 100%);
   }

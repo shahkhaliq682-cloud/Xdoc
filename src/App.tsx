@@ -44,7 +44,10 @@ import {
   Camera,
   Map,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  UserPlus,
+  Ticket,
+  Hospital as HospitalIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hospitals, doctors, staffMembers, queueTokens } from './mockData';
@@ -62,9 +65,133 @@ import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 
 // --- Shared Components ---
 
-const Header = ({ darkMode = false, hospitalName = "Xdoc", onToggleSidebar, onLogoClick, showMenu = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean }) => {
+const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, showMenu = false, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, isLanding?: boolean }) => {
   const { userData, logout } = useAuth();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   
+  if (isLanding) {
+    return (
+      <>
+        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 px-4 md:px-6 py-4 ${
+          isScrolled ? 'bg-white shadow-xl py-3' : 'bg-transparent'
+        }`}>
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <div onClick={onLogoClick} className="flex items-center gap-3 cursor-pointer group">
+              <div className="w-10 h-10 rounded-xl medical-cross-gradient flex items-center justify-center text-white shadow-lg shadow-primary/20 transition-transform group-hover:scale-110">
+                <Activity size={24} />
+              </div>
+              <span className="text-2xl md:text-3xl font-display font-black tracking-tighter text-[#0B5FFF]">Xdoc</span>
+            </div>
+
+            <nav className="hidden lg:flex items-center gap-12">
+              {['Home', 'Find Hospital', 'About'].map((link) => (
+                <a key={link} href="#" className="font-sans font-bold text-slate-600 hover:text-primary transition-colors">{link}</a>
+              ))}
+            </nav>
+            
+            <div className="flex items-center gap-4">
+              {!userData ? (
+                <>
+                  <button 
+                    onClick={onSignUp}
+                    className="hidden sm:block px-6 py-2.5 rounded-xl font-display font-bold border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all"
+                  >
+                    Login
+                  </button>
+                  <button 
+                    onClick={onSignUp}
+                    className="hidden sm:block px-6 py-3 rounded-xl bg-health-teal text-white font-display font-bold shadow-lg shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all"
+                  >
+                    Sign Up
+                  </button>
+                  <button 
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="lg:hidden p-2 text-slate-600 bg-slate-100 rounded-xl"
+                  >
+                    {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-xs font-bold text-slate-800">{userData.displayName}</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">{userData.role}</p>
+                  </div>
+                  <button 
+                    onClick={() => logout()}
+                    className="w-10 h-10 rounded-xl border-2 border-slate-100 overflow-hidden group relative"
+                  >
+                    <img src={userData.photoURL || "https://images.unsplash.com/photo-1559839734-2b71f1536783?auto=format&fit=crop&q=80&w=200"} alt="Profile" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <LogOut size={16} className="text-white" />
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, x: '100%' }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: '100%' }}
+              className="fixed inset-0 z-[110] bg-white lg:hidden p-8 flex flex-col"
+            >
+              <div className="flex justify-between items-center mb-12">
+                <div onClick={() => { setIsMobileMenuOpen(false); onLogoClick?.(); }} className="flex items-center gap-3">
+                  <Activity size={32} className="text-primary" />
+                  <span className="text-2xl font-display font-black text-[#0B5FFF]">Xdoc</span>
+                </div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-100 rounded-xl">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <nav className="flex flex-col gap-8 mb-auto">
+                {['Home', 'Find Hospital', 'About'].map((link) => (
+                  <a 
+                    key={link} 
+                    href="#" 
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-3xl font-display font-black text-slate-900 border-b border-slate-100 pb-4"
+                  >
+                    {link}
+                  </a>
+                ))}
+              </nav>
+
+              <div className="flex flex-col gap-4">
+                <button 
+                  onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
+                  className="w-full py-5 rounded-2xl font-display font-bold border-2 border-primary/20 text-primary"
+                >
+                  Login
+                </button>
+                <button 
+                  onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
+                  className="w-full py-5 rounded-2xl bg-health-teal text-white font-display font-bold shadow-xl shadow-health-teal/20"
+                >
+                  Sign Up Free
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
+
   return (
     <header className={`flex justify-between items-center w-full px-6 py-4 sticky top-0 z-[60] backdrop-blur-xl border-b transition-all duration-500 ${
       darkMode 
@@ -72,11 +199,6 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onToggleSidebar, onLo
         : 'bg-white/80 border-slate-100 text-slate-900'
     }`}>
       <div className="flex items-center gap-4">
-        {showMenu && (
-          <button onClick={onToggleSidebar} className="p-2 -ml-2 rounded-xl hover:bg-white/10 transition-colors lg:hidden">
-            <Menu size={24} />
-          </button>
-        )}
         <div onClick={onLogoClick} className="flex items-center gap-3 cursor-pointer group">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white transition-transform group-hover:scale-110 ${
             darkMode ? 'bg-primary shadow-lg shadow-primary/20' : 'medical-cross-gradient shadow-lg shadow-primary/10'
@@ -169,90 +291,109 @@ const Navbar = ({ activeTab, setActiveTab, darkMode = false }: { activeTab: stri
 };
 
 
-const HeroSection = ({ onSignUp, onExplore }: { onSignUp: () => void, onExplore: () => void }) => {
-  const benefits = [
-    { icon: Calendar, title: "Online Booking", desc: "Book tokens instantly without physical visits" },
-    { icon: Clock, title: "Real-time Availability", desc: "Check doctor schedules before leaving home" },
-    { icon: CreditCard, title: "Transparent Pricing", desc: "See consultation fees upfront, no surprises" },
-    { icon: Building2, title: "Unified Network", desc: "Govt & Private hospitals in one digital place" },
-    { icon: MessageSquare, title: "WhatsApp Alerts", desc: "Get instant confirmation and queue reminders" },
-    { icon: History, title: "Save Vital Hours", desc: "Skip long waiting lines at medical facilities" }
+const StatsRow = () => {
+  const stats = [
+    { label: "Hospitals", val: "500+" },
+    { label: "Doctors", val: "2000+" },
+    { label: "Patients", val: "15000+" },
+    { label: "Cities", val: "50+" }
   ];
 
   return (
-    <div className="bg-white min-h-screen overflow-hidden">
+    <div className="bg-white border-y border-slate-100 py-8 md:py-12 px-4 md:px-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-4">
+        {stats.map((s, i) => (
+          <div key={i} className={`text-center ${i % 2 === 0 ? 'border-r last:border-0' : 'md:border-r last:border-0'} border-slate-100`}>
+            <h4 className="text-3xl md:text-5xl font-display font-black text-primary tracking-tighter mb-2">{s.val}</h4>
+            <p className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-widest">{s.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const HeroSection = ({ onSignUp, onLogin }: { onSignUp: () => void, onLogin: () => void }) => {
+  const benefits = [
+    { icon: Calendar, title: "Online Token Booking", desc: "Book tokens instantly without physical visits", gradient: "from-blue-500 to-primary" },
+    { icon: Clock, title: "Real-time Availability", desc: "Check live doctor schedules before leaving home", gradient: "from-health-teal to-emerald-500" },
+    { icon: CreditCard, title: "Transparent Fees", desc: "See consultation fees upfront, no surprises", gradient: "from-amber-400 to-orange-500" },
+    { icon: Building2, title: "Govt & Private Hospitals", desc: "All major health facilities in one digital hub", gradient: "from-indigo-500 to-indigo-700" },
+    { icon: MessageSquare, title: "WhatsApp Alerts", desc: "Get status reminders via WhatsApp & App", gradient: "from-pink-500 to-rose-600" },
+    { icon: History, title: "Save Hours of Waiting", desc: "Efficient medical visits start right here", gradient: "from-violet-500 to-purple-600" }
+  ];
+
+  return (
+    <div className="bg-white min-h-[90vh] relative overflow-x-hidden flex flex-col justify-center">
       {/* Background Decor */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-[0.03] z-0">
-        <div className="absolute top-20 left-10 w-96 h-96 bg-primary rounded-full blur-[120px]" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-health-teal rounded-full blur-[120px]" />
-        <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(#0b5fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      <div className="absolute top-0 right-0 w-full h-full pointer-events-none z-0">
+        <div className="absolute top-[-5%] right-[-10%] md:top-[-10%] md:right-[-5%] w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-primary/10 rounded-full blur-[80px] md:blur-[120px]" />
+        <div className="absolute bottom-[-5%] left-[-10%] md:bottom-[-10%] md:left-[-5%] w-[200px] h-[200px] md:w-[400px] md:h-[400px] bg-health-teal/5 rounded-full blur-[80px] md:blur-[120px]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 pt-24 pb-32 relative z-10">
-        <div className="text-center max-w-4xl mx-auto mb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 relative z-10 w-full">
+        <div className="text-center max-w-4xl mx-auto mb-16">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-50 border border-blue-100 rounded-full mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 bg-blue-50 border border-[#0B5FFF] rounded-full mb-8"
           >
             <div className="w-2 h-2 rounded-full bg-primary breathing-dot" />
-            <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-primary">Pakistan's #1 Health Network</span>
+            <span className="text-[8px] sm:text-[10px] font-mono font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[#0B5FFF]">Pakistan's #1 Health Network</span>
           </motion.div>
           
           <motion.h1 
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-display text-5xl md:text-8xl font-black tracking-tight leading-[0.9] mb-8 text-slate-900"
+            className="font-display text-4xl sm:text-5xl md:text-8xl font-black tracking-tight leading-[1] md:leading-[0.95] mb-8 text-[#04111D]"
           >
-            Apna Doctor Dhundein <br/> 
-            <span className="bg-clip-text text-transparent cta-gradient">Ghar Baithe.</span>
+            Apna Doctor Dhundein — <br className="hidden sm:block" />
+            <span className="text-primary">Ghar Baithe.</span>
           </motion.h1>
           
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-xl md:text-2xl text-slate-500 font-medium max-w-3xl mx-auto mb-12 leading-relaxed"
+            className="text-base sm:text-lg md:text-2xl text-[#6B8FAE] font-bold max-w-3xl mx-auto mb-12 leading-relaxed px-4 sm:px-0"
           >
-            Book digital tokens, skip the waiting room, and access Pakistan's top private 
-            and government healthcare facilities with a single tap.
+            Pakistan ke tamam hospitals aur clinics ek jagah. Ghar baithe <br className="hidden md:block" />
+            doctor dhundein, token book karein.
           </motion.p>
 
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 px-4 sm:px-0"
           >
             <button 
               onClick={onSignUp}
-              className="w-full sm:w-auto px-12 py-5 cta-gradient text-white font-display font-black text-xl rounded-2xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+              className="w-full sm:w-auto px-10 md:px-12 py-5 bg-health-teal text-white font-display font-black text-lg md:text-xl rounded-2xl shadow-2xl shadow-health-teal/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
             >
-              Start Now <ArrowRight size={24} />
+              Sign Up Free <ArrowRight size={24} />
             </button>
             <button 
-              onClick={onExplore}
-              className="w-full sm:w-auto px-12 py-5 bg-white border-2 border-slate-200 text-slate-900 font-display font-black text-xl rounded-2xl hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-3"
+              onClick={onLogin}
+              className="w-full sm:w-auto px-10 md:px-12 py-5 bg-white border-2 border-slate-200 text-slate-900 font-display font-black text-lg md:text-xl rounded-2xl hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-3"
             >
-              Explore Hospitals
+              Login Now
             </button>
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto mt-20 px-4 sm:px-0">
           {benefits.map((b, i) => (
             <motion.div 
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + (i * 0.1) }}
-              className="p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm hover:shadow-xl hover:border-primary/20 transition-all group"
+              whileHover={{ y: -10, scale: 1.02 }}
+              className="p-8 md:p-10 bg-white rounded-[32px] md:rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/50 group cursor-pointer"
             >
-              <div className="w-16 h-16 rounded-2xl bg-primary/5 flex items-center justify-center text-primary mb-6 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500">
-                <b.icon size={32} />
+              <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-gradient-to-br ${b.gradient} flex items-center justify-center text-white mb-6 md:mb-8 group-hover:rotate-6 transition-transform duration-500 shadow-lg`}>
+                <b.icon size={innerWidth < 768 ? 32 : 40} />
               </div>
-              <h3 className="text-2xl font-display font-bold text-slate-900 mb-3">{b.title}</h3>
-              <p className="text-slate-500 font-medium leading-relaxed">{b.desc}</p>
+              <h3 className="text-xl md:text-2xl font-display font-black text-slate-900 mb-4">{b.title}</h3>
+              <p className="text-sm md:text-base text-slate-500 font-bold leading-relaxed">{b.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -261,33 +402,114 @@ const HeroSection = ({ onSignUp, onExplore }: { onSignUp: () => void, onExplore:
   );
 };
 
+const HowItWorks = () => {
+  const steps = [
+    { title: "Sign Up", desc: "Create your patient profile in seconds", icon: UserPlus },
+    { title: "Find Hospital", desc: "Search through verified medical centers", icon: Search },
+    { title: "Book Token", desc: "Select your doctor and get instant token", icon: Ticket },
+    { title: "Visit Doctor", desc: "Reach hospital on time and skip the line", icon: HospitalIcon }
+  ];
+
+  return (
+    <div className="bg-slate-50 py-16 md:py-32 px-4 md:px-6">
+      <div className="max-w-7xl mx-auto text-center mb-12 md:mb-20">
+        <h2 className="text-3xl md:text-5xl font-display font-black text-slate-900 tracking-tight mb-4 md:mb-6">How It Works</h2>
+        <p className="text-base md:text-xl text-slate-500 font-bold">A simple 4-step process to better healthcare</p>
+      </div>
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
+        {steps.map((s, i) => (
+          <div key={i} className="relative text-center group">
+            {i < steps.length - 1 && (
+              <div className="hidden lg:block absolute top-12 left-[calc(50%+4rem)] w-[calc(100%-8rem)] h-[2px] bg-slate-200 border-t-2 border-dashed border-slate-300" />
+            )}
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-3xl bg-white shadow-xl flex items-center justify-center text-primary mx-auto mb-6 md:mb-8 border border-slate-100 group-hover:scale-110 transition-transform">
+              <s.icon size={innerWidth < 768 ? 32 : 40} />
+              <div className="absolute -top-2 md:-top-3 -right-2 md:-right-3 w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-display font-black text-xs md:text-sm">{i + 1}</div>
+            </div>
+            <h4 className="text-xl md:text-2xl font-display font-black text-slate-900 mb-2 md:mb-3">{s.title}</h4>
+            <p className="text-sm md:text-base text-slate-500 font-bold leading-relaxed">{s.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const Footer = () => {
+  return (
+    <footer className="bg-[#04111D] text-white py-12 md:py-20 px-4 md:px-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-12">
+        <div className="col-span-1 md:col-span-2">
+          <div className="flex items-center gap-3 mb-6 md:mb-8">
+            <div className="w-10 h-10 rounded-xl medical-cross-gradient flex items-center justify-center text-white">
+              <Activity size={24} />
+            </div>
+            <span className="text-2xl md:text-3xl font-display font-black tracking-tighter">Xdoc</span>
+          </div>
+          <p className="text-sm md:text-base text-slate-400 font-bold max-w-sm mb-6 md:mb-8">
+            Pakistan's premier digital healthcare network connecting citizens with 
+            verified medical facilities and doctors.
+          </p>
+          <div className="flex gap-4">
+            {['Twitter', 'Facebook', 'Instagram', 'LinkedIn'].map((s) => (
+              <a key={s} href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary transition-colors text-[10px] font-bold uppercase">{s[0]}</a>
+            ))}
+          </div>
+        </div>
+        <div className="md:pt-4">
+          <h4 className="text-base md:text-lg font-display font-black mb-4 md:mb-8">Quick Links</h4>
+          <ul className="space-y-3 md:space-y-4 text-sm md:text-base text-slate-400 font-bold">
+            <li><a href="#" className="hover:text-white transition-colors">Find Hospitals</a></li>
+            <li><a href="#" className="hover:text-white transition-colors">Doctor Directory</a></li>
+            <li><a href="#" className="hover:text-white transition-colors">Emergency Services</a></li>
+            <li><a href="#" className="hover:text-white transition-colors">Join as Provider</a></li>
+          </ul>
+        </div>
+        <div className="md:pt-4">
+          <h4 className="text-base md:text-lg font-display font-black mb-4 md:mb-8">Company</h4>
+          <ul className="space-y-3 md:space-y-4 text-sm md:text-base text-slate-400 font-bold">
+            <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
+            <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+            <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+            <li><a href="#" className="hover:text-white transition-colors">Contact Support</a></li>
+          </ul>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto mt-12 md:mt-20 pt-8 border-t border-white/10 text-center text-slate-500 font-bold text-[10px] md:text-sm">
+        &copy; 2024 Xdoc Digital Healthcare Platform. All rights reserved. Built with love in Pakistan.
+      </div>
+    </footer>
+  );
+};
+
+
 const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') => void }) => (
-  <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6 py-20">
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 md:px-6 py-12 md:py-20">
     <div className="max-w-4xl w-full">
-      <div className="text-center mb-16">
-        <h2 className="text-5xl font-display font-black tracking-tight text-slate-900 mb-4">Choose Account Type</h2>
-        <p className="text-xl text-slate-500 font-medium">Join Pakistan's fastest growing digital health marketplace</p>
+      <div className="text-center mb-8 md:mb-16">
+        <h2 className="text-3xl md:text-5xl font-display font-black tracking-tight text-slate-900 mb-4 md:mb-6">Choose Account Type</h2>
+        <p className="text-base md:text-xl text-slate-500 font-medium">Join Pakistan's fastest growing digital health marketplace</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         <motion.div 
           whileHover={{ y: -10 }}
           onClick={() => onSelect('Hospital')}
-          className="bg-white p-10 rounded-[48px] border-2 border-transparent hover:border-primary shadow-xl cursor-pointer transition-all group"
+          className="bg-white p-8 md:p-10 rounded-[32px] md:rounded-[48px] border-2 border-transparent hover:border-primary shadow-xl cursor-pointer transition-all group"
         >
-          <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-8 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500">
-            <Building2 size={40} />
+          <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 md:mb-8 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500">
+            <Building2 size={innerWidth < 768 ? 32 : 40} />
           </div>
-          <h3 className="text-3xl font-display font-black text-slate-900 mb-4">Hospital or Clinic</h3>
-          <p className="text-slate-500 text-lg leading-relaxed mb-8">Register your facility, manage doctors, and handle live tokens digitally.</p>
-          <ul className="space-y-3 mb-10">
+          <h3 className="text-2xl md:text-3xl font-display font-black text-slate-900 mb-4">Hospital or Clinic</h3>
+          <p className="text-sm md:text-lg text-slate-500 leading-relaxed mb-6 md:mb-8">Register your facility, manage doctors, and handle live tokens digitally.</p>
+          <ul className="space-y-2 md:space-y-3 mb-8 md:mb-10">
             {['Detailed Dashboard', 'Staff Management', 'Revenue Tracking'].map((item, i) => (
-              <li key={i} className="flex items-center gap-3 text-slate-700 font-bold">
-                <CheckCircle2 size={20} className="text-health-teal" fill="currentColor" /> {item}
+              <li key={i} className="flex items-center gap-3 text-sm md:text-base text-slate-700 font-bold">
+                <CheckCircle2 size={18} className="text-health-teal" fill="currentColor" /> {item}
               </li>
             ))}
           </ul>
-          <div className="w-full py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-display font-bold text-slate-900 group-hover:bg-primary group-hover:text-white transition-all">
+          <div className="w-full py-4 md:py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-display font-bold text-slate-900 group-hover:bg-primary group-hover:text-white transition-all text-sm md:text-base">
             Join as Partner <ArrowRight size={20} />
           </div>
         </motion.div>
@@ -295,21 +517,21 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
         <motion.div 
           whileHover={{ y: -10 }}
           onClick={() => onSelect('Patient')}
-          className="bg-white p-10 rounded-[48px] border-2 border-transparent hover:border-health-teal shadow-xl cursor-pointer transition-all group"
+          className="bg-white p-8 md:p-10 rounded-[32px] md:rounded-[48px] border-2 border-transparent hover:border-health-teal shadow-xl cursor-pointer transition-all group"
         >
-          <div className="w-20 h-20 rounded-3xl bg-health-teal/10 flex items-center justify-center text-health-teal mb-8 group-hover:scale-110 group-hover:bg-health-teal group-hover:text-white transition-all duration-500">
-            <User size={40} />
+          <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-health-teal/10 flex items-center justify-center text-health-teal mb-6 md:mb-8 group-hover:scale-110 group-hover:bg-health-teal group-hover:text-white transition-all duration-500">
+            <User size={innerWidth < 768 ? 32 : 40} />
           </div>
-          <h3 className="text-3xl font-display font-black text-slate-900 mb-4">I'm a Patient</h3>
-          <p className="text-slate-500 text-lg leading-relaxed mb-8">Find doctors, book tokens instantly, and get digital care reminders.</p>
-          <ul className="space-y-3 mb-10">
+          <h3 className="text-2xl md:text-3xl font-display font-black text-slate-900 mb-4">I'm a Patient</h3>
+          <p className="text-sm md:text-lg text-slate-500 leading-relaxed mb-6 md:mb-8">Find doctors, book tokens instantly, and get digital care reminders.</p>
+          <ul className="space-y-2 md:space-y-3 mb-8 md:mb-10">
             {['Instant Tokens', 'Fee Transparency', 'Secure Records'].map((item, i) => (
-              <li key={i} className="flex items-center gap-3 text-slate-700 font-bold">
-                <CheckCircle2 size={20} className="text-health-teal" fill="currentColor" /> {item}
+              <li key={i} className="flex items-center gap-3 text-sm md:text-base text-slate-700 font-bold">
+                <CheckCircle2 size={18} className="text-health-teal" fill="currentColor" /> {item}
               </li>
             ))}
           </ul>
-          <div className="w-full py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-display font-bold text-slate-900 group-hover:bg-health-teal group-hover:text-white transition-all">
+          <div className="w-full py-4 md:py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-display font-bold text-slate-900 group-hover:bg-health-teal group-hover:text-white transition-all text-sm md:text-base">
             Find Care <ArrowRight size={20} />
           </div>
         </motion.div>
@@ -528,190 +750,202 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
 
 // --- Pages ---
 
-const LandingPage = ({ onStartBooking }: { onStartBooking: () => void }) => {
-  const categories = [
-    { icon: Heart, label: 'Cardiology' },
-    { icon: Stethoscope, label: 'Dental' },
-    { icon: Activity, label: 'Neurology' },
-    { icon: User, label: 'Pediatrics' },
-    { icon: Search, label: 'Eye' },
-    { icon: ShieldAlert, label: 'Ortho' },
-    { icon: Activity, label: 'Emergency', isEmergency: true }
-  ];
+// --- App View State ---
 
-  return (
-    <div className="flex flex-col items-center">
-      <section className="relative w-full pt-16 px-6 overflow-hidden bg-gradient-to-b from-blue-50/50 to-transparent pb-16">
-        <div className="absolute inset-0 opacity-10 pointer-events-none" 
-             style={{ backgroundImage: 'radial-gradient(#0b5fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
-        
-        <div className="z-10 mb-6 flex justify-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg border border-blue-100">
-            <span className="flex h-3 w-3 relative">
-              <span className="breathing-dot absolute inline-flex h-full w-full rounded-full bg-health-teal opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-health-teal"></span>
-            </span>
-            <span className="font-mono text-sm text-slate-600">
-              <span className="font-bold text-health-teal">142</span> Hospitals Active Now
-            </span>
-          </div>
-        </div>
-
-        <div className="text-center max-w-4xl mx-auto mb-12">
-          <h1 className="font-syne text-5xl md:text-7xl font-extrabold leading-[1.1] mb-6 tracking-tighter">
-            Apna Doctor Dhundein — <br/>
-            <span className="bg-clip-text text-transparent cta-gradient">Ghar Baithe</span>
-          </h1>
-          <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-            Seamlessly book tokens, find specialized consultants, and skip the waiting room at Pakistan's top-rated medical facilities.
-          </p>
-        </div>
-
-        <div className="w-full max-w-5xl mx-auto bg-white p-2 rounded-[32px] shadow-xl border border-white flex flex-col md:flex-row items-stretch gap-2 mb-12">
-          <div className="flex-1 flex items-center px-4 gap-3 md:border-r border-slate-100">
-            <Search className="text-primary shrink-0" />
-            <input 
-              type="text" 
-              placeholder="Search by doctor, illness, or hospital..." 
-              className="w-full h-14 border-none focus:ring-0 text-slate-700 placeholder:text-slate-400 bg-transparent"
-            />
-          </div>
-          <div className="md:w-64 flex items-center px-4 gap-3">
-            <MapPin className="text-slate-400 shrink-0" />
-            <select className="w-full h-14 border-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer">
-              <option>Select City</option>
-              <option>Karachi</option>
-              <option>Lahore</option>
-              <option>Islamabad</option>
-            </select>
-          </div>
-          <button onClick={onStartBooking} className="cta-gradient hover:opacity-90 text-white font-bold px-10 py-4 rounded-[24px] transition-all active:scale-95">
-            Search
-          </button>
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-3 max-w-5xl mx-auto">
-          {categories.map((cat, i) => (
-            <div key={i} className={`bg-white border border-slate-100 px-5 py-3 rounded-full flex items-center gap-2 hover:border-primary transition-colors cursor-pointer shadow-sm group ${cat.isEmergency ? 'bg-red-50 border-red-100' : ''}`}>
-              <cat.icon size={18} className={`${cat.isEmergency ? 'text-emergency-red' : 'text-primary'} group-hover:scale-110 transition-transform`} />
-              <span className={`text-sm font-bold ${cat.isEmergency ? 'text-emergency-red' : 'text-slate-700'}`}>{cat.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl px-6 mb-16">
-        <div className="group relative overflow-hidden bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center">
-              <CheckCircle2 className="text-health-teal" />
-            </div>
-            <h3 className="text-2xl font-display font-bold">Government Hospitals</h3>
-          </div>
-          <p className="text-slate-500 mb-6">Access subsidized healthcare services across the national network of public facilities.</p>
-          <button onClick={onStartBooking} className="flex items-center gap-2 text-primary font-bold hover:gap-4 transition-all">
-            Explore Facilities <ArrowRight size={18} />
-          </button>
-        </div>
-        <div className="group relative overflow-hidden bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center">
-              <Star className="text-amber-500" />
-            </div>
-            <h3 className="text-2xl font-display font-bold">Private Clinics</h3>
-          </div>
-          <p className="text-slate-500 mb-6">Book premium appointments with specialists and private healthcare providers near you.</p>
-          <button onClick={onStartBooking} className="flex items-center gap-2 text-primary font-bold hover:gap-4 transition-all">
-            View Specialists <ArrowRight size={18} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// --- Hospital List ---
 
 const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) => void }) => {
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({
+    type: 'All',
+    city: 'Karachi',
+    rating: 0,
+    search: ''
+  });
+
   return (
-    <div className="px-6 py-8 pb-32 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h2 className="text-4xl font-display font-bold">Available Hospitals</h2>
-          <p className="text-slate-500 mt-1">Showing {hospitals.length} results in San Francisco</p>
-        </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors">
-            <Plus size={16} /> Sort: Recommended
-          </button>
-          <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90 transition-colors">
-            <MapIcon size={16} /> Map View
-          </button>
-        </div>
-      </div>
+    <div className="bg-slate-50 min-h-screen pb-32">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-12">
+        {/* Mobile Filter Toggle */}
+        <button 
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+          className="lg:hidden w-full mb-6 p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between font-display font-bold text-slate-700"
+        >
+          <div className="flex items-center gap-2">
+            <Settings size={20} className="text-primary" />
+            Filters & Search
+          </div>
+          <ChevronDown size={20} className={`transition-transform duration-300 ${isFilterOpen ? 'rotate-180' : ''}`} />
+        </button>
 
-      <div className="grid grid-cols-1 gap-6">
-        {hospitals.map(h => (
-          <div 
-            key={h.id} 
-            onClick={() => onHospitalClick(h)}
-            className="group bg-white rounded-[24px] overflow-hidden shadow-sm border border-slate-100 hover:shadow-2xl hover:shadow-primary/10 transition-all cursor-pointer flex flex-col md:flex-row"
-          >
-            <div className="md:w-1/3 h-64 md:h-auto relative overflow-hidden">
-              <img src={h.imageUrl} alt={h.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-              <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
-                <div className="w-2 h-2 bg-health-teal rounded-full breathing-dot" />
-                <span className="font-mono text-[12px] font-bold">Open Now</span>
+        <div className="flex flex-col lg:flex-row gap-10">
+          {/* Sidebar Filter */}
+          <aside className={`lg:w-80 shrink-0 ${isFilterOpen ? 'block' : 'hidden lg:block'}`}>
+            <div className="bg-white rounded-[32px] p-6 md:p-8 shadow-sm border border-slate-100 lg:sticky lg:top-24">
+              <h3 className="text-2xl font-display font-black text-slate-900 mb-8">Filters</h3>
+              
+              <div className="space-y-8">
+                {/* Hospital Type */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">Hospital Type</p>
+                  <div className="flex flex-col gap-2">
+                    {['All', 'Private', 'Government'].map((t) => (
+                      <button 
+                        key={t}
+                        onClick={() => setActiveFilters({...activeFilters, type: t})}
+                        className={`flex items-center justify-between px-4 py-3 rounded-xl font-sans font-bold text-sm transition-all ${
+                          activeFilters.type === t ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {t} Hospitals
+                        {activeFilters.type === t && <CheckCircle2 size={16} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* City */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">Select City</p>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <select 
+                      value={activeFilters.city}
+                      onChange={(e) => setActiveFilters({...activeFilters, city: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-xl border-none focus:ring-2 focus:ring-primary font-sans font-bold text-slate-700 appearance-none"
+                    >
+                      <option>Karachi</option>
+                      <option>Lahore</option>
+                      <option>Islamabad</option>
+                      <option>Peshawar</option>
+                      <option>Quetta</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Fee Range Placeholder */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">Fee Range</p>
+                    <span className="text-xs font-bold text-slate-900">Rs. 0 - 5000</span>
+                  </div>
+                  <input type="range" className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-primary" />
+                </div>
+
+                {/* Open Now Toggle */}
+                <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                  <span className="text-sm font-bold text-emerald-800">Open Now Only</span>
+                  <div className="w-10 h-6 bg-health-teal rounded-full relative p-1 cursor-pointer">
+                    <div className="w-4 h-4 bg-white rounded-full translate-x-4 shadow-sm transition-all" />
+                  </div>
+                </div>
+
+                {/* Rating */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">Minimum Rating</p>
+                  <div className="flex gap-2">
+                    {[3, 4, 5].map((r) => (
+                      <button 
+                        key={r}
+                        onClick={() => setActiveFilters({...activeFilters, rating: r})}
+                        className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1 font-mono text-xs font-bold border transition-all ${
+                          activeFilters.rating === r ? 'bg-amber-100 border-amber-200 text-amber-700 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-500'
+                        }`}
+                      >
+                        {r} <Star size={12} fill="currentColor" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
+
+              <button className="w-full mt-10 py-4 bg-slate-900 text-white rounded-2xl font-display font-bold hover:bg-black transition-all">
+                Reset All Filters
+              </button>
             </div>
-            <div className="p-8 md:w-2/3 flex flex-col">
-              <div className="flex justify-between items-start mb-2">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-2xl font-display font-bold leading-tight">{h.name}</h3>
-                    {h.verified && <CheckCircle2 size={20} className="text-primary" fill="currentColor" />}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-500">
-                    <MapPin size={14} />
-                    <span className="text-sm font-medium">{h.area}, {h.city}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-3 py-1.5 rounded-xl border border-amber-100">
-                  <Star size={16} fill="currentColor" />
-                  <span className="font-mono text-sm font-bold">{h.rating}</span>
-                </div>
-              </div>
+          </aside>
 
-              <div className="flex flex-wrap gap-2 mt-4 mb-6">
-                <div className="bg-primary/10 text-primary px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-primary/20">
-                  <ShieldCheck size={14} />
-                  <span className="font-mono text-[10px] font-bold uppercase">{h.type} Facility</span>
-                </div>
-                {h.facilities.map((f, i) => (
-                  <span key={i} className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-mono text-[10px] font-bold uppercase">{f}</span>
-                ))}
+          {/* Hospital List Content */}
+          <div className="flex-1">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+              <div>
+                <h2 className="text-4xl font-display font-black text-slate-900 tracking-tight">Available Hospitals</h2>
+                <p className="text-slate-500 font-bold mt-2">Showing {hospitals.length} facilities in {activeFilters.city}, Pakistan</p>
               </div>
-
-              <div className="flex flex-wrap gap-2 mb-8">
-                {h.specializations.map((spec, i) => (
-                  <span key={i} className="bg-blue-50 text-primary px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-blue-100/50">{spec}</span>
-                ))}
-              </div>
-
-              <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-100">
-                <div>
-                  <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Consultation starts from</p>
-                  <p className="text-2xl font-display font-bold text-slate-900">${h.startingFee.toFixed(2)} <span className="text-sm font-normal text-slate-400">/visit</span></p>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                   <input type="text" placeholder="Search specifically..." className="w-full pl-12 pr-4 py-3 bg-white rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary font-sans font-bold text-sm" />
                 </div>
-                <button className="bg-[#5ffae0] text-[#005046] font-display font-bold px-8 py-3.5 rounded-2xl hover:shadow-[0_8px_30px_rgba(95,250,224,0.4)] transition-all active:scale-95">
-                  Book Token
+                <button className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-all">
+                  <MapIcon size={22} />
                 </button>
               </div>
             </div>
+
+            <div className="grid grid-cols-1 gap-8">
+              {hospitals.map(h => (
+                <motion.div 
+                  layout
+                  key={h.id} 
+                  onClick={() => onHospitalClick(h)}
+                  className="group bg-white rounded-[40px] overflow-hidden shadow-sm border border-slate-100 hover:shadow-2xl hover:border-primary/20 transition-all cursor-pointer flex flex-col md:flex-row"
+                >
+                  <div className="md:w-72 lg:w-80 h-72 md:h-auto relative overflow-hidden">
+                    <img src={h.imageUrl} alt={h.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute top-6 left-6 bg-white/95 backdrop-blur px-4 py-2 rounded-2xl flex items-center gap-2 shadow-xl border border-slate-100">
+                      <div className="w-2 h-2 bg-health-teal rounded-full breathing-dot" />
+                      <span className="font-mono text-[10px] font-black uppercase tracking-widest text-[#005046]">Open Now</span>
+                    </div>
+                  </div>
+                  <div className="p-10 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-2xl font-display font-black text-slate-900 leading-tight">{h.name}</h3>
+                          {h.verified && <CheckCircle2 size={24} className="text-primary" fill="currentColor" />}
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-400">
+                          <MapPin size={16} />
+                          <span className="text-sm font-bold">{h.area}, {h.city}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 shadow-sm">
+                        <Star size={18} fill="currentColor" />
+                        <span className="font-mono text-lg font-black">{h.rating}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mt-6 mb-8">
+                      <div className="bg-primary/5 text-primary px-4 py-2 rounded-xl flex items-center gap-2 border border-primary/10">
+                        <ShieldCheck size={16} />
+                        <span className="font-mono text-[10px] font-black uppercase tracking-widest">{h.category} FACILITY</span>
+                      </div>
+                      {h.specializations.slice(0, 3).map((spec, i) => (
+                        <span key={i} className="bg-slate-50 text-slate-500 px-4 py-2 rounded-xl font-mono text-[10px] font-black uppercase border border-slate-100">{spec}</span>
+                      ))}
+                    </div>
+
+                    <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-50">
+                      <div>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Consultation start at</p>
+                        <p className="text-3xl font-display font-black text-slate-900">Rs. {h.startingFee.toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
+                      </div>
+                      <button className="bg-health-teal text-white font-display font-black px-10 py-4 rounded-2xl shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all">
+                        Book Now
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
 };
+
 
 const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook: (d: Doctor) => void }) => {
   return (
@@ -808,7 +1042,7 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-display font-bold text-primary tracking-tight">${doc.fee.toFixed(2)}</div>
+                        <div className="text-3xl font-display font-bold text-primary tracking-tight">Rs. {doc.fee.toLocaleString()}</div>
                         <div className="text-slate-400 font-mono text-[10px] font-bold uppercase">Consultation Fee</div>
                       </div>
                     </div>
@@ -972,7 +1206,7 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
       <div>
         <p className="text-xs font-bold text-emerald-800 uppercase tracking-widest mb-2">WhatsApp Confirmation Sent</p>
         <p className="text-emerald-900/70 font-medium italic leading-snug">
-          "Hello Ahmed! Your token T-0047 for St. Mary's General is confirmed for today at 10:30 AM. Track your position live here: m-connect.pk/t47"
+          "Hello Ahmed! Your token T-0047 for Aga Khan University is confirmed for today at 10:30 AM. Track your position live here: xdoc.pk/t47"
         </p>
       </div>
     </div>
@@ -1043,7 +1277,7 @@ const DashboardOverview = () => {
     { label: "Today's Tokens", val: 124, diff: "+12.4%", icon: History, color: 'text-health-teal' },
     { label: "Waiting Now", val: 18, diff: "Peak Hour", icon: Clock, color: 'text-warning-amber' },
     { label: "Patients Seen", val: 96, diff: "Target: 120", icon: CheckCircle2, color: 'text-success-green' },
-    { label: "Revenue", val: "k$ 14.5", diff: "+$2.4k", icon: CreditCard, color: 'text-primary' }
+    { label: "Revenue", val: "Rs. 14.5k", diff: "+Rs. 2.4k", icon: CreditCard, color: 'text-primary' }
   ];
 
   return (
@@ -1283,7 +1517,7 @@ const GlobalStatsScreen = () => {
         </div>
         <div className="space-y-4 relative z-10">
           <p className="font-mono text-sm text-blue-400 uppercase tracking-[0.4em] font-black">PLATFORM REVENUE (NET)</p>
-          <h2 className="text-8xl font-display font-black text-white tracking-tighter leading-none">$128,450.00</h2>
+          <h2 className="text-8xl font-display font-black text-white tracking-tighter leading-none">Rs. 32.4M</h2>
           <div className="flex items-center gap-4 text-success-green text-xl font-black mt-8">
             <div className="bg-success-green/10 p-2 rounded-xl">
               <ArrowRight size={24} className="-rotate-45" />
@@ -1350,7 +1584,7 @@ const GlobalStatsScreen = () => {
                   </div>
                   <div className="text-center flex-1">
                     <p className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-[0.3em] mb-2">Commission (15%)</p>
-                    <p className="text-3xl font-mono font-black text-success-green">$186.00</p>
+                    <p className="text-3xl font-mono font-black text-success-green">Rs. 18,600</p>
                   </div>
                 </div>
 
@@ -1369,8 +1603,8 @@ const GlobalStatsScreen = () => {
             <h3 className="text-xl font-display font-bold text-white mb-8 opacity-90">System Logs</h3>
             <div className="space-y-8 relative before:absolute before:left-2 before:top-4 before:bottom-4 before:w-[2px] before:bg-white/5">
               {[
-                { type: 'Alert', title: 'Token Limit Triggered', desc: 'Downtown Clinic reached max capacity', time: '2m ago', color: 'bg-primary' },
-                { type: 'Finance', title: 'Revenue Payout Sent', desc: '$12,400 to 14 facilities', time: '15m ago', color: 'bg-success-green' },
+                { type: 'Alert', title: 'Token Limit Triggered', desc: 'Gulshan Medical Clinic reached max capacity', time: '2m ago', color: 'bg-primary' },
+                { type: 'Finance', title: 'Revenue Payout Sent', desc: 'Rs. 1,240,000 to 14 facilities', time: '15m ago', color: 'bg-success-green' },
                 { type: 'Auth', title: 'New Registration', desc: 'Aga Khan Hospital - Branch 4', time: '1h ago', color: 'bg-indigo-400' }
               ].map((log, i) => (
                 <div key={i} className="flex gap-6 relative z-10">
@@ -1442,10 +1676,17 @@ export default function App() {
   const renderCurrentView = () => {
     switch (viewState) {
       case 'hero':
-        return <HeroSection 
-          onSignUp={() => setViewState('auth_choice')} 
-          onExplore={() => setViewState('patient_home')} 
-        />;
+        return (
+          <div className="bg-white min-h-screen">
+            <Header onLogoClick={() => setViewState('hero')} onSignUp={() => setViewState('auth_choice')} isLanding={true} />
+            <HeroSection 
+              onSignUp={() => setViewState('auth_choice')} 
+              onLogin={() => setViewState('auth_choice')}
+            />
+            <HowItWorks />
+            <Footer />
+          </div>
+        );
       case 'auth_choice':
         return (
           <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-8">
@@ -1518,12 +1759,9 @@ export default function App() {
           );
         }
         return (
-          <div className="bg-[#faf8ff] min-h-screen">
+          <div className="bg-[#faf8ff] min-h-screen pb-32">
             <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => setViewState('hero')} />
-            <div className="pb-32">
-              <LandingPage onStartBooking={() => {}} />
-              <HospitalListPage onHospitalClick={(h) => setSelectedHospital(h)} />
-            </div>
+            <HospitalListPage onHospitalClick={(h) => setSelectedHospital(h)} />
 
             {/* Patient Bottom Navbar */}
             <nav className="fixed bottom-0 left-0 w-full z-[100] bg-white border-t border-slate-100 flex justify-around py-4">
@@ -1541,7 +1779,7 @@ export default function App() {
           </div>
         );
       default:
-        return <HeroSection onSignUp={() => {}} onExplore={() => {}} />;
+        return <HeroSection onSignUp={() => setViewState('auth_choice')} onLogin={() => setViewState('auth_choice')} />;
     }
   };
 
