@@ -27,53 +27,104 @@ import {
   LayoutDashboard,
   ShieldAlert,
   Settings,
-  MoreHorizontal
+  MoreHorizontal,
+  LogOut,
+  ChevronRight,
+  Menu,
+  X,
+  PlusCircle,
+  FileText,
+  Users,
+  Download,
+  CreditCard,
+  MessageSquare,
+  Building2,
+  Lock,
+  Mail,
+  Camera,
+  Map,
+  Layers,
+  ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hospitals, doctors, staffMembers, queueTokens } from './mockData';
-import { Hospital, Doctor, Staff, Token } from './types';
+import { Hospital, Doctor, Staff, Token, HospitalType, PaymentMethod, StaffStatus } from './types';
+import { useAuth } from './contexts/AuthContext';
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from 'firebase/auth';
+import { auth, db } from './firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 
 // --- Shared Components ---
 
-const Header = ({ darkMode = false, hospitalName = "Xdoc" }: { darkMode?: boolean, hospitalName?: string }) => (
-  <header className={`flex justify-between items-center w-full px-6 py-3 sticky top-0 z-50 backdrop-blur-xl border-b transition-colors duration-300 ${
-    darkMode 
-      ? 'bg-bg-dark/80 border-white/10 text-white' 
-      : 'bg-white/80 border-slate-100 text-primary'
-  }`}>
-    <div className="flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${
-        darkMode ? 'bg-primary' : 'medical-cross-gradient'
-      }`}>
-        <Activity size={20} />
+const Header = ({ darkMode = false, hospitalName = "Xdoc", onToggleSidebar, onLogoClick, showMenu = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean }) => {
+  const { userData, logout } = useAuth();
+  
+  return (
+    <header className={`flex justify-between items-center w-full px-6 py-4 sticky top-0 z-[60] backdrop-blur-xl border-b transition-all duration-500 ${
+      darkMode 
+        ? 'bg-bg-dark/90 border-white/10 text-white' 
+        : 'bg-white/80 border-slate-100 text-slate-900'
+    }`}>
+      <div className="flex items-center gap-4">
+        {showMenu && (
+          <button onClick={onToggleSidebar} className="p-2 -ml-2 rounded-xl hover:bg-white/10 transition-colors lg:hidden">
+            <Menu size={24} />
+          </button>
+        )}
+        <div onClick={onLogoClick} className="flex items-center gap-3 cursor-pointer group">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white transition-transform group-hover:scale-110 ${
+            darkMode ? 'bg-primary shadow-lg shadow-primary/20' : 'medical-cross-gradient shadow-lg shadow-primary/10'
+          }`}>
+            <Activity size={22} />
+          </div>
+          <h1 className="text-2xl font-display font-black tracking-tighter uppercase whitespace-nowrap">{hospitalName}</h1>
+        </div>
       </div>
-      <h1 className="text-xl font-bold font-display tracking-tight whitespace-nowrap">{hospitalName}</h1>
-    </div>
-    
-    <div className="flex items-center gap-4">
-      {darkMode && (
-        <button className="relative p-2 rounded-full hover:bg-white/5 transition-colors">
-          <Bell size={20} className="text-slate-400" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-emergency-red rounded-full breathing-dot" />
+      
+      <div className="flex items-center gap-3 md:gap-5">
+        <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 rounded-full border border-slate-200 dark:border-white/10">
+          <div className="w-2 h-2 rounded-full bg-success-green breathing-dot" />
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Live Status</span>
+        </div>
+        
+        <button className="relative p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <Bell size={20} className={darkMode ? 'text-slate-400' : 'text-slate-600'} />
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-emergency-red rounded-full ring-2 ring-white dark:ring-bg-dark" />
         </button>
-      )}
-      {!darkMode && (
-        <button className="p-2 rounded-full hover:bg-slate-50 transition-colors">
-          <Search size={20} className="text-slate-600" />
-        </button>
-      )}
-      <div className={`w-10 h-10 rounded-full border-2 overflow-hidden ${
-        darkMode ? 'border-primary/30' : 'border-primary'
-      }`}>
-        <img 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpUnpAxGFzED-XqrffslwfCw5jBKG1pFUEUgx65FbxMzeTGuZpxmXDzaV26wzVB5Osqe-VNoOIg5MaN-ve-z70OYcfnJA1ExYkJBE0uRnidwfXBMeiEQiUdePkM68GNdfNWDf2r2S_Vu3lV55z248d10KypNv-1_GUWSxn7rU56qie2AXVb9Ej6kTvj90dlAB6gwNc2OQt1fqRCbTZ93xZdCZ3q4h1vCPBSE6_xz06Imvmtqd8ogpaLwc0cubpjrLpRngauOqsqV8" 
-          alt="Profile"
-          className="w-full h-full object-cover"
-        />
+
+        <div className={`flex items-center gap-3 pl-3 md:pl-5 border-l ${darkMode ? 'border-white/10' : 'border-slate-100'}`}>
+          <div className={`hidden sm:block text-right ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+            <p className="text-xs font-bold leading-none">{userData?.displayName || 'James Sterling'}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1">{userData?.role || 'Hospital Admin'}</p>
+          </div>
+          <div className={`w-10 h-10 rounded-xl border-2 overflow-hidden shadow-sm group relative cursor-pointer ${
+            darkMode ? 'border-primary/30' : 'border-primary'
+          }`}>
+            <img 
+              src={userData?.photoURL || "https://images.unsplash.com/photo-1559839734-2b71f1536783?auto=format&fit=crop&q=80&w=200"} 
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+            {userData && (
+              <button 
+                onClick={() => logout()}
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+              >
+                <LogOut size={16} className="text-white" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 const Navbar = ({ activeTab, setActiveTab, darkMode = false }: { activeTab: string, setActiveTab: (t: any) => void, darkMode?: boolean }) => {
   const tabs = [
@@ -114,6 +165,364 @@ const Navbar = ({ activeTab, setActiveTab, darkMode = false }: { activeTab: stri
         </button>
       ))}
     </nav>
+  );
+};
+
+
+const HeroSection = ({ onSignUp, onExplore }: { onSignUp: () => void, onExplore: () => void }) => {
+  const benefits = [
+    { icon: Calendar, title: "Online Booking", desc: "Book tokens instantly without physical visits" },
+    { icon: Clock, title: "Real-time Availability", desc: "Check doctor schedules before leaving home" },
+    { icon: CreditCard, title: "Transparent Pricing", desc: "See consultation fees upfront, no surprises" },
+    { icon: Building2, title: "Unified Network", desc: "Govt & Private hospitals in one digital place" },
+    { icon: MessageSquare, title: "WhatsApp Alerts", desc: "Get instant confirmation and queue reminders" },
+    { icon: History, title: "Save Vital Hours", desc: "Skip long waiting lines at medical facilities" }
+  ];
+
+  return (
+    <div className="bg-white min-h-screen overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-[0.03] z-0">
+        <div className="absolute top-20 left-10 w-96 h-96 bg-primary rounded-full blur-[120px]" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-health-teal rounded-full blur-[120px]" />
+        <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(#0b5fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 pt-24 pb-32 relative z-10">
+        <div className="text-center max-w-4xl mx-auto mb-20">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-50 border border-blue-100 rounded-full mb-8"
+          >
+            <div className="w-2 h-2 rounded-full bg-primary breathing-dot" />
+            <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-primary">Pakistan's #1 Health Network</span>
+          </motion.div>
+          
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-display text-5xl md:text-8xl font-black tracking-tight leading-[0.9] mb-8 text-slate-900"
+          >
+            Apna Doctor Dhundein <br/> 
+            <span className="bg-clip-text text-transparent cta-gradient">Ghar Baithe.</span>
+          </motion.h1>
+          
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-xl md:text-2xl text-slate-500 font-medium max-w-3xl mx-auto mb-12 leading-relaxed"
+          >
+            Book digital tokens, skip the waiting room, and access Pakistan's top private 
+            and government healthcare facilities with a single tap.
+          </motion.p>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <button 
+              onClick={onSignUp}
+              className="w-full sm:w-auto px-12 py-5 cta-gradient text-white font-display font-black text-xl rounded-2xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+            >
+              Start Now <ArrowRight size={24} />
+            </button>
+            <button 
+              onClick={onExplore}
+              className="w-full sm:w-auto px-12 py-5 bg-white border-2 border-slate-200 text-slate-900 font-display font-black text-xl rounded-2xl hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-3"
+            >
+              Explore Hospitals
+            </button>
+          </motion.div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {benefits.map((b, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + (i * 0.1) }}
+              className="p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm hover:shadow-xl hover:border-primary/20 transition-all group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-primary/5 flex items-center justify-center text-primary mb-6 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                <b.icon size={32} />
+              </div>
+              <h3 className="text-2xl font-display font-bold text-slate-900 mb-3">{b.title}</h3>
+              <p className="text-slate-500 font-medium leading-relaxed">{b.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') => void }) => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6 py-20">
+    <div className="max-w-4xl w-full">
+      <div className="text-center mb-16">
+        <h2 className="text-5xl font-display font-black tracking-tight text-slate-900 mb-4">Choose Account Type</h2>
+        <p className="text-xl text-slate-500 font-medium">Join Pakistan's fastest growing digital health marketplace</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <motion.div 
+          whileHover={{ y: -10 }}
+          onClick={() => onSelect('Hospital')}
+          className="bg-white p-10 rounded-[48px] border-2 border-transparent hover:border-primary shadow-xl cursor-pointer transition-all group"
+        >
+          <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-8 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500">
+            <Building2 size={40} />
+          </div>
+          <h3 className="text-3xl font-display font-black text-slate-900 mb-4">Hospital or Clinic</h3>
+          <p className="text-slate-500 text-lg leading-relaxed mb-8">Register your facility, manage doctors, and handle live tokens digitally.</p>
+          <ul className="space-y-3 mb-10">
+            {['Detailed Dashboard', 'Staff Management', 'Revenue Tracking'].map((item, i) => (
+              <li key={i} className="flex items-center gap-3 text-slate-700 font-bold">
+                <CheckCircle2 size={20} className="text-health-teal" fill="currentColor" /> {item}
+              </li>
+            ))}
+          </ul>
+          <div className="w-full py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-display font-bold text-slate-900 group-hover:bg-primary group-hover:text-white transition-all">
+            Join as Partner <ArrowRight size={20} />
+          </div>
+        </motion.div>
+
+        <motion.div 
+          whileHover={{ y: -10 }}
+          onClick={() => onSelect('Patient')}
+          className="bg-white p-10 rounded-[48px] border-2 border-transparent hover:border-health-teal shadow-xl cursor-pointer transition-all group"
+        >
+          <div className="w-20 h-20 rounded-3xl bg-health-teal/10 flex items-center justify-center text-health-teal mb-8 group-hover:scale-110 group-hover:bg-health-teal group-hover:text-white transition-all duration-500">
+            <User size={40} />
+          </div>
+          <h3 className="text-3xl font-display font-black text-slate-900 mb-4">I'm a Patient</h3>
+          <p className="text-slate-500 text-lg leading-relaxed mb-8">Find doctors, book tokens instantly, and get digital care reminders.</p>
+          <ul className="space-y-3 mb-10">
+            {['Instant Tokens', 'Fee Transparency', 'Secure Records'].map((item, i) => (
+              <li key={i} className="flex items-center gap-3 text-slate-700 font-bold">
+                <CheckCircle2 size={20} className="text-health-teal" fill="currentColor" /> {item}
+              </li>
+            ))}
+          </ul>
+          <div className="w-full py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-display font-bold text-slate-900 group-hover:bg-health-teal group-hover:text-white transition-all">
+            Find Care <ArrowRight size={20} />
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  </div>
+);
+
+const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
+  const [step, setStep] = useState(1);
+  const totalSteps = 7;
+
+  const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
+  const prevStep = () => setStep(s => Math.max(s - 1, 1));
+
+  const sections = [
+    "Basic Information",
+    "Location & Contact",
+    "Timings",
+    "Services",
+    "Staff",
+    "Pricing",
+    "Media"
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50 px-6 py-20 pb-40">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-12">
+          <div>
+            <h2 className="text-4xl font-display font-black text-slate-900">Facility Registration</h2>
+            <p className="text-slate-500 font-medium mt-1">Section {step}: {sections[step-1]}</p>
+          </div>
+          <div className="flex gap-1.5">
+            {Array.from({ length: totalSteps }).map((_, i) => (
+              <div 
+                key={i} 
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  i + 1 === step ? 'w-10 bg-primary' : 
+                  i + 1 < step ? 'w-4 bg-health-teal' : 'w-4 bg-slate-200'
+                }`} 
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-10 rounded-[40px] shadow-2xl border border-slate-100">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              {step === 1 && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Full Name of Facility</label>
+                    <input type="text" placeholder="e.g. City Care Clinic" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Establishment Type</label>
+                      <select className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium">
+                        <option>Private Hospital</option>
+                        <option>Government Hospital</option>
+                        <option>Private Clinic</option>
+                        <option>Diagnostic Lab</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Medical License Number</label>
+                      <input type="text" placeholder="PMDC-XXXXX" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Email Address</label>
+                    <input type="email" placeholder="contact@hospital.com" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <input type="password" placeholder="Create Password" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                    <input type="password" placeholder="Confirm Password" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                  </div>
+                </>
+              )}
+
+              {step === 2 && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Complete Address</label>
+                    <textarea placeholder="Plot #, Street, etc." className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium min-h-[100px]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <select className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium">
+                      <option>Select City</option>
+                      <option>Karachi</option>
+                      <option>Lahore</option>
+                      <option>Islamabad</option>
+                    </select>
+                    <input type="text" placeholder="Area / Neighborhood" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="tel" placeholder="Phone Number" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                    <input type="tel" placeholder="WhatsApp Number" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                    <input type="tel" placeholder="Emergency Contact" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                  </div>
+                  <button className="flex items-center gap-3 text-primary font-bold bg-primary/5 px-6 py-3 rounded-xl hover:bg-primary/10 transition-colors">
+                    <MapPin size={20} /> Pin Google Maps Location
+                  </button>
+                </>
+              )}
+
+              {step === 3 && (
+                <>
+                  <div className="grid grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Opening Time</label>
+                      <input type="time" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Closing Time</label>
+                      <input type="time" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-sm font-bold text-slate-700">Open Days</label>
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                        <div key={day} className="flex flex-col items-center gap-2 p-3 bg-slate-50 rounded-xl border border-transparent hover:border-primary transition-all">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">{day}</span>
+                          <input type="checkbox" className="w-5 h-5 rounded-md text-primary" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-6 bg-red-50 rounded-3xl border border-red-100">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-emergency-red rounded-2xl flex items-center justify-center text-white">
+                        <AlertTriangle />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 leading-tight">24/7 Emergency Service</p>
+                        <p className="text-xs text-slate-500">Do you offer round the clock emergency?</p>
+                      </div>
+                    </div>
+                    <div className="w-14 h-8 bg-slate-200 rounded-full relative p-1 cursor-pointer">
+                      <div className="w-6 h-6 bg-white rounded-full shadow-sm" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {step === 4 && (
+                <>
+                  <div className="space-y-4">
+                    <label className="text-sm font-bold text-slate-700">Specializations</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['General Physician', 'Cardiology', 'Neurology', 'Orthopedic', 'Gynecology', 'Pediatrics', 'Dentistry'].map(spec => (
+                        <button key={spec} className="px-4 py-2 bg-slate-50 rounded-full text-xs font-bold text-slate-600 hover:bg-primary hover:text-white transition-all border border-slate-200">
+                          {spec}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-sm font-bold text-slate-700">Available Facilities</label>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                      {['ICU', 'Emergency Ward', 'Pathology Lab', 'Pharmacy', 'X-Ray', 'Ambulance'].map(fac => (
+                        <div key={fac} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl">
+                          <input type="checkbox" className="w-5 h-5 rounded-md text-primary" />
+                          <span className="text-xs font-bold text-slate-700">{fac}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {step >= 5 && <div className="text-center py-10 text-slate-400">Section details logic continues...</div>}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="flex items-center justify-between mt-12">
+          <button 
+            onClick={prevStep}
+            disabled={step === 1}
+            className={`px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all ${
+              step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            <ArrowLeft size={20} /> Previous
+          </button>
+          
+          {step < totalSteps ? (
+            <button 
+              onClick={nextStep}
+              className="px-12 py-4 bg-primary text-white font-display font-black text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+            >
+              Continue
+            </button>
+          ) : (
+            <button 
+              onClick={onComplete}
+              className="px-12 py-4 cta-gradient text-white font-display font-black text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+            >
+              Review & Submit
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -579,170 +988,272 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
   </div>
 );
 
+
 // --- Admin Section (Dark Mode) ---
 
-const AdminDashboard = () => {
-  const stats = [
-    { label: "Today's Tokens", val: 124, diff: "+12%", icon: History, color: 'text-health-teal' },
-    { label: "Waiting Now", val: 18, diff: "High", icon: Clock, color: 'text-amber-400' },
-    { label: "Completed", val: 96, diff: "88%", icon: CheckCircle2, color: 'text-emerald-400' },
-    { label: "Revenue", val: "k$4.2", diff: "Target", icon: Volume2, color: 'text-primary' }
+const Sidebar = ({ activeTab, setActiveTab, onLogout }: { activeTab: string, setActiveTab: (t: any) => void, onLogout: () => void }) => {
+  const menuItems = [
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { id: 'doctors', icon: Stethoscope, label: 'Doctors' },
+    { id: 'staff', icon: Users, label: 'Staff' },
+    { id: 'attendance', icon: ShieldCheck, label: 'Attendance' },
+    { id: 'tokens', icon: History, label: 'Tokens' },
+    { id: 'revenue', icon: CreditCard, label: 'Revenue' },
+    { id: 'export', icon: Download, label: 'Export Data' },
+    { id: 'notifications', icon: Bell, label: 'Notifications' },
+    { id: 'settings', icon: Settings, label: 'Settings' }
   ];
 
   return (
-    <div className="p-6 pb-32 space-y-8 max-w-lg mx-auto">
-      <section>
-        <p className="font-mono text-xs text-blue-400 uppercase tracking-[0.3em] font-bold mb-2">DASHBOARD OVERVIEW</p>
-        <h1 className="text-4xl font-display font-bold text-white tracking-tight">Live Activity</h1>
-      </section>
+    <div className="w-72 h-screen fixed left-0 top-0 bg-bg-dark border-r border-white/10 pt-24 pb-8 flex flex-col z-[50]">
+      <div className="flex-1 px-4 space-y-2 overflow-y-auto no-scrollbar">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-display font-bold text-sm transition-all relative group ${
+              activeTab === item.id 
+                ? 'bg-primary text-white shadow-xl shadow-primary/20' 
+                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <item.icon size={20} className={activeTab === item.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'} />
+            {item.label}
+            {activeTab === item.id && (
+              <motion.div layoutId="active-pill" className="absolute left-0 w-1.5 h-6 bg-white rounded-r-full" />
+            )}
+          </button>
+        ))}
+      </div>
 
-      <section className="grid grid-cols-2 gap-4">
+      <div className="px-6 pt-6 border-t border-white/5">
+        <button 
+          onClick={onLogout}
+          className="w-full flex items-center gap-4 px-6 py-4 rounded-xl font-display font-bold text-sm text-emergency-red hover:bg-emergency-red/10 transition-all"
+        >
+          <LogOut size={20} /> Sign Out
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const DashboardOverview = () => {
+  const stats = [
+    { label: "Today's Tokens", val: 124, diff: "+12.4%", icon: History, color: 'text-health-teal' },
+    { label: "Waiting Now", val: 18, diff: "Peak Hour", icon: Clock, color: 'text-warning-amber' },
+    { label: "Patients Seen", val: 96, diff: "Target: 120", icon: CheckCircle2, color: 'text-success-green' },
+    { label: "Revenue", val: "k$ 14.5", diff: "+$2.4k", icon: CreditCard, color: 'text-primary' }
+  ];
+
+  return (
+    <div className="space-y-12">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((s, i) => (
-          <div key={i} className="glass-card p-6 rounded-3xl flex flex-col justify-between h-40 relative overflow-hidden group hover:border-white/20 transition-all">
-            <div className="flex justify-between items-start">
-              <div className={`${s.color} opacity-80`}><s.icon size={24} /></div>
-              <span className="text-[10px] text-slate-500 font-mono font-bold">{s.diff}</span>
+          <motion.div 
+            key={i} 
+            whileHover={{ y: -5 }}
+            className="glass-card p-8 rounded-[32px] flex flex-col justify-between h-44 relative overflow-hidden group hover:border-white/20 transition-all border-none bg-gradient-to-br from-white/10 to-transparent shadow-xl"
+          >
+            <div className="flex justify-between items-start relative z-10">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${s.color.replace('text', 'bg')}/10 ${s.color}`}>
+                <s.icon size={24} />
+              </div>
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">{s.diff}</span>
             </div>
-            <div>
-              <p className="text-4xl font-display font-black text-white leading-tight">{s.val}</p>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 opacity-70">{s.label}</p>
+            <div className="relative z-10">
+              <p className="text-4xl font-display font-black text-white tracking-tighter">{s.val}</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 opacity-70">{s.label}</p>
             </div>
-            <div className={`absolute -right-4 -bottom-4 w-16 h-16 rounded-full blur-3xl opacity-20 ${s.color.replace('text', 'bg')}`} />
-          </div>
+          </motion.div>
         ))}
       </section>
 
-      <section className="glass-card rounded-[40px] p-8 border-l-[8px] border-health-teal/50 shadow-2xl relative overflow-hidden">
-        <div className="absolute -top-10 -right-10 opacity-5">
-           <Activity size={200} strokeWidth={1} />
-        </div>
-        
-        <div className="flex justify-between items-center mb-8 relative z-10">
-          <div>
-            <h3 className="text-2xl font-display font-bold text-white">Current Token</h3>
-            <p className="text-slate-400 font-medium text-sm mt-1">Cardiology Dept - Room 4</p>
-          </div>
-          <div className="bg-health-teal/20 p-6 rounded-[24px] flex items-center justify-center border border-health-teal/30">
-            <span className="text-5xl font-mono font-black text-white tracking-tighter">A-42</span>
-          </div>
-        </div>
-
-        <div className="space-y-6 mb-10 relative z-10">
-          {[
-            { id: 'A-43', name: 'David Henderson', time: 'Next' },
-            { id: 'A-44', name: 'Sarah Jenkins', time: '04m' },
-            { id: 'A-45', name: 'Michael Chen', time: '09m' }
-          ].map((row, i) => (
-            <div key={i} className="flex items-center gap-6 text-slate-400 border-b border-white/5 pb-4 last:border-0 hover:text-white transition-colors">
-              <span className="font-mono text-xs font-bold w-12">{row.id}</span>
-              <span className="flex-grow font-bold">{row.name}</span>
-              <span className="text-xs font-mono uppercase tracking-widest opacity-60">{row.time}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <section className="glass-card rounded-[40px] p-8 border-none bg-gradient-to-br from-white/5 to-transparent shadow-2xl relative overflow-hidden">
+            <div className="flex justify-between items-end mb-10">
+              <div>
+                <h3 className="text-3xl font-display font-black text-white tracking-tight">Live Queue</h3>
+                <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest">Cardiology Dept - Room 4</p>
+              </div>
+              <div className="bg-success-green/10 px-4 py-2 rounded-xl border border-success-green/20 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-success-green breathing-dot" />
+                <span className="text-[10px] font-black text-success-green uppercase tracking-widest">Live Sync</span>
+              </div>
             </div>
-          ))}
-        </div>
 
-        <button className="w-full py-6 rounded-[24px] bg-gradient-to-r from-health-teal to-primary text-white font-display font-bold text-xl flex items-center justify-center gap-4 active:scale-95 transition-all shadow-2xl shadow-primary/20">
-          <Volume2 size={24} /> Call Next Patient
-        </button>
-      </section>
-
-      <section className="glass-card rounded-3xl p-6 group hover:bg-white/10 transition-colors">
-        <div className="flex items-center justify-between mb-6">
-          <span className="font-mono text-xs font-bold text-white uppercase tracking-widest opacity-80">Staff Status</span>
-          <span className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em] cursor-pointer hover:underline">VIEW ALL</span>
-        </div>
-        <div className="flex -space-x-3 items-center">
-          {['DR', 'MS', 'AK'].map((initials, i) => (
-            <div key={i} className={`w-12 h-12 rounded-full border-2 border-bg-dark flex items-center justify-center text-xs text-white font-black shadow-lg ${
-              i === 0 ? 'bg-indigo-600' : i === 1 ? 'bg-rose-600' : 'bg-amber-600'
-            }`}>
-              {initials}
+            <div className="flex items-center gap-8 mb-12">
+              <div className="bg-primary/20 p-10 rounded-[32px] border-2 border-primary/30 flex flex-col items-center justify-center shadow-2xl shadow-primary/20">
+                <span className="text-sm font-mono font-bold text-primary uppercase tracking-[0.3em] mb-2">CURRENT</span>
+                <span className="text-7xl font-mono font-black text-white tracking-tighter">A-42</span>
+              </div>
+              <div className="flex-1 space-y-4">
+                <p className="text-slate-400 text-sm font-bold uppercase tracking-[0.1em]">Patient in Cabin</p>
+                <h4 className="text-4xl font-display font-bold text-white">James Sterling</h4>
+                <div className="flex items-center gap-4 py-2">
+                  <div className="bg-white/5 px-4 py-2 rounded-xl text-xs font-mono text-slate-300">Started: 10:24 AM</div>
+                  <div className="bg-white/5 px-4 py-2 rounded-xl text-xs font-mono text-slate-300">Spent: 12m</div>
+                </div>
+              </div>
             </div>
-          ))}
-          <div className="w-12 h-12 rounded-full border-2 border-bg-dark bg-slate-800 border-dashed border-white/30 flex items-center justify-center group-hover:border-primary transition-colors">
-            <Plus size={20} className="text-white" />
-          </div>
-          <div className="pl-8 flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-health-teal breathing-dot" />
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">12 Staff Online</span>
-          </div>
+
+            <div className="bg-white/5 rounded-[32px] p-8">
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Upcoming in queue</p>
+              <div className="space-y-6">
+                {[
+                  { id: 'A-43', name: 'David Henderson', status: 'In Waiting Area', time: 'Next' },
+                  { id: 'A-44', name: 'Sarah Jenkins', status: 'Near Hospital', time: '04m' },
+                  { id: 'A-45', name: 'Michael Chen', status: 'Traveling', time: '09m' }
+                ].map((row, i) => (
+                  <div key={i} className="flex items-center gap-8 text-slate-400 border-b border-white/5 pb-6 last:border-0 hover:text-white transition-colors cursor-pointer group">
+                    <span className="font-mono text-xl font-black text-white/20 group-hover:text-primary transition-colors">{row.id}</span>
+                    <div className="flex-1">
+                      <p className="font-bold text-lg text-white/90">{row.name}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{row.status}</p>
+                    </div>
+                    <span className="text-xs font-mono font-bold uppercase tracking-widest text-health-teal bg-health-teal/10 px-3 py-1 rounded-lg">{row.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button className="w-full py-8 mt-8 rounded-[32px] bg-gradient-to-r from-primary to-health-teal text-white font-display font-black text-2xl flex items-center justify-center gap-4 hover:shadow-[0_20px_50px_rgba(11,95,255,0.3)] transition-all active:scale-95 group">
+              <Volume2 size={32} className="group-hover:scale-110 transition-transform" /> Call Next Patient
+            </button>
+          </section>
         </div>
-      </section>
+
+        <div className="space-y-8">
+          <section className="glass-card p-8 rounded-[40px] border-none shadow-xl">
+            <h4 className="text-xl font-display font-bold text-white mb-8 flex justify-between items-center">
+              Today's Staff
+              <span className="text-xs text-blue-400 font-black uppercase tracking-widest cursor-pointer hover:underline">Update</span>
+            </h4>
+            <div className="space-y-6">
+              {[
+                { label: 'Present', count: 142, color: 'bg-success-green' },
+                { label: 'Absent', count: 12, color: 'bg-emergency-red' },
+                { label: 'Late', count: 8, color: 'bg-warning-amber' }
+              ].map((s, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
+                    <span className="text-slate-400">{s.label}</span>
+                    <span className="text-white">{s.count}</span>
+                  </div>
+                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className={`h-full ${s.color}`} style={{ width: `${(s.count / 162) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-10 flex -space-x-4 items-center">
+              {['DR', 'MS', 'AK', 'FZ', 'HN'].map((init, i) => (
+                <div key={i} className={`w-12 h-12 rounded-full border-4 border-[#04111D] flex items-center justify-center text-xs text-white font-black shadow-lg shadow-black/50 ${
+                  i === 0 ? 'bg-indigo-600' : i === 1 ? 'bg-rose-600' : i === 2 ? 'bg-amber-600' : i === 3 ? 'bg-emerald-600' : 'bg-blue-600'
+                }`}>
+                  {init}
+                </div>
+              ))}
+              <button className="w-12 h-12 rounded-full border-2 border-white/10 border-dashed bg-white/5 flex items-center justify-center text-slate-500 hover:text-white hover:border-primary transition-all">
+                <Plus size={20} />
+              </button>
+            </div>
+          </section>
+
+          <section className="glass-card p-8 rounded-[40px] border-none shadow-xl">
+            <h4 className="text-xl font-display font-bold text-white mb-8">Quick Actions</h4>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { icon: PlusCircle, label: 'New Token' },
+                { icon: Stethoscope, label: 'Add Doctor' },
+                { icon: ShieldCheck, label: 'Attendance' },
+                { icon: Download, label: 'Export Data' }
+              ].map((act, i) => (
+                <button key={i} className="flex flex-col items-center gap-4 p-6 bg-white/5 rounded-3xl hover:bg-white/10 transition-all border border-white/5 hover:border-primary/30 group">
+                  <div className="text-slate-400 group-hover:text-primary transition-colors">
+                    <act.icon size={24} />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-white transition-colors">{act.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   );
 };
 
 const StaffScreen = () => {
   return (
-    <div className="p-6 pb-32 space-y-8 max-w-lg mx-auto">
-      <div className="flex justify-between items-center bg-transparent">
+    <div className="space-y-12">
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-4xl font-display font-bold text-white tracking-tight">Staff Management</h2>
-          <p className="text-slate-500 font-mono text-sm mt-1 uppercase tracking-widest">Monday, Oct 24</p>
+          <h2 className="text-5xl font-display font-black text-white tracking-tight leading-none">Staff Management</h2>
+          <p className="text-slate-500 font-mono text-sm mt-3 uppercase tracking-[0.3em]">Monday, Oct 24 • Real-time Monitoring</p>
         </div>
-        <button className="cta-gradient p-4 rounded-2xl text-white shadow-xl active:scale-90 transition-all flex items-center gap-2">
-          <ShieldCheck size={20} />
-          <span className="font-mono font-bold text-xs uppercase tracking-wider">Mark Attendance</span>
+        <button className="cta-gradient px-8 py-4 rounded-2xl text-white font-display font-bold text-lg shadow-xl active:scale-95 transition-all flex items-center gap-3">
+          <Plus size={24} /> Add New Staff
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Present', val: 142, color: 'text-emerald-400', active: true },
-          { label: 'Absent', val: 12, color: 'text-emergency-red' },
-          { label: 'Late', val: 8, color: 'text-amber-400' },
-          { label: 'On Leave', val: 5, color: 'text-blue-400' }
+          { label: 'Present', val: 142, color: 'text-success-green', icon: CheckCircle2 },
+          { label: 'Absent', val: 12, color: 'text-emergency-red', icon: X },
+          { label: 'Late', val: 8, color: 'text-warning-amber', icon: Clock },
+          { label: 'On Leave', val: 5, color: 'text-blue-400', icon: Calendar }
         ].map((stat, i) => (
-          <div key={i} className="glass-card p-6 rounded-3xl space-y-1">
+          <div key={i} className="glass-card p-8 rounded-[32px] space-y-4">
             <div className="flex justify-between items-center">
               <span className="font-mono text-[10px] text-slate-500 font-bold uppercase tracking-widest">{stat.label}</span>
-              {stat.active && <div className="w-2 h-2 rounded-full bg-emerald-400 breathing-dot" />}
+              <stat.icon size={20} className={stat.color} />
             </div>
-            <p className={`text-4xl font-display font-black ${stat.color}`}>{stat.val < 10 ? `0${stat.val}` : stat.val}</p>
+            <p className={`text-5xl font-display font-black ${stat.color}`}>{stat.val < 10 ? `0${stat.val}` : stat.val}</p>
           </div>
         ))}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
-          {['All Staff', 'Medical', 'Admin', 'Nursing'].map((tab, i) => (
-            <button key={i} className={`flex-shrink-0 px-6 py-2.5 rounded-full font-mono text-xs font-bold uppercase tracking-[0.1em] transition-all ${
-              i === 0 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+          {['All Staff', 'Doctors', 'Nursing', 'Administration', 'Support'].map((tab, i) => (
+            <button key={i} className={`flex-shrink-0 px-8 py-3 rounded-xl font-display font-bold text-sm transition-all ${
+              i === 0 ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
             }`}>
               {tab}
             </button>
           ))}
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {staffMembers.map(s => (
-            <div key={s.id} className="glass-card p-5 rounded-3xl flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer group">
-              <div className="flex items-center gap-5">
+            <div key={s.id} className="glass-card p-6 rounded-[32px] flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-6">
                 <div className="relative">
-                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-800">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-800 border border-white/10">
                     <img src={s.imageUrl} alt={s.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                   </div>
-                  {s.status === 'PRESENT' && (
-                    <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-bg-dark">
-                      <Check size={12} className="text-white" strokeWidth={4} />
-                    </div>
-                  )}
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success-green border-4 border-bg-dark flex items-center justify-center text-white">
+                    <Check size={12} strokeWidth={4} />
+                  </div>
                 </div>
                 <div>
-                  <h4 className="font-display font-bold text-lg text-white leading-tight">{s.name}</h4>
-                  <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">{s.role}</p>
+                  <h4 className="font-display font-bold text-xl text-white leading-tight">{s.name}</h4>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{s.role}</span>
+                    <div className="w-1 h-1 rounded-full bg-slate-700" />
+                    <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{s.shift} Shift</span>
+                  </div>
                 </div>
               </div>
-              <div className={`flex items-center border rounded-full px-4 py-1.5 gap-2 ${
-                s.status === 'PRESENT' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' :
-                s.status === 'ABSENT' ? 'bg-emergency-red/10 border-emergency-red/20 text-emergency-red' :
-                s.status === 'ON LEAVE' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
-                'bg-amber-500/10 border-amber-500/20 text-amber-500'
-              }`}>
-                {(s.status === 'PRESENT' || s.status === 'LATE') && <div className="w-1.5 h-1.5 rounded-full bg-current breathing-dot" />}
-                <span className="font-mono text-[9px] font-black uppercase tracking-widest">
-                  {s.status}{s.lateMinutes ? ` (${s.lateMinutes}m)` : ''}
-                </span>
+              <div className="flex flex-col items-end gap-2">
+                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                  s.status === 'PRESENT' ? 'bg-success-green/10 text-success-green' : 'bg-warning-amber/10 text-warning-amber'
+                }`}>
+                  {s.status}
+                </div>
+                <p className="text-[10px] font-mono text-slate-600 font-bold uppercase">Check-in: 08:45 AM</p>
               </div>
             </div>
           ))}
@@ -754,114 +1265,135 @@ const StaffScreen = () => {
 
 const GlobalStatsScreen = () => {
   return (
-    <div className="p-6 pb-32 space-y-8 max-w-lg mx-auto">
-      <section className="glass-card p-8 rounded-[40px] relative overflow-hidden bg-gradient-to-br from-bg-dark to-slate-900 border-none shadow-[0_24px_48px_rgba(0,0,0,0.6)]">
-        <div className="absolute -right-8 -top-8 opacity-10">
-          <Activity size={200} strokeWidth={1} className="text-blue-400" />
+    <div className="space-y-12 max-w-7xl mx-auto py-12 px-8">
+      <header className="flex justify-between items-end">
+        <div>
+          <h2 className="text-6xl font-display font-black text-white tracking-tighter">Global Monitor</h2>
+          <p className="text-slate-500 font-mono text-sm mt-4 uppercase tracking-[0.4em]">Real-time Platform Statistics</p>
         </div>
-        <div className="space-y-2 relative z-10">
-          <p className="font-mono text-xs text-slate-400 uppercase tracking-widest font-bold">PLATFORM REVENUE</p>
-          <h2 className="text-4xl font-display font-black text-white tracking-tighter leading-none">$128,450.00</h2>
-          <div className="flex items-center gap-2 text-health-teal text-sm font-black mt-4">
-            <ArrowRight size={16} className="-rotate-45" />
-            <span className="uppercase tracking-widest">+14.2% from last month</span>
+        <div className="flex gap-4">
+          <button className="px-8 py-4 bg-white/5 rounded-2xl text-white font-display font-bold border border-white/10 hover:bg-white/10 transition-all">Download Report</button>
+          <button className="px-8 py-4 cta-gradient rounded-2xl text-white font-display font-bold shadow-xl active:scale-95 transition-all">Manual Payout</button>
+        </div>
+      </header>
+
+      <section className="glass-card p-12 rounded-[56px] relative overflow-hidden bg-gradient-to-br from-primary/20 via-bg-dark to-slate-900 border-none shadow-2xl">
+        <div className="absolute -right-20 -top-20 opacity-10">
+          <Activity size={400} strokeWidth={1} className="text-primary" />
+        </div>
+        <div className="space-y-4 relative z-10">
+          <p className="font-mono text-sm text-blue-400 uppercase tracking-[0.4em] font-black">PLATFORM REVENUE (NET)</p>
+          <h2 className="text-8xl font-display font-black text-white tracking-tighter leading-none">$128,450.00</h2>
+          <div className="flex items-center gap-4 text-success-green text-xl font-black mt-8">
+            <div className="bg-success-green/10 p-2 rounded-xl">
+              <ArrowRight size={24} className="-rotate-45" />
+            </div>
+            <span className="uppercase tracking-widest">+14.2% Growth This Month</span>
           </div>
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {[
-          { label: 'Total Hospitals', val: 482, icon: Activity, bg: 'medical-cross-gradient' },
-          { label: 'Active Today', val: 315, icon: Clock, bg: 'bg-white/5' }
+          { label: 'Total Hospitals', val: 482, icon: Activity, color: 'text-primary' },
+          { label: 'Live Tokens Today', val: '24.2k', icon: History, color: 'text-health-teal' },
+          { label: 'Active Patients', val: '185k', icon: Users, color: 'text-indigo-400' },
+          { label: 'System Uptime', val: '99.9%', icon: ShieldCheck, color: 'text-success-green' }
         ].map((stat, i) => (
-          <div key={i} className="glass-card p-6 rounded-3xl flex flex-col justify-between aspect-square">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl ${stat.bg}`}>
-              <stat.icon size={24} />
+          <div key={i} className="glass-card p-10 rounded-[40px] flex flex-col justify-between aspect-square group hover:bg-white/5 transition-all">
+            <div className={`w-16 h-16 rounded-3xl flex items-center justify-center ${stat.color.replace('text', 'bg')}/10 ${stat.color} group-hover:scale-110 transition-transform`}>
+              <stat.icon size={32} />
             </div>
             <div>
-              <h3 className="text-3xl font-display font-black text-white tracking-tight">{stat.val}</h3>
-              <p className="font-mono text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{stat.label}</p>
+              <h3 className="text-5xl font-display font-black text-white tracking-tighter leading-tight">{stat.val}</h3>
+              <p className="font-mono text-xs text-slate-500 font-bold uppercase tracking-widest mt-2">{stat.label}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <section className="space-y-6">
-        <div className="flex justify-between items-end px-2">
-          <h3 className="text-2xl font-display font-bold text-white">Live Monitor</h3>
-          <span className="text-blue-400 font-mono text-[9px] uppercase tracking-[0.3em] font-black">Real-time sync</span>
-        </div>
-        
-        <div className="space-y-4">
-          {hospitals.map((h) => (
-            <div key={h.id} className="glass-card p-6 rounded-3xl space-y-6 group hover:bg-white/5 transition-all">
-              <div className="flex justify-between items-start">
-                <div className="flex gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center overflow-hidden border border-white/10 group-hover:border-primary transition-all duration-500">
-                    <img src={h.imageUrl} alt={h.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-white text-lg tracking-tight">{h.name}</h4>
-                      {h.verified && <CheckCircle2 size={16} className="text-blue-400" fill="currentColor" />}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section className="lg:col-span-2 space-y-8">
+          <div className="flex justify-between items-end px-4">
+            <h3 className="text-3xl font-display font-bold text-white">Facility Verification Queue</h3>
+            <span className="text-blue-400 font-mono text-[10px] uppercase tracking-[0.3em] font-black">4 Pending Approval</span>
+          </div>
+          
+          <div className="space-y-4">
+            {hospitals.map((h) => (
+              <div key={h.id} className="glass-card p-8 rounded-[40px] space-y-8 group hover:bg-white/5 transition-all border-none shadow-xl">
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-6">
+                    <div className="w-20 h-20 rounded-3xl bg-slate-800 flex items-center justify-center overflow-hidden border border-white/10 group-hover:border-primary transition-all duration-500">
+                      <img src={h.imageUrl} alt={h.name} className="w-full h-full object-cover" />
                     </div>
-                    <p className="text-slate-500 text-xs font-medium flex items-center gap-1.5 mt-1">
-                      <MapPin size={12} /> {h.city}, CA
-                    </p>
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h4 className="font-display font-bold text-2xl text-white tracking-tight">{h.name}</h4>
+                        {h.verified && <CheckCircle2 size={24} className="text-blue-400" fill="currentColor" />}
+                      </div>
+                      <p className="text-slate-500 text-sm font-medium flex items-center gap-2 mt-2">
+                        <MapPin size={16} /> {h.city}, Pakistan
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 bg-success-green/10 px-4 py-2 rounded-xl border border-success-green/20">
+                    <div className="w-2 h-2 rounded-full bg-success-green breathing-dot" />
+                    <span className="text-[10px] font-black text-success-green uppercase tracking-widest tracking-[0.2em]">Active</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 breathing-dot" />
-                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Active</span>
+
+                <div className="flex justify-between items-center py-6 border-y border-white/5">
+                  <div className="text-center flex-1 border-r border-white/5">
+                    <p className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-[0.3em] mb-2">Tokens Today</p>
+                    <p className="text-3xl font-mono font-black text-white">1,240</p>
+                  </div>
+                  <div className="text-center flex-1">
+                    <p className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-[0.3em] mb-2">Commission (15%)</p>
+                    <p className="text-3xl font-mono font-black text-success-green">$186.00</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-display font-black text-sm uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10">Full View</button>
+                  <button className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-display font-black text-sm uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10">Approve</button>
+                  <button className="flex-1 py-4 rounded-2xl bg-emergency-red/10 text-emergency-red font-display font-black text-sm uppercase tracking-widest border border-emergency-red/20 hover:bg-emergency-red/20 transition-all">Suspend</button>
                 </div>
               </div>
-
-              <div className="flex justify-between items-center py-4 border-y border-white/5">
-                <div className="text-center flex-1 border-r border-white/5">
-                  <p className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-[0.2em] mb-1">Tokens Today</p>
-                  <p className="text-xl font-mono font-extrabold text-white">1,240</p>
-                </div>
-                <div className="text-center flex-1">
-                  <p className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-[0.2em] mb-1">Uptime</p>
-                  <p className="text-xl font-mono font-extrabold text-white">99.9%</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all">View</button>
-                <button className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all">Approve</button>
-                <button className="flex-1 py-3 rounded-xl bg-emergency-red/10 text-emergency-red font-mono text-[10px] font-bold uppercase tracking-widest border border-emergency-red/20 hover:bg-emergency-red/20 transition-all">Suspend</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="glass-card rounded-[32px] p-6 border-none">
-        <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 opacity-70">Platform Logs</h3>
-        <div className="space-y-6">
-          <div className="flex gap-4">
-            <div className="flex flex-col items-center shrink-0">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-lg shadow-blue-400/50" />
-              <div className="w-[2px] h-full bg-white/5 mt-2 rounded-full" />
-            </div>
-            <div>
-              <p className="text-xs text-white leading-relaxed font-medium">System: Global Token limit reached for "Downtown Clinic"</p>
-              <p className="text-[10px] text-slate-500 font-mono font-bold mt-2 uppercase tracking-widest">2 mins ago</p>
-            </div>
+            ))}
           </div>
-          <div className="flex gap-4">
-            <div className="flex flex-col items-center shrink-0">
-              <div className="w-2.5 h-2.5 rounded-full bg-health-teal shadow-lg shadow-health-teal/50" />
-              <div className="w-[2px] h-0 bg-white/5 mt-2 rounded-full" />
+        </section>
+
+        <section className="space-y-8">
+          <div className="glass-card p-10 rounded-[48px] border-none shadow-xl">
+            <h3 className="text-xl font-display font-bold text-white mb-8 opacity-90">System Logs</h3>
+            <div className="space-y-8 relative before:absolute before:left-2 before:top-4 before:bottom-4 before:w-[2px] before:bg-white/5">
+              {[
+                { type: 'Alert', title: 'Token Limit Triggered', desc: 'Downtown Clinic reached max capacity', time: '2m ago', color: 'bg-primary' },
+                { type: 'Finance', title: 'Revenue Payout Sent', desc: '$12,400 to 14 facilities', time: '15m ago', color: 'bg-success-green' },
+                { type: 'Auth', title: 'New Registration', desc: 'Aga Khan Hospital - Branch 4', time: '1h ago', color: 'bg-indigo-400' }
+              ].map((log, i) => (
+                <div key={i} className="flex gap-6 relative z-10">
+                  <div className={`w-4 h-4 rounded-full ${log.color} ring-8 ring-bg-dark shrink-0`} />
+                  <div>
+                    <p className="text-[10px] font-mono text-slate-500 font-black uppercase tracking-widest mb-1">{log.type}</p>
+                    <p className="text-sm text-white font-bold mb-1 leading-tight">{log.title}</p>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed">{log.desc}</p>
+                    <p className="text-[10px] text-slate-600 font-mono font-bold mt-2">{log.time}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <p className="text-xs text-white leading-relaxed font-medium">Revenue: Payout of $12,400 initiated for 14 facilities</p>
-              <p className="text-[10px] text-slate-500 font-mono font-bold mt-2 uppercase tracking-widest">15 mins ago</p>
-            </div>
+            <button className="w-full mt-10 py-5 rounded-2xl border-2 border-white/5 text-slate-500 font-display font-bold text-xs uppercase tracking-widest hover:text-white hover:border-white/20 transition-all">View All Logs</button>
           </div>
-        </div>
-      </section>
+
+          <div className="glass-card p-10 rounded-[48px] border-none shadow-xl bg-gradient-to-br from-emergency-red/10 to-transparent">
+             <h3 className="text-xl font-display font-bold text-white mb-4">Critical Alerts</h3>
+             <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">System identified 2 facilities with invalid medical licenses.</p>
+             <button className="w-full py-5 rounded-2xl bg-emergency-red text-white font-display font-bold text-lg shadow-2xl shadow-emergency-red/30 active:scale-95 transition-all">Take Action</button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 };
@@ -869,110 +1401,185 @@ const GlobalStatsScreen = () => {
 // --- Main App Component ---
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'hospitals' | 'bookings' | 'profile' | 'dashboard' | 'tokens' | 'staff' | 'settings' | 'global-stats'>('home');
+  const { currentUser, userData, logout } = useAuth();
+  const [viewState, setViewState] = useState<'hero' | 'auth_choice' | 'hospital_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // Patient flow states
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
-  const [isBookingStep, setIsBookingStep] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isBookingFlow, setIsBookingFlow] = useState(false);
 
-  // Sync dark mode based on tab
   useEffect(() => {
-    const adminTabs = ['dashboard', 'tokens', 'staff', 'settings', 'global-stats'];
-    setIsDarkMode(adminTabs.includes(activeTab));
-  }, [activeTab]);
-
-  const renderContent = () => {
-    if (activeTab === 'dashboard') return <AdminDashboard />;
-    if (activeTab === 'staff') return <StaffScreen />;
-    if (activeTab === 'global-stats') return <GlobalStatsScreen />;
-    
-    if (isBookingStep && selectedDoctor) {
-      return <ConfirmationPage doctor={selectedDoctor} />;
+    if (currentUser && userData) {
+      if (userData.role === 'Admin') {
+        setViewState('admin_dashboard');
+      } else if (userData.role === 'SuperAdmin') {
+        setViewState('super_admin');
+      } else {
+        setViewState('patient_home');
+      }
     }
+  }, [currentUser, userData]);
 
-    if (selectedHospital) {
-      return (
-        <HospitalDetailsPage 
-          hospital={selectedHospital} 
-          onBook={(doc) => {
-            setSelectedDoctor(doc);
-            setIsBookingStep(true);
-          }} 
-        />
-      );
+  useEffect(() => {
+    setIsDarkMode(viewState === 'admin_dashboard' || viewState === 'super_admin');
+  }, [viewState]);
+
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login failed", error);
     }
-
-    if (activeTab === 'hospitals') {
-      return <HospitalListPage onHospitalClick={(h) => setSelectedHospital(h)} />;
-    }
-
-    return <LandingPage onStartBooking={() => setActiveTab('hospitals')} />;
   };
 
-  const handleBackToHome = () => {
-    setSelectedHospital(null);
-    setSelectedDoctor(null);
-    setIsBookingStep(false);
-    setActiveTab('home');
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  const renderCurrentView = () => {
+    switch (viewState) {
+      case 'hero':
+        return <HeroSection 
+          onSignUp={() => setViewState('auth_choice')} 
+          onExplore={() => setViewState('patient_home')} 
+        />;
+      case 'auth_choice':
+        return (
+          <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-8">
+            <SignUpChoice onSelect={(type) => type === 'Hospital' ? setViewState('hospital_reg') : setViewState('patient_home')} />
+            <div className="w-full max-w-md p-8 bg-white rounded-3xl shadow-xl flex flex-col items-center gap-6">
+              <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Recommended</p>
+              <button 
+                onClick={handleGoogleSignIn}
+                className="w-full py-4 px-8 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-4 hover:border-primary transition-all font-display font-bold text-slate-700"
+              >
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6" />
+                Continue with Google
+              </button>
+            </div>
+          </div>
+        );
+      case 'hospital_reg':
+        return <HospitalRegistration onComplete={() => setViewState('admin_dashboard')} />;
+      case 'admin_dashboard':
+        return (
+          <div className="flex bg-bg-dark text-white min-h-screen">
+            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setViewState('hero')} />
+            <main className={`flex-1 transition-all duration-500 pl-72 pb-20`}>
+              <Header 
+                darkMode={true} 
+                hospitalName="St. Mary's General" 
+                showMenu={false} 
+                onLogoClick={() => setViewState('hero')}
+              />
+              <div className="max-w-7xl mx-auto px-8 py-12">
+                {activeTab === 'dashboard' && <DashboardOverview />}
+                {activeTab === 'staff' && <StaffScreen />}
+                {['doctors', 'attendance', 'tokens', 'revenue', 'export', 'notifications', 'settings'].includes(activeTab) && (
+                  <div className="py-20 text-center text-slate-500 font-display text-4xl font-black uppercase tracking-widest opacity-20">
+                    {activeTab} <br/>
+                    <span className="text-sm font-sans font-medium lowercase tracking-normal">View In Development</span>
+                  </div>
+                )}
+              </div>
+            </main>
+          </div>
+        );
+      case 'super_admin':
+        return (
+          <div className="bg-bg-dark min-h-screen">
+             <GlobalStatsScreen />
+          </div>
+        );
+      case 'patient_home':
+        if (isBookingFlow && selectedDoctor) {
+           return (
+             <div className="bg-white min-h-screen">
+               <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => { setIsBookingFlow(false); setViewState('patient_home'); }} />
+               <ConfirmationPage doctor={selectedDoctor} />
+             </div>
+           );
+        }
+        if (selectedHospital) {
+          return (
+            <div className="bg-white min-h-screen">
+              <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => setSelectedHospital(null)} />
+              <HospitalDetailsPage 
+                hospital={selectedHospital} 
+                onBook={(doc) => {
+                  setSelectedDoctor(doc);
+                  setIsBookingFlow(true);
+                }} 
+              />
+            </div>
+          );
+        }
+        return (
+          <div className="bg-[#faf8ff] min-h-screen">
+            <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => setViewState('hero')} />
+            <div className="pb-32">
+              <LandingPage onStartBooking={() => {}} />
+              <HospitalListPage onHospitalClick={(h) => setSelectedHospital(h)} />
+            </div>
+
+            {/* Patient Bottom Navbar */}
+            <nav className="fixed bottom-0 left-0 w-full z-[100] bg-white border-t border-slate-100 flex justify-around py-4">
+               {[
+                 { icon: Home, id: 'h' },
+                 { icon: Search, id: 's' },
+                 { icon: Calendar, id: 'c' },
+                 { icon: User, id: 'p' }
+               ].map(tab => (
+                 <button key={tab.id} className="text-slate-400 hover:text-primary transition-colors">
+                   <tab.icon size={24} />
+                 </button>
+               ))}
+            </nav>
+          </div>
+        );
+      default:
+        return <HeroSection onSignUp={() => {}} onExplore={() => {}} />;
+    }
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'bg-bg-dark' : 'bg-[#faf8ff]'}`}>
-      <Header 
-        darkMode={isDarkMode} 
-        hospitalName={isDarkMode ? "St. Mary's General" : "Xdoc"} 
-      />
-      
-      <main className="transition-opacity duration-300">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab + (selectedHospital?.id || '') + (isBookingStep ? 'booking' : '')}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-          >
-            {renderContent()}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+    <div className={`min-h-screen selection:bg-primary/20 ${isDarkMode ? 'bg-bg-dark' : 'bg-white'}`}>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={viewState}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          {renderCurrentView()}
+        </motion.div>
+      </AnimatePresence>
 
-      {/* FAB for the Demo - Toggle Dark/Admin Mode */}
-      <div className="fixed bottom-24 right-6 z-40 flex flex-col gap-4">
-        {(selectedHospital || isBookingStep) && (
-          <motion.button 
-            initial={{ scale: 0 }} animate={{ scale: 1 }}
-            onClick={handleBackToHome}
-            className="w-14 h-14 rounded-full bg-white text-primary shadow-2xl flex items-center justify-center border border-slate-100"
+      {/* Floating Action Button for Testing Roles */}
+      <div className="fixed bottom-24 right-10 z-[100] flex flex-col gap-4">
+        {viewState !== 'super_admin' && (
+          <button 
+            onClick={() => setViewState('super_admin')}
+            className="w-16 h-16 rounded-3xl bg-slate-900 border border-white/10 text-blue-400 shadow-2xl flex items-center justify-center hover:scale-110 transition-all group"
           >
-            <Home size={24} />
-          </motion.button>
+            <ShieldAlert size={28} className="group-hover:rotate-12 transition-transform" />
+          </button>
         )}
-        <motion.button 
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setActiveTab(isDarkMode ? 'home' : 'dashboard')}
-          className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white transition-all ${
-            isDarkMode ? 'bg-primary' : 'bg-bg-dark shadow-primary/40'
-          }`}
-        >
-          {isDarkMode ? <LayoutDashboard size={24} /> : <ShieldAlert size={24} />}
-        </motion.button>
-        <motion.button 
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setActiveTab('global-stats')}
-          className="w-14 h-14 rounded-full bg-slate-900 border border-white/10 text-blue-400 shadow-2xl flex items-center justify-center"
-        >
-          <Activity size={24} />
-        </motion.button>
+        {viewState === 'super_admin' && (
+          <button 
+            onClick={() => setViewState('hero')}
+            className="w-16 h-16 rounded-3xl bg-primary text-white shadow-2xl flex items-center justify-center hover:scale-110 transition-all"
+          >
+             <Home size={28} />
+          </button>
+        )}
       </div>
-
-      <Navbar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        darkMode={isDarkMode} 
-      />
     </div>
   );
 }
+
+// ... Rest of the components (ConfirmationPage, HospitalListPage, etc.) would be integrated or refactored into this structure.
