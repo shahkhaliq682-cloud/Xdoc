@@ -79,15 +79,15 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
   if (isLanding) {
     return (
       <>
-        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 px-4 md:px-6 py-4 ${
-          isScrolled ? 'bg-white shadow-xl py-3' : 'bg-transparent'
+        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 px-4 md:px-6 h-[70px] flex items-center ${
+          isScrolled ? 'bg-white shadow-xl' : 'bg-transparent'
         }`}>
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
             <div onClick={onLogoClick} className="flex items-center gap-3 cursor-pointer group">
               <div className="w-10 h-10 rounded-xl medical-cross-gradient flex items-center justify-center text-white shadow-lg shadow-primary/20 transition-transform group-hover:scale-110">
                 <Activity size={24} />
               </div>
-              <span className="text-2xl md:text-3xl font-display font-black tracking-tighter text-[#0B5FFF]">Xdoc</span>
+              <span className="text-2xl md:text-3xl font-display font-bold tracking-tighter text-[#0B5FFF]">Xdoc</span>
             </div>
 
             <nav className="hidden lg:flex items-center gap-12">
@@ -101,13 +101,13 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                 <>
                   <button 
                     onClick={onSignUp}
-                    className="hidden sm:block px-6 py-2.5 rounded-xl font-display font-bold border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all"
+                    className="hidden sm:block px-6 py-2.5 rounded-xl font-sans font-bold border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all"
                   >
                     Login
                   </button>
                   <button 
                     onClick={onSignUp}
-                    className="hidden sm:block px-6 py-3 rounded-xl bg-health-teal text-white font-display font-bold shadow-lg shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all"
+                    className="hidden sm:block px-6 py-3 rounded-xl bg-health-teal text-white font-sans font-bold shadow-lg shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all"
                   >
                     Sign Up
                   </button>
@@ -151,7 +151,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
               <div className="flex justify-between items-center mb-12">
                 <div onClick={() => { setIsMobileMenuOpen(false); onLogoClick?.(); }} className="flex items-center gap-3">
                   <Activity size={32} className="text-primary" />
-                  <span className="text-2xl font-display font-black text-[#0B5FFF]">Xdoc</span>
+                  <span className="text-2xl font-display font-bold text-[#0B5FFF]">Xdoc</span>
                 </div>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-100 rounded-xl">
                   <X size={24} />
@@ -164,7 +164,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                     key={link} 
                     href="#" 
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="text-3xl font-display font-black text-slate-900 border-b border-slate-100 pb-4"
+                    className="text-3xl font-bold text-slate-900 border-b border-slate-100 pb-4"
                   >
                     {link}
                   </a>
@@ -174,13 +174,13 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
               <div className="flex flex-col gap-4">
                 <button 
                   onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
-                  className="w-full py-5 rounded-2xl font-display font-bold border-2 border-primary/20 text-primary"
+                  className="w-full py-5 rounded-2xl font-sans font-bold border-2 border-primary/20 text-primary"
                 >
                   Login
                 </button>
                 <button 
                   onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
-                  className="w-full py-5 rounded-2xl bg-health-teal text-white font-display font-bold shadow-xl shadow-health-teal/20"
+                  className="w-full py-5 rounded-2xl bg-health-teal text-white font-sans font-bold shadow-xl shadow-health-teal/20"
                 >
                   Sign Up Free
                 </button>
@@ -205,7 +205,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
           }`}>
             <Activity size={22} />
           </div>
-          <h1 className="text-2xl font-display font-black tracking-tighter uppercase whitespace-nowrap">{hospitalName}</h1>
+          <h1 className="text-2xl font-bold tracking-tighter uppercase whitespace-nowrap">{hospitalName}</h1>
         </div>
       </div>
       
@@ -304,7 +304,7 @@ const StatsRow = () => {
       <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-4">
         {stats.map((s, i) => (
           <div key={i} className={`text-center ${i % 2 === 0 ? 'border-r last:border-0' : 'md:border-r last:border-0'} border-slate-100`}>
-            <h4 className="text-3xl md:text-5xl font-display font-black text-primary tracking-tighter mb-2">{s.val}</h4>
+            <h4 className="text-3xl md:text-5xl font-bold text-primary tracking-tighter mb-2">{s.val}</h4>
             <p className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-widest">{s.label}</p>
           </div>
         ))}
@@ -331,31 +331,31 @@ const HeroSection = ({ onSignUp, onLogin }: { onSignUp: () => void, onLogin: () 
         <div className="absolute bottom-[-5%] left-[-10%] md:bottom-[-10%] md:left-[-5%] w-[200px] h-[200px] md:w-[400px] md:h-[400px] bg-health-teal/5 rounded-full blur-[80px] md:blur-[120px]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 relative z-10 w-full">
-        <div className="text-center max-w-4xl mx-auto mb-16">
+      <div className="max-w-[800px] mx-auto px-5 pt-[140px] pb-[60px] relative z-10 w-full">
+        <div className="text-center mx-auto">
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 bg-blue-50 border border-[#0B5FFF] rounded-full mb-8"
+            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 bg-blue-50 border border-[#0B5FFF] rounded-full mb-6"
           >
             <div className="w-2 h-2 rounded-full bg-primary breathing-dot" />
-            <span className="text-[8px] sm:text-[10px] font-mono font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[#0B5FFF]">Pakistan's #1 Health Network</span>
+            <span className="text-[8px] sm:text-[10px] font-mono font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[#0B5FFF]">Pakistan's #1 Health Network</span>
           </motion.div>
           
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-display text-4xl sm:text-5xl md:text-8xl font-black tracking-tight leading-[1] md:leading-[0.95] mb-8 text-[#04111D]"
+            className="text-[32px] md:text-[42px] lg:text-[56px] font-display font-bold tracking-tight leading-tight mb-5 text-[#04111D] max-w-[700px] mx-auto"
           >
             Apna Doctor Dhundein — <br className="hidden sm:block" />
-            <span className="text-primary">Ghar Baithe.</span>
+            Ghar Baithe.
           </motion.h1>
           
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-base sm:text-lg md:text-2xl text-[#6B8FAE] font-bold max-w-3xl mx-auto mb-12 leading-relaxed px-4 sm:px-0"
+            className="text-base sm:text-lg md:text-xl text-[#6B8FAE] font-normal max-w-[600px] mx-auto mb-8 leading-relaxed"
           >
             Pakistan ke tamam hospitals aur clinics ek jagah. Ghar baithe <br className="hidden md:block" />
             doctor dhundein, token book karein.
@@ -365,17 +365,17 @@ const HeroSection = ({ onSignUp, onLogin }: { onSignUp: () => void, onLogin: () 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 px-4 sm:px-0"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
           >
             <button 
               onClick={onSignUp}
-              className="w-full sm:w-auto px-10 md:px-12 py-5 bg-health-teal text-white font-display font-black text-lg md:text-xl rounded-2xl shadow-2xl shadow-health-teal/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+              className="w-full sm:w-auto px-10 md:px-12 py-5 bg-health-teal text-white font-bold text-lg md:text-xl rounded-2xl shadow-2xl shadow-health-teal/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
             >
               Sign Up Free <ArrowRight size={24} />
             </button>
             <button 
               onClick={onLogin}
-              className="w-full sm:w-auto px-10 md:px-12 py-5 bg-white border-2 border-slate-200 text-slate-900 font-display font-black text-lg md:text-xl rounded-2xl hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-3"
+              className="w-full sm:w-auto px-10 md:px-12 py-5 bg-white border-2 border-slate-200 text-slate-900 font-bold text-lg md:text-xl rounded-2xl hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-3"
             >
               Login Now
             </button>
@@ -392,7 +392,7 @@ const HeroSection = ({ onSignUp, onLogin }: { onSignUp: () => void, onLogin: () 
               <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-gradient-to-br ${b.gradient} flex items-center justify-center text-white mb-6 md:mb-8 group-hover:rotate-6 transition-transform duration-500 shadow-lg`}>
                 <b.icon size={innerWidth < 768 ? 32 : 40} />
               </div>
-              <h3 className="text-xl md:text-2xl font-display font-black text-slate-900 mb-4">{b.title}</h3>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">{b.title}</h3>
               <p className="text-sm md:text-base text-slate-500 font-bold leading-relaxed">{b.desc}</p>
             </motion.div>
           ))}
@@ -404,32 +404,79 @@ const HeroSection = ({ onSignUp, onLogin }: { onSignUp: () => void, onLogin: () 
 
 const HowItWorks = () => {
   const steps = [
-    { title: "Sign Up", desc: "Create your patient profile in seconds", icon: UserPlus },
-    { title: "Find Hospital", desc: "Search through verified medical centers", icon: Search },
-    { title: "Book Token", desc: "Select your doctor and get instant token", icon: Ticket },
-    { title: "Visit Doctor", desc: "Reach hospital on time and skip the line", icon: HospitalIcon }
+    { title: "Hospital Search Karein", icon: Search },
+    { title: "Doctor Select Karein", icon: Stethoscope },
+    { title: "Token Book Karein", icon: Ticket },
+    { title: "Visit Karein Apni Baari Par", icon: HospitalIcon }
   ];
 
   return (
-    <div className="bg-slate-50 py-16 md:py-32 px-4 md:px-6">
-      <div className="max-w-7xl mx-auto text-center mb-12 md:mb-20">
-        <h2 className="text-3xl md:text-5xl font-display font-black text-slate-900 tracking-tight mb-4 md:mb-6">How It Works</h2>
-        <p className="text-base md:text-xl text-slate-500 font-bold">A simple 4-step process to better healthcare</p>
-      </div>
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
-        {steps.map((s, i) => (
-          <div key={i} className="relative text-center group">
-            {i < steps.length - 1 && (
-              <div className="hidden lg:block absolute top-12 left-[calc(50%+4rem)] w-[calc(100%-8rem)] h-[2px] bg-slate-200 border-t-2 border-dashed border-slate-300" />
-            )}
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-3xl bg-white shadow-xl flex items-center justify-center text-primary mx-auto mb-6 md:mb-8 border border-slate-100 group-hover:scale-110 transition-transform">
-              <s.icon size={innerWidth < 768 ? 32 : 40} />
-              <div className="absolute -top-2 md:-top-3 -right-2 md:-right-3 w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-display font-black text-xs md:text-sm">{i + 1}</div>
-            </div>
-            <h4 className="text-xl md:text-2xl font-display font-black text-slate-900 mb-2 md:mb-3">{s.title}</h4>
-            <p className="text-sm md:text-base text-slate-500 font-bold leading-relaxed">{s.desc}</p>
+    <div className="bg-white py-20 md:py-32 px-4 md:px-6 overflow-hidden">
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-12 lg:gap-24 items-center">
+        
+        {/* Left Side: Content (40%) */}
+        <div className="lg:w-[40%] w-full">
+          <div className="mb-6">
+            <span className="text-health-teal text-xs font-bold uppercase tracking-[0.2em] bg-health-teal/5 px-4 py-2 rounded-full">HOW IT WORKS</span>
           </div>
-        ))}
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 leading-[1.1] mb-8">
+            Apni Healthcare Needs Poori Karein — <span className="text-primary">Ek Jagah!</span>
+          </h2>
+          
+          <div className="flex gap-4 mb-10">
+            <button className="px-8 py-3 bg-primary text-white rounded-full font-bold text-sm shadow-xl shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
+              Hospital
+            </button>
+            <button className="px-8 py-3 border-2 border-slate-100 text-slate-500 rounded-full font-bold text-sm hover:border-primary hover:text-primary transition-all active:scale-95">
+              Clinic
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <p className="text-slate-900 font-bold text-lg">Sirf 4 easy steps!</p>
+            <ul className="space-y-5">
+              {[
+                "Hospital ya clinic search karein",
+                "Doctor select karein",
+                "Online token book karein",
+                "Hospital jayein apni baari par"
+              ].map((point, idx) => (
+                <li key={idx} className="flex items-center gap-4 text-slate-600 font-medium group">
+                  <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-primary font-bold text-xs group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                    {idx + 1}
+                  </div>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Right Side: Step Cards (60%) */}
+        <div className="lg:w-[60%] w-full relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 relative z-10">
+            {steps.map((s, i) => (
+              <motion.div 
+                key={i}
+                whileHover={{ y: -5 }}
+                className="bg-white p-8 md:p-10 rounded-[32px] border border-slate-100 shadow-2xl shadow-slate-200/40 flex flex-col items-center text-center group transition-all duration-300"
+              >
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-slate-50 flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                  <s.icon size={32} />
+                </div>
+                <div className="w-8 h-8 rounded-full bg-health-teal text-white flex items-center justify-center text-xs font-bold mb-4 shadow-lg shadow-health-teal/30">
+                  {i + 1}
+                </div>
+                <h4 className="text-lg md:text-xl font-bold text-slate-900 leading-tight px-2">{s.title}</h4>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Connection Lines (Desktop Only) */}
+          <div className="hidden lg:block absolute top-[25%] left-[45%] w-[10%] h-[2px] bg-slate-100 border-t-2 border-dashed border-slate-200" />
+          <div className="hidden lg:block absolute bottom-[25%] left-[45%] w-[10%] h-[2px] bg-slate-100 border-t-2 border-dashed border-slate-200" />
+        </div>
+
       </div>
     </div>
   );
@@ -444,7 +491,7 @@ const Footer = () => {
             <div className="w-10 h-10 rounded-xl medical-cross-gradient flex items-center justify-center text-white">
               <Activity size={24} />
             </div>
-            <span className="text-2xl md:text-3xl font-display font-black tracking-tighter">Xdoc</span>
+            <span className="text-2xl md:text-3xl font-bold tracking-tighter">Xdoc</span>
           </div>
           <p className="text-sm md:text-base text-slate-400 font-bold max-w-sm mb-6 md:mb-8">
             Pakistan's premier digital healthcare network connecting citizens with 
@@ -457,7 +504,7 @@ const Footer = () => {
           </div>
         </div>
         <div className="md:pt-4">
-          <h4 className="text-base md:text-lg font-display font-black mb-4 md:mb-8">Quick Links</h4>
+          <h4 className="text-base md:text-lg font-bold mb-4 md:mb-8">Quick Links</h4>
           <ul className="space-y-3 md:space-y-4 text-sm md:text-base text-slate-400 font-bold">
             <li><a href="#" className="hover:text-white transition-colors">Find Hospitals</a></li>
             <li><a href="#" className="hover:text-white transition-colors">Doctor Directory</a></li>
@@ -466,7 +513,7 @@ const Footer = () => {
           </ul>
         </div>
         <div className="md:pt-4">
-          <h4 className="text-base md:text-lg font-display font-black mb-4 md:mb-8">Company</h4>
+          <h4 className="text-base md:text-lg font-bold mb-4 md:mb-8">Company</h4>
           <ul className="space-y-3 md:space-y-4 text-sm md:text-base text-slate-400 font-bold">
             <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
             <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
@@ -487,7 +534,7 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
   <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 md:px-6 py-12 md:py-20">
     <div className="max-w-4xl w-full">
       <div className="text-center mb-8 md:mb-16">
-        <h2 className="text-3xl md:text-5xl font-display font-black tracking-tight text-slate-900 mb-4 md:mb-6">Choose Account Type</h2>
+        <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 mb-4 md:mb-6">Choose Account Type</h2>
         <p className="text-base md:text-xl text-slate-500 font-medium">Join Pakistan's fastest growing digital health marketplace</p>
       </div>
 
@@ -500,7 +547,7 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
           <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 md:mb-8 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500">
             <Building2 size={innerWidth < 768 ? 32 : 40} />
           </div>
-          <h3 className="text-2xl md:text-3xl font-display font-black text-slate-900 mb-4">Hospital or Clinic</h3>
+          <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4">Hospital or Clinic</h3>
           <p className="text-sm md:text-lg text-slate-500 leading-relaxed mb-6 md:mb-8">Register your facility, manage doctors, and handle live tokens digitally.</p>
           <ul className="space-y-2 md:space-y-3 mb-8 md:mb-10">
             {['Detailed Dashboard', 'Staff Management', 'Revenue Tracking'].map((item, i) => (
@@ -509,7 +556,7 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
               </li>
             ))}
           </ul>
-          <div className="w-full py-4 md:py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-display font-bold text-slate-900 group-hover:bg-primary group-hover:text-white transition-all text-sm md:text-base">
+          <div className="w-full py-4 md:py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-sans font-bold text-slate-900 group-hover:bg-primary group-hover:text-white transition-all text-sm md:text-base">
             Join as Partner <ArrowRight size={20} />
           </div>
         </motion.div>
@@ -522,7 +569,7 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
           <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-health-teal/10 flex items-center justify-center text-health-teal mb-6 md:mb-8 group-hover:scale-110 group-hover:bg-health-teal group-hover:text-white transition-all duration-500">
             <User size={innerWidth < 768 ? 32 : 40} />
           </div>
-          <h3 className="text-2xl md:text-3xl font-display font-black text-slate-900 mb-4">I'm a Patient</h3>
+          <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4">I'm a Patient</h3>
           <p className="text-sm md:text-lg text-slate-500 leading-relaxed mb-6 md:mb-8">Find doctors, book tokens instantly, and get digital care reminders.</p>
           <ul className="space-y-2 md:space-y-3 mb-8 md:mb-10">
             {['Instant Tokens', 'Fee Transparency', 'Secure Records'].map((item, i) => (
@@ -531,7 +578,7 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
               </li>
             ))}
           </ul>
-          <div className="w-full py-4 md:py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-display font-bold text-slate-900 group-hover:bg-health-teal group-hover:text-white transition-all text-sm md:text-base">
+          <div className="w-full py-4 md:py-5 bg-slate-100 rounded-2xl flex items-center justify-center gap-3 font-sans font-bold text-slate-900 group-hover:bg-health-teal group-hover:text-white transition-all text-sm md:text-base">
             Find Care <ArrowRight size={20} />
           </div>
         </motion.div>
@@ -562,7 +609,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h2 className="text-4xl font-display font-black text-slate-900">Facility Registration</h2>
+            <h2 className="text-4xl font-bold text-slate-900">Facility Registration</h2>
             <p className="text-slate-500 font-medium mt-1">Section {step}: {sections[step-1]}</p>
           </div>
           <div className="flex gap-1.5">
@@ -730,14 +777,14 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
           {step < totalSteps ? (
             <button 
               onClick={nextStep}
-              className="px-12 py-4 bg-primary text-white font-display font-black text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              className="px-12 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
             >
               Continue
             </button>
           ) : (
             <button 
               onClick={onComplete}
-              className="px-12 py-4 cta-gradient text-white font-display font-black text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              className="px-12 py-4 cta-gradient text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
             >
               Review & Submit
             </button>
@@ -769,7 +816,7 @@ const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) 
         {/* Mobile Filter Toggle */}
         <button 
           onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className="lg:hidden w-full mb-6 p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between font-display font-bold text-slate-700"
+          className="lg:hidden w-full mb-6 p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between font-sans font-bold text-slate-700"
         >
           <div className="flex items-center gap-2">
             <Settings size={20} className="text-primary" />
@@ -782,7 +829,7 @@ const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) 
           {/* Sidebar Filter */}
           <aside className={`lg:w-80 shrink-0 ${isFilterOpen ? 'block' : 'hidden lg:block'}`}>
             <div className="bg-white rounded-[32px] p-6 md:p-8 shadow-sm border border-slate-100 lg:sticky lg:top-24">
-              <h3 className="text-2xl font-display font-black text-slate-900 mb-8">Filters</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mb-8">Filters</h3>
               
               <div className="space-y-8">
                 {/* Hospital Type */}
@@ -859,7 +906,7 @@ const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) 
                 </div>
               </div>
 
-              <button className="w-full mt-10 py-4 bg-slate-900 text-white rounded-2xl font-display font-bold hover:bg-black transition-all">
+              <button className="w-full mt-10 py-4 bg-slate-900 text-white rounded-2xl font-sans font-bold hover:bg-black transition-all">
                 Reset All Filters
               </button>
             </div>
@@ -869,7 +916,7 @@ const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) 
           <div className="flex-1">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
               <div>
-                <h2 className="text-4xl font-display font-black text-slate-900 tracking-tight">Available Hospitals</h2>
+                <h2 className="text-4xl font-bold text-slate-900 tracking-tight">Available Hospitals</h2>
                 <p className="text-slate-500 font-bold mt-2">Showing {hospitals.length} facilities in {activeFilters.city}, Pakistan</p>
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">
@@ -895,14 +942,14 @@ const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) 
                     <img src={h.imageUrl} alt={h.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                     <div className="absolute top-6 left-6 bg-white/95 backdrop-blur px-4 py-2 rounded-2xl flex items-center gap-2 shadow-xl border border-slate-100">
                       <div className="w-2 h-2 bg-health-teal rounded-full breathing-dot" />
-                      <span className="font-mono text-[10px] font-black uppercase tracking-widest text-[#005046]">Open Now</span>
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#005046]">Open Now</span>
                     </div>
                   </div>
                   <div className="p-10 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-4">
                       <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-2xl font-display font-black text-slate-900 leading-tight">{h.name}</h3>
+                          <h3 className="text-2xl font-bold text-slate-900 leading-tight">{h.name}</h3>
                           {h.verified && <CheckCircle2 size={24} className="text-primary" fill="currentColor" />}
                         </div>
                         <div className="flex items-center gap-2 text-slate-400">
@@ -912,26 +959,26 @@ const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) 
                       </div>
                       <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 shadow-sm">
                         <Star size={18} fill="currentColor" />
-                        <span className="font-mono text-lg font-black">{h.rating}</span>
+                        <span className="font-mono text-lg font-bold">{h.rating}</span>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2 mt-6 mb-8">
                       <div className="bg-primary/5 text-primary px-4 py-2 rounded-xl flex items-center gap-2 border border-primary/10">
                         <ShieldCheck size={16} />
-                        <span className="font-mono text-[10px] font-black uppercase tracking-widest">{h.category} FACILITY</span>
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-widest">{h.category} FACILITY</span>
                       </div>
                       {h.specializations.slice(0, 3).map((spec, i) => (
-                        <span key={i} className="bg-slate-50 text-slate-500 px-4 py-2 rounded-xl font-mono text-[10px] font-black uppercase border border-slate-100">{spec}</span>
+                        <span key={i} className="bg-slate-50 text-slate-500 px-4 py-2 rounded-xl font-mono text-[10px] font-bold uppercase border border-slate-100">{spec}</span>
                       ))}
                     </div>
 
                     <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-50">
                       <div>
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Consultation start at</p>
-                        <p className="text-3xl font-display font-black text-slate-900">Rs. {h.startingFee.toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Consultation start at</p>
+                        <p className="text-3xl font-bold text-slate-900">Rs. {h.startingFee.toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
                       </div>
-                      <button className="bg-health-teal text-white font-display font-black px-10 py-4 rounded-2xl shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all">
+                      <button className="bg-health-teal text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all">
                         Book Now
                       </button>
                     </div>
@@ -960,7 +1007,7 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
                 <CheckCircle2 size={14} fill="currentColor" /> VERIFIED FACILITY
               </span>
             </div>
-            <h1 className="font-display text-white text-4xl md:text-6xl font-bold flex items-center gap-4">
+            <h1 className="font-sans text-white text-4xl md:text-6xl font-bold flex items-center gap-4">
               {hospital.name}
               <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shrink-0">
                 <CheckCircle2 size={24} fill="currentColor" />
@@ -991,7 +1038,7 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
       <div className="max-w-7xl mx-auto px-6 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-12">
           <section>
-            <h2 className="text-3xl font-display font-bold mb-6">About the Hospital</h2>
+            <h2 className="text-3xl font-sans font-bold mb-6">About the Hospital</h2>
             <p className="text-lg text-slate-600 leading-relaxed font-medium">
               {hospital.about}
             </p>
@@ -1012,9 +1059,9 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
 
           <section>
             <div className="flex border-b border-slate-200 mb-10 overflow-x-auto no-scrollbar">
-              <button className="px-8 py-5 font-display text-lg font-bold text-primary border-b-4 border-primary whitespace-nowrap">Doctors</button>
-              <button className="px-8 py-5 font-display text-lg font-bold text-slate-400 hover:text-slate-600 whitespace-nowrap">Reviews</button>
-              <button className="px-8 py-5 font-display text-lg font-bold text-slate-400 hover:text-slate-600 whitespace-nowrap">Location</button>
+              <button className="px-8 py-5 font-sans text-lg font-bold text-primary border-b-4 border-primary whitespace-nowrap">Doctors</button>
+              <button className="px-8 py-5 font-sans text-lg font-bold text-slate-400 hover:text-slate-600 whitespace-nowrap">Reviews</button>
+              <button className="px-8 py-5 font-sans text-lg font-bold text-slate-400 hover:text-slate-600 whitespace-nowrap">Location</button>
             </div>
 
             <div className="space-y-6">
@@ -1031,7 +1078,7 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
                   <div className="flex-1 flex flex-col">
                     <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                       <div className="space-y-1">
-                        <h3 className="text-2xl font-display font-bold text-slate-900 leading-tight">{doc.name}</h3>
+                        <h3 className="text-2xl font-sans font-bold text-slate-900 leading-tight">{doc.name}</h3>
                         <div className="flex items-center gap-2 mt-2">
                           <span className="bg-primary/10 text-primary px-3 py-1 rounded-lg font-mono text-[10px] font-bold uppercase tracking-wider">{doc.title}</span>
                           <div className="flex gap-1">
@@ -1042,19 +1089,19 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-display font-bold text-primary tracking-tight">Rs. {doc.fee.toLocaleString()}</div>
+                        <div className="text-3xl font-sans font-bold text-primary tracking-tight">Rs. {doc.fee.toLocaleString()}</div>
                         <div className="text-slate-400 font-mono text-[10px] font-bold uppercase">Consultation Fee</div>
                       </div>
                     </div>
                     <div className="mt-auto flex flex-wrap items-center justify-between gap-6 pt-6 border-t border-slate-50">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-health-teal rounded-full breathing-dot" />
-                        <span className="text-health-teal font-extrabold text-sm uppercase tracking-wide">Available Today</span>
+                        <span className="text-health-teal font-bold text-sm uppercase tracking-wide">Available Today</span>
                         <span className="text-slate-400 font-mono text-sm">Next slot: {doc.nextSlot}</span>
                       </div>
                       <button 
                         onClick={() => onBook(doc)}
-                        className="bg-primary hover:bg-blue-700 text-white px-10 py-3.5 rounded-2xl font-display font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+                        className="bg-primary hover:bg-blue-700 text-white px-10 py-3.5 rounded-2xl font-sans font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
                       >
                         Book Appointment
                       </button>
@@ -1068,7 +1115,7 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
 
         <div className="space-y-8">
           <div className="bg-white border border-slate-100 p-8 rounded-[40px] shadow-sm">
-            <h4 className="text-xl font-display font-bold mb-6">Facility Status</h4>
+            <h4 className="text-xl font-sans font-bold mb-6">Facility Status</h4>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-emerald-50/50 rounded-3xl border border-emerald-100">
                 <div className="flex items-center gap-4">
@@ -1098,7 +1145,7 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
           </div>
 
           <div className="bg-white border border-slate-100 p-8 rounded-[40px] shadow-sm">
-            <h4 className="text-xl font-display font-bold mb-6">Location & Contact</h4>
+            <h4 className="text-xl font-sans font-bold mb-6">Location & Contact</h4>
             <div className="space-y-6 mb-8">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-primary/5 rounded-2xl flex items-center justify-center text-primary shrink-0">
@@ -1145,7 +1192,7 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
     </div>
 
     <div className="text-center mb-10">
-      <h2 className="text-4xl font-display font-extrabold text-slate-900 mb-3 underline decoration-primary/20 decoration-8 underline-offset-8">Booking Confirmed!</h2>
+      <h2 className="text-4xl font-bold text-slate-900 mb-3 underline decoration-primary/20 decoration-8 underline-offset-8">Booking Confirmed!</h2>
       <p className="text-slate-500 text-lg">Your digital token has been generated.</p>
     </div>
 
@@ -1163,7 +1210,7 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
         <div className="relative mb-10 group">
           <div className="absolute inset-0 bg-health-teal/10 blur-3xl rounded-full scale-150 animate-pulse" />
           <div className="relative bg-white border-[6px] border-emerald-100 rounded-[32px] p-10 shadow-xl">
-            <div className="font-syne text-7xl font-extrabold tracking-tighter text-slate-900 flex items-center justify-center gap-1">
+            <div className="text-7xl font-bold tracking-tighter text-slate-900 flex items-center justify-center gap-1">
               <span className="text-primary/10">T-</span>
               <span className="font-mono">0047</span>
             </div>
@@ -1175,7 +1222,7 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
           <div className="flex justify-between items-end">
             <div>
               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Doctor</p>
-              <p className="font-display text-xl font-bold text-slate-900 flex items-center gap-2">
+              <p className="font-sans text-xl font-bold text-slate-900 flex items-center gap-2">
                 {doctor.name}
                 <CheckCircle2 size={18} className="text-primary" fill="currentColor" />
               </p>
@@ -1192,7 +1239,7 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
             </div>
             <div className="text-right">
               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Type</p>
-              <p className="font-mono font-extrabold text-health-teal uppercase tracking-wider">In-Person</p>
+              <p className="font-mono font-bold text-health-teal uppercase tracking-wider">In-Person</p>
             </div>
           </div>
         </div>
@@ -1205,17 +1252,17 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
       </div>
       <div>
         <p className="text-xs font-bold text-emerald-800 uppercase tracking-widest mb-2">WhatsApp Confirmation Sent</p>
-        <p className="text-emerald-900/70 font-medium italic leading-snug">
+        <p className="text-emerald-900/70 font-medium leading-snug">
           "Hello Ahmed! Your token T-0047 for Aga Khan University is confirmed for today at 10:30 AM. Track your position live here: xdoc.pk/t47"
         </p>
       </div>
     </div>
 
     <div className="space-y-4">
-      <button className="w-full py-5 rounded-2xl cta-gradient text-white font-display font-bold text-lg flex items-center justify-center gap-3 shadow-2xl shadow-primary/30 active:scale-95 transition-all">
+      <button className="w-full py-5 rounded-2xl cta-gradient text-white font-sans font-bold text-lg flex items-center justify-center gap-3 shadow-2xl shadow-primary/30 active:scale-95 transition-all">
         <Calendar size={22} /> Add to Calendar
       </button>
-      <button className="w-full py-5 rounded-2xl border-2 border-primary text-primary font-display font-bold text-lg flex items-center justify-center gap-3 hover:bg-primary/5 transition-colors">
+      <button className="w-full py-5 rounded-2xl border-2 border-primary text-primary font-sans font-bold text-lg flex items-center justify-center gap-3 hover:bg-primary/5 transition-colors">
         <Share2 size={22} /> Share Token
       </button>
     </div>
@@ -1245,7 +1292,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }: { activeTab: string, set
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}
-            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-display font-bold text-sm transition-all relative group ${
+            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-sans font-bold text-sm transition-all relative group ${
               activeTab === item.id 
                 ? 'bg-primary text-white shadow-xl shadow-primary/20' 
                 : 'text-slate-400 hover:bg-white/5 hover:text-white'
@@ -1263,7 +1310,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }: { activeTab: string, set
       <div className="px-6 pt-6 border-t border-white/5">
         <button 
           onClick={onLogout}
-          className="w-full flex items-center gap-4 px-6 py-4 rounded-xl font-display font-bold text-sm text-emergency-red hover:bg-emergency-red/10 transition-all"
+          className="w-full flex items-center gap-4 px-6 py-4 rounded-xl font-sans font-bold text-sm text-emergency-red hover:bg-emergency-red/10 transition-all"
         >
           <LogOut size={20} /> Sign Out
         </button>
@@ -1296,7 +1343,7 @@ const DashboardOverview = () => {
               <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">{s.diff}</span>
             </div>
             <div className="relative z-10">
-              <p className="text-4xl font-display font-black text-white tracking-tighter">{s.val}</p>
+              <p className="text-4xl font-bold text-white tracking-tighter">{s.val}</p>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 opacity-70">{s.label}</p>
             </div>
           </motion.div>
@@ -1308,23 +1355,23 @@ const DashboardOverview = () => {
           <section className="glass-card rounded-[40px] p-8 border-none bg-gradient-to-br from-white/5 to-transparent shadow-2xl relative overflow-hidden">
             <div className="flex justify-between items-end mb-10">
               <div>
-                <h3 className="text-3xl font-display font-black text-white tracking-tight">Live Queue</h3>
+                <h3 className="text-3xl font-bold text-white tracking-tight">Live Queue</h3>
                 <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest">Cardiology Dept - Room 4</p>
               </div>
               <div className="bg-success-green/10 px-4 py-2 rounded-xl border border-success-green/20 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-success-green breathing-dot" />
-                <span className="text-[10px] font-black text-success-green uppercase tracking-widest">Live Sync</span>
+                <span className="text-[10px] font-bold text-success-green uppercase tracking-widest">Live Sync</span>
               </div>
             </div>
 
             <div className="flex items-center gap-8 mb-12">
               <div className="bg-primary/20 p-10 rounded-[32px] border-2 border-primary/30 flex flex-col items-center justify-center shadow-2xl shadow-primary/20">
                 <span className="text-sm font-mono font-bold text-primary uppercase tracking-[0.3em] mb-2">CURRENT</span>
-                <span className="text-7xl font-mono font-black text-white tracking-tighter">A-42</span>
+                <span className="text-7xl font-mono font-bold text-white tracking-tighter">A-42</span>
               </div>
               <div className="flex-1 space-y-4">
                 <p className="text-slate-400 text-sm font-bold uppercase tracking-[0.1em]">Patient in Cabin</p>
-                <h4 className="text-4xl font-display font-bold text-white">James Sterling</h4>
+                <h4 className="text-4xl font-sans font-bold text-white">James Sterling</h4>
                 <div className="flex items-center gap-4 py-2">
                   <div className="bg-white/5 px-4 py-2 rounded-xl text-xs font-mono text-slate-300">Started: 10:24 AM</div>
                   <div className="bg-white/5 px-4 py-2 rounded-xl text-xs font-mono text-slate-300">Spent: 12m</div>
@@ -1333,7 +1380,7 @@ const DashboardOverview = () => {
             </div>
 
             <div className="bg-white/5 rounded-[32px] p-8">
-              <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Upcoming in queue</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">Upcoming in queue</p>
               <div className="space-y-6">
                 {[
                   { id: 'A-43', name: 'David Henderson', status: 'In Waiting Area', time: 'Next' },
@@ -1341,7 +1388,7 @@ const DashboardOverview = () => {
                   { id: 'A-45', name: 'Michael Chen', status: 'Traveling', time: '09m' }
                 ].map((row, i) => (
                   <div key={i} className="flex items-center gap-8 text-slate-400 border-b border-white/5 pb-6 last:border-0 hover:text-white transition-colors cursor-pointer group">
-                    <span className="font-mono text-xl font-black text-white/20 group-hover:text-primary transition-colors">{row.id}</span>
+                    <span className="font-mono text-xl font-bold text-white/20 group-hover:text-primary transition-colors">{row.id}</span>
                     <div className="flex-1">
                       <p className="font-bold text-lg text-white/90">{row.name}</p>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{row.status}</p>
@@ -1352,7 +1399,7 @@ const DashboardOverview = () => {
               </div>
             </div>
 
-            <button className="w-full py-8 mt-8 rounded-[32px] bg-gradient-to-r from-primary to-health-teal text-white font-display font-black text-2xl flex items-center justify-center gap-4 hover:shadow-[0_20px_50px_rgba(11,95,255,0.3)] transition-all active:scale-95 group">
+            <button className="w-full py-8 mt-8 rounded-[32px] bg-gradient-to-r from-primary to-health-teal text-white font-bold text-2xl flex items-center justify-center gap-4 hover:shadow-[0_20px_50px_rgba(11,95,255,0.3)] transition-all active:scale-95 group">
               <Volume2 size={32} className="group-hover:scale-110 transition-transform" /> Call Next Patient
             </button>
           </section>
@@ -1360,9 +1407,9 @@ const DashboardOverview = () => {
 
         <div className="space-y-8">
           <section className="glass-card p-8 rounded-[40px] border-none shadow-xl">
-            <h4 className="text-xl font-display font-bold text-white mb-8 flex justify-between items-center">
+            <h4 className="text-xl font-sans font-bold text-white mb-8 flex justify-between items-center">
               Today's Staff
-              <span className="text-xs text-blue-400 font-black uppercase tracking-widest cursor-pointer hover:underline">Update</span>
+              <span className="text-xs text-blue-400 font-bold uppercase tracking-widest cursor-pointer hover:underline">Update</span>
             </h4>
             <div className="space-y-6">
               {[
@@ -1383,7 +1430,7 @@ const DashboardOverview = () => {
             </div>
             <div className="mt-10 flex -space-x-4 items-center">
               {['DR', 'MS', 'AK', 'FZ', 'HN'].map((init, i) => (
-                <div key={i} className={`w-12 h-12 rounded-full border-4 border-[#04111D] flex items-center justify-center text-xs text-white font-black shadow-lg shadow-black/50 ${
+                <div key={i} className={`w-12 h-12 rounded-full border-4 border-[#04111D] flex items-center justify-center text-xs text-white font-bold shadow-lg shadow-black/50 ${
                   i === 0 ? 'bg-indigo-600' : i === 1 ? 'bg-rose-600' : i === 2 ? 'bg-amber-600' : i === 3 ? 'bg-emerald-600' : 'bg-blue-600'
                 }`}>
                   {init}
@@ -1396,7 +1443,7 @@ const DashboardOverview = () => {
           </section>
 
           <section className="glass-card p-8 rounded-[40px] border-none shadow-xl">
-            <h4 className="text-xl font-display font-bold text-white mb-8">Quick Actions</h4>
+            <h4 className="text-xl font-sans font-bold text-white mb-8">Quick Actions</h4>
             <div className="grid grid-cols-2 gap-4">
               {[
                 { icon: PlusCircle, label: 'New Token' },
@@ -1408,7 +1455,7 @@ const DashboardOverview = () => {
                   <div className="text-slate-400 group-hover:text-primary transition-colors">
                     <act.icon size={24} />
                   </div>
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-white transition-colors">{act.label}</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-white transition-colors">{act.label}</span>
                 </button>
               ))}
             </div>
@@ -1424,10 +1471,10 @@ const StaffScreen = () => {
     <div className="space-y-12">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-5xl font-display font-black text-white tracking-tight leading-none">Staff Management</h2>
+          <h2 className="text-5xl font-bold text-white tracking-tight leading-none">Staff Management</h2>
           <p className="text-slate-500 font-mono text-sm mt-3 uppercase tracking-[0.3em]">Monday, Oct 24 • Real-time Monitoring</p>
         </div>
-        <button className="cta-gradient px-8 py-4 rounded-2xl text-white font-display font-bold text-lg shadow-xl active:scale-95 transition-all flex items-center gap-3">
+        <button className="cta-gradient px-8 py-4 rounded-2xl text-white font-sans font-bold text-lg shadow-xl active:scale-95 transition-all flex items-center gap-3">
           <Plus size={24} /> Add New Staff
         </button>
       </div>
@@ -1444,7 +1491,7 @@ const StaffScreen = () => {
               <span className="font-mono text-[10px] text-slate-500 font-bold uppercase tracking-widest">{stat.label}</span>
               <stat.icon size={20} className={stat.color} />
             </div>
-            <p className={`text-5xl font-display font-black ${stat.color}`}>{stat.val < 10 ? `0${stat.val}` : stat.val}</p>
+            <p className={`text-5xl font-bold ${stat.color}`}>{stat.val < 10 ? `0${stat.val}` : stat.val}</p>
           </div>
         ))}
       </div>
@@ -1452,7 +1499,7 @@ const StaffScreen = () => {
       <div className="space-y-6">
         <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
           {['All Staff', 'Doctors', 'Nursing', 'Administration', 'Support'].map((tab, i) => (
-            <button key={i} className={`flex-shrink-0 px-8 py-3 rounded-xl font-display font-bold text-sm transition-all ${
+            <button key={i} className={`flex-shrink-0 px-8 py-3 rounded-xl font-sans font-bold text-sm transition-all ${
               i === 0 ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
             }`}>
               {tab}
@@ -1473,16 +1520,16 @@ const StaffScreen = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-display font-bold text-xl text-white leading-tight">{s.name}</h4>
+                  <h4 className="font-sans font-bold text-xl text-white leading-tight">{s.name}</h4>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{s.role}</span>
+                    <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{s.role}</span>
                     <div className="w-1 h-1 rounded-full bg-slate-700" />
-                    <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{s.shift} Shift</span>
+                    <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{s.shift} Shift</span>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${
                   s.status === 'PRESENT' ? 'bg-success-green/10 text-success-green' : 'bg-warning-amber/10 text-warning-amber'
                 }`}>
                   {s.status}
@@ -1502,12 +1549,12 @@ const GlobalStatsScreen = () => {
     <div className="space-y-12 max-w-7xl mx-auto py-12 px-8">
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-6xl font-display font-black text-white tracking-tighter">Global Monitor</h2>
+          <h2 className="text-6xl font-bold text-white tracking-tighter">Global Monitor</h2>
           <p className="text-slate-500 font-mono text-sm mt-4 uppercase tracking-[0.4em]">Real-time Platform Statistics</p>
         </div>
         <div className="flex gap-4">
-          <button className="px-8 py-4 bg-white/5 rounded-2xl text-white font-display font-bold border border-white/10 hover:bg-white/10 transition-all">Download Report</button>
-          <button className="px-8 py-4 cta-gradient rounded-2xl text-white font-display font-bold shadow-xl active:scale-95 transition-all">Manual Payout</button>
+          <button className="px-8 py-4 bg-white/5 rounded-2xl text-white font-sans font-bold border border-white/10 hover:bg-white/10 transition-all">Download Report</button>
+          <button className="px-8 py-4 cta-gradient rounded-2xl text-white font-sans font-bold shadow-xl active:scale-95 transition-all">Manual Payout</button>
         </div>
       </header>
 
@@ -1516,9 +1563,9 @@ const GlobalStatsScreen = () => {
           <Activity size={400} strokeWidth={1} className="text-primary" />
         </div>
         <div className="space-y-4 relative z-10">
-          <p className="font-mono text-sm text-blue-400 uppercase tracking-[0.4em] font-black">PLATFORM REVENUE (NET)</p>
-          <h2 className="text-8xl font-display font-black text-white tracking-tighter leading-none">Rs. 32.4M</h2>
-          <div className="flex items-center gap-4 text-success-green text-xl font-black mt-8">
+          <p className="font-mono text-sm text-blue-400 uppercase tracking-[0.4em] font-bold">PLATFORM REVENUE (NET)</p>
+          <h2 className="text-8xl font-bold text-white tracking-tighter leading-none">Rs. 32.4M</h2>
+          <div className="flex items-center gap-4 text-success-green text-xl font-bold mt-8">
             <div className="bg-success-green/10 p-2 rounded-xl">
               <ArrowRight size={24} className="-rotate-45" />
             </div>
@@ -1539,7 +1586,7 @@ const GlobalStatsScreen = () => {
               <stat.icon size={32} />
             </div>
             <div>
-              <h3 className="text-5xl font-display font-black text-white tracking-tighter leading-tight">{stat.val}</h3>
+              <h3 className="text-5xl font-bold text-white tracking-tighter leading-tight">{stat.val}</h3>
               <p className="font-mono text-xs text-slate-500 font-bold uppercase tracking-widest mt-2">{stat.label}</p>
             </div>
           </div>
@@ -1549,8 +1596,8 @@ const GlobalStatsScreen = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <section className="lg:col-span-2 space-y-8">
           <div className="flex justify-between items-end px-4">
-            <h3 className="text-3xl font-display font-bold text-white">Facility Verification Queue</h3>
-            <span className="text-blue-400 font-mono text-[10px] uppercase tracking-[0.3em] font-black">4 Pending Approval</span>
+            <h3 className="text-3xl font-sans font-bold text-white">Facility Verification Queue</h3>
+            <span className="text-blue-400 font-mono text-[10px] uppercase tracking-[0.3em] font-bold">4 Pending Approval</span>
           </div>
           
           <div className="space-y-4">
@@ -1563,7 +1610,7 @@ const GlobalStatsScreen = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-3">
-                        <h4 className="font-display font-bold text-2xl text-white tracking-tight">{h.name}</h4>
+                        <h4 className="font-sans font-bold text-2xl text-white tracking-tight">{h.name}</h4>
                         {h.verified && <CheckCircle2 size={24} className="text-blue-400" fill="currentColor" />}
                       </div>
                       <p className="text-slate-500 text-sm font-medium flex items-center gap-2 mt-2">
@@ -1573,25 +1620,25 @@ const GlobalStatsScreen = () => {
                   </div>
                   <div className="flex items-center gap-3 bg-success-green/10 px-4 py-2 rounded-xl border border-success-green/20">
                     <div className="w-2 h-2 rounded-full bg-success-green breathing-dot" />
-                    <span className="text-[10px] font-black text-success-green uppercase tracking-widest tracking-[0.2em]">Active</span>
+                    <span className="text-[10px] font-bold text-success-green uppercase tracking-widest tracking-[0.2em]">Active</span>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center py-6 border-y border-white/5">
                   <div className="text-center flex-1 border-r border-white/5">
                     <p className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-[0.3em] mb-2">Tokens Today</p>
-                    <p className="text-3xl font-mono font-black text-white">1,240</p>
+                    <p className="text-3xl font-mono font-bold text-white">1,240</p>
                   </div>
                   <div className="text-center flex-1">
                     <p className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-[0.3em] mb-2">Commission (15%)</p>
-                    <p className="text-3xl font-mono font-black text-success-green">Rs. 18,600</p>
+                    <p className="text-3xl font-mono font-bold text-success-green">Rs. 18,600</p>
                   </div>
                 </div>
 
                 <div className="flex gap-4">
-                  <button className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-display font-black text-sm uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10">Full View</button>
-                  <button className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-display font-black text-sm uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10">Approve</button>
-                  <button className="flex-1 py-4 rounded-2xl bg-emergency-red/10 text-emergency-red font-display font-black text-sm uppercase tracking-widest border border-emergency-red/20 hover:bg-emergency-red/20 transition-all">Suspend</button>
+                  <button className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-bold text-sm uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10">Full View</button>
+                  <button className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-bold text-sm uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10">Approve</button>
+                  <button className="flex-1 py-4 rounded-2xl bg-emergency-red/10 text-emergency-red font-bold text-sm uppercase tracking-widest border border-emergency-red/20 hover:bg-emergency-red/20 transition-all">Suspend</button>
                 </div>
               </div>
             ))}
@@ -1600,7 +1647,7 @@ const GlobalStatsScreen = () => {
 
         <section className="space-y-8">
           <div className="glass-card p-10 rounded-[48px] border-none shadow-xl">
-            <h3 className="text-xl font-display font-bold text-white mb-8 opacity-90">System Logs</h3>
+            <h3 className="text-xl font-sans font-bold text-white mb-8 opacity-90">System Logs</h3>
             <div className="space-y-8 relative before:absolute before:left-2 before:top-4 before:bottom-4 before:w-[2px] before:bg-white/5">
               {[
                 { type: 'Alert', title: 'Token Limit Triggered', desc: 'Gulshan Medical Clinic reached max capacity', time: '2m ago', color: 'bg-primary' },
@@ -1610,7 +1657,7 @@ const GlobalStatsScreen = () => {
                 <div key={i} className="flex gap-6 relative z-10">
                   <div className={`w-4 h-4 rounded-full ${log.color} ring-8 ring-bg-dark shrink-0`} />
                   <div>
-                    <p className="text-[10px] font-mono text-slate-500 font-black uppercase tracking-widest mb-1">{log.type}</p>
+                    <p className="text-[10px] font-mono text-slate-500 font-bold uppercase tracking-widest mb-1">{log.type}</p>
                     <p className="text-sm text-white font-bold mb-1 leading-tight">{log.title}</p>
                     <p className="text-xs text-slate-500 font-medium leading-relaxed">{log.desc}</p>
                     <p className="text-[10px] text-slate-600 font-mono font-bold mt-2">{log.time}</p>
@@ -1618,13 +1665,13 @@ const GlobalStatsScreen = () => {
                 </div>
               ))}
             </div>
-            <button className="w-full mt-10 py-5 rounded-2xl border-2 border-white/5 text-slate-500 font-display font-bold text-xs uppercase tracking-widest hover:text-white hover:border-white/20 transition-all">View All Logs</button>
+            <button className="w-full mt-10 py-5 rounded-2xl border-2 border-white/5 text-slate-500 font-sans font-bold text-xs uppercase tracking-widest hover:text-white hover:border-white/20 transition-all">View All Logs</button>
           </div>
 
           <div className="glass-card p-10 rounded-[48px] border-none shadow-xl bg-gradient-to-br from-emergency-red/10 to-transparent">
-             <h3 className="text-xl font-display font-bold text-white mb-4">Critical Alerts</h3>
+             <h3 className="text-xl font-sans font-bold text-white mb-4">Critical Alerts</h3>
              <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">System identified 2 facilities with invalid medical licenses.</p>
-             <button className="w-full py-5 rounded-2xl bg-emergency-red text-white font-display font-bold text-lg shadow-2xl shadow-emergency-red/30 active:scale-95 transition-all">Take Action</button>
+             <button className="w-full py-5 rounded-2xl bg-emergency-red text-white font-sans font-bold text-lg shadow-2xl shadow-emergency-red/30 active:scale-95 transition-all">Take Action</button>
           </div>
         </section>
       </div>
@@ -1695,7 +1742,7 @@ export default function App() {
               <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Recommended</p>
               <button 
                 onClick={handleGoogleSignIn}
-                className="w-full py-4 px-8 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-4 hover:border-primary transition-all font-display font-bold text-slate-700"
+                className="w-full py-4 px-8 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-4 hover:border-primary transition-all font-sans font-bold text-slate-700"
               >
                 <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6" />
                 Continue with Google
@@ -1720,7 +1767,7 @@ export default function App() {
                 {activeTab === 'dashboard' && <DashboardOverview />}
                 {activeTab === 'staff' && <StaffScreen />}
                 {['doctors', 'attendance', 'tokens', 'revenue', 'export', 'notifications', 'settings'].includes(activeTab) && (
-                  <div className="py-20 text-center text-slate-500 font-display text-4xl font-black uppercase tracking-widest opacity-20">
+                  <div className="py-20 text-center text-slate-500 text-4xl font-bold uppercase tracking-widest opacity-20">
                     {activeTab} <br/>
                     <span className="text-sm font-sans font-medium lowercase tracking-normal">View In Development</span>
                   </div>
