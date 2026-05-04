@@ -589,7 +589,24 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
 
 const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const [step, setStep] = useState(1);
+  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+  const [isEmergency, setIsEmergency] = useState(false);
+  const [quickSelect, setQuickSelect] = useState<'Mon-Fri' | 'Mon-Sat' | 'All' | null>('Mon-Sat');
   const totalSteps = 7;
+
+  const handleQuickSelect = (type: 'Mon-Fri' | 'Mon-Sat' | 'All') => {
+    setQuickSelect(type);
+    if (type === 'Mon-Fri') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+    else if (type === 'Mon-Sat') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+    else if (type === 'All') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  };
+
+  const toggleDay = (day: string) => {
+    setQuickSelect(null);
+    setSelectedDays(prev => 
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
+  };
 
   const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
@@ -704,30 +721,98 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                       <input type="time" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <label className="text-sm font-bold text-slate-700">Open Days</label>
+                  <div className="space-y-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <label className="text-sm font-bold text-slate-700">Open Days</label>
+                      <div className="flex gap-2">
+                        {[
+                          { id: 'Mon-Fri', label: 'Mon - Fri' },
+                          { id: 'Mon-Sat', label: 'Mon - Sat' },
+                          { id: 'All', label: 'All 7 Days' }
+                        ].map(btn => (
+                          <button
+                            key={btn.id}
+                            type="button"
+                            onClick={() => handleQuickSelect(btn.id as any)}
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                              quickSelect === btn.id 
+                                ? 'bg-primary border-primary text-white shadow-md shadow-primary/20' 
+                                : 'bg-transparent border-slate-200 text-slate-500 hover:border-primary'
+                            }`}
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                        <div key={day} className="flex flex-col items-center gap-2 p-3 bg-slate-50 rounded-xl border border-transparent hover:border-primary transition-all">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase">{day}</span>
-                          <input type="checkbox" className="w-5 h-5 rounded-md text-primary" />
-                        </div>
-                      ))}
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+                        const isSelected = selectedDays.includes(day);
+                        return (
+                          <div 
+                            key={day} 
+                            onClick={() => toggleDay(day)}
+                            className={`flex flex-col items-center gap-3 p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                              isSelected 
+                                ? 'bg-primary/5 border-primary shadow-sm' 
+                                : 'bg-slate-50 border-transparent hover:border-slate-200'
+                            }`}
+                          >
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${
+                              isSelected ? 'text-primary' : 'text-slate-400'
+                            }`}>{day}</span>
+                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
+                              isSelected ? 'bg-primary scale-110' : 'bg-white border-2 border-slate-200'
+                            }`}>
+                              {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-6 bg-red-50 rounded-3xl border border-red-100">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-emergency-red rounded-2xl flex items-center justify-center text-white">
-                        <AlertTriangle />
+
+                  <div className="space-y-4">
+                    <div className={`flex items-center justify-between p-6 rounded-[32px] border-2 transition-all duration-500 ${
+                      isEmergency 
+                        ? 'bg-[#00C9B1]/5 border-[#00C9B1] shadow-lg shadow-[#00C9B1]/10' 
+                        : 'bg-slate-50 border-transparent'
+                    }`}>
+                      <div className="flex items-center gap-5">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+                          isEmergency ? 'bg-[#00C9B1] text-white rotate-6' : 'bg-slate-200 text-slate-400'
+                        }`}>
+                          <AlertTriangle size={32} />
+                        </div>
+                        <div>
+                          <p className={`font-bold text-lg leading-tight transition-colors ${
+                            isEmergency ? 'text-[#00C9B1]' : 'text-slate-900'
+                          }`}>24/7 Emergency Service</p>
+                          <p className="text-sm text-slate-500 font-medium">Do you offer round the clock emergency?</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-900 leading-tight">24/7 Emergency Service</p>
-                        <p className="text-xs text-slate-500">Do you offer round the clock emergency?</p>
+                      <div 
+                        onClick={() => setIsEmergency(!isEmergency)}
+                        className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${
+                          isEmergency ? 'bg-[#00C9B1]' : 'bg-slate-200'
+                        }`}
+                      >
+                        <motion.div 
+                          animate={{ x: isEmergency ? 24 : 0 }}
+                          className="w-6 h-6 bg-white rounded-full shadow-sm" 
+                        />
                       </div>
                     </div>
-                    <div className="w-14 h-8 bg-slate-200 rounded-full relative p-1 cursor-pointer">
-                      <div className="w-6 h-6 bg-white rounded-full shadow-sm" />
-                    </div>
+                    {isEmergency && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-3 px-6 py-4 bg-[#00C9B1]/10 rounded-2xl text-[#005046] border border-[#00C9B1]/20"
+                      >
+                        <CheckCircle2 size={18} />
+                        <p className="text-xs font-bold uppercase tracking-widest">Your hospital will be listed as 24/7 Emergency Available</p>
+                      </motion.div>
+                    )}
                   </div>
                 </>
               )}
