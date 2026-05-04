@@ -592,7 +592,43 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
   const [isEmergency, setIsEmergency] = useState(false);
   const [quickSelect, setQuickSelect] = useState<'Mon-Fri' | 'Mon-Sat' | 'All' | null>('Mon-Sat');
+  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
   const totalSteps = 7;
+
+  const allSpecs = [
+    'General Physician', 'Cardiology', 'Neurology', 'Orthopedic', 'Gynecology', 
+    'Pediatrics', 'Dentistry', 'Dermatology (Skin)', 'Ophthalmology (Eye)', 
+    'ENT Specialist', 'Psychiatry', 'Urology', 'Gastroenterology', 'Pulmonology', 
+    'Endocrinology', 'Nephrology', 'Oncology', 'Rheumatology', 'Hematology', 
+    'Physiotherapy', 'Nutritionist', 'Emergency Medicine'
+  ];
+
+  const facilityGroups = {
+    "Medical Facilities": [
+      "Emergency Ward", "ICU", "CCU (Cardiac Care Unit)", "Operation Theater (OT)", 
+      "Labour Room", "NICU (Neonatal ICU)", "Burns Unit", "Dialysis Center", 
+      "Chemotherapy Unit", "Physiotherapy Unit"
+    ],
+    "Diagnostic Facilities": [
+      "Pathology Lab", "X-Ray", "Ultrasound", "MRI", "CT Scan", "ECG", 
+      "Echo Cardiography", "Mammography", "Endoscopy"
+    ],
+    "Support Facilities": [
+      "Pharmacy", "Blood Bank", "Ambulance Service", "Vaccination Center", 
+      "Dental Unit", "Eye Unit", "Skin Unit"
+    ],
+    "Patient Comfort": [
+      "Private Rooms", "General Ward", "Cafeteria", "Parking", "Prayer Room", 
+      "Waiting Area", "Wheelchair Available", "Lift / Elevator"
+    ],
+    "Digital Services": [
+      "Online Appointment", "WhatsApp Consultation", "Telemedicine", 
+      "Home Sample Collection", "Online Reports"
+    ]
+  };
+
+  const allFacilities = Object.values(facilityGroups).flat();
 
   const handleQuickSelect = (type: 'Mon-Fri' | 'Mon-Sat' | 'All') => {
     setQuickSelect(type);
@@ -819,23 +855,88 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
 
               {step === 4 && (
                 <>
-                  <div className="space-y-4">
-                    <label className="text-sm font-bold text-slate-700">Specializations</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['General Physician', 'Cardiology', 'Neurology', 'Orthopedic', 'Gynecology', 'Pediatrics', 'Dentistry'].map(spec => (
-                        <button key={spec} className="px-4 py-2 bg-slate-50 rounded-full text-xs font-bold text-slate-600 hover:bg-primary hover:text-white transition-all border border-slate-200">
-                          {spec}
+                  <div className="space-y-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <label className="text-sm font-bold text-slate-700">Specializations</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSpecs(allSpecs)}
+                          className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border border-slate-200 text-slate-500 hover:border-primary hover:text-primary"
+                        >
+                          Select All
                         </button>
-                      ))}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSpecs([])}
+                          className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border border-slate-200 text-slate-500 hover:border-emergency-red hover:text-emergency-red"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {allSpecs.map(spec => {
+                        const isSelected = selectedSpecs.includes(spec);
+                        return (
+                          <button 
+                            key={spec} 
+                            type="button"
+                            onClick={() => setSelectedSpecs(prev => isSelected ? prev.filter(s => s !== spec) : [...prev, spec])}
+                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
+                              isSelected 
+                                ? 'bg-primary border-primary text-white shadow-md shadow-primary/20' 
+                                : 'bg-white border-[#0B5FFF] text-[#0B5FFF] hover:bg-primary/5'
+                            }`}
+                          >
+                            {spec}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <label className="text-sm font-bold text-slate-700">Available Facilities</label>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                      {['ICU', 'Emergency Ward', 'Pathology Lab', 'Pharmacy', 'X-Ray', 'Ambulance'].map(fac => (
-                        <div key={fac} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl">
-                          <input type="checkbox" className="w-5 h-5 rounded-md text-primary" />
-                          <span className="text-xs font-bold text-slate-700">{fac}</span>
+
+                  <div className="space-y-8 pt-8 border-t border-slate-100">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <label className="text-sm font-bold text-slate-700">Available Facilities</label>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFacilities(allFacilities)}
+                        className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border border-slate-200 text-slate-500 hover:border-primary hover:text-primary"
+                      >
+                        Select All
+                      </button>
+                    </div>
+
+                    <div className="space-y-8">
+                      {Object.entries(facilityGroups).map(([category, facilities]) => (
+                        <div key={category} className="space-y-4">
+                          <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">{category}</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {facilities.map(fac => {
+                              const isSelected = selectedFacilities.includes(fac);
+                              return (
+                                <div 
+                                  key={fac} 
+                                  onClick={() => setSelectedFacilities(prev => isSelected ? prev.filter(f => f !== fac) : [...prev, fac])}
+                                  className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                                    isSelected 
+                                      ? 'bg-primary/5 border-primary' 
+                                      : 'bg-slate-50 border-transparent hover:border-slate-200'
+                                  }`}
+                                >
+                                  <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
+                                    isSelected ? 'bg-primary' : 'bg-white border-2 border-slate-200'
+                                  }`}>
+                                    {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
+                                  </div>
+                                  <span className={`text-[11px] font-bold ${
+                                    isSelected ? 'text-slate-900' : 'text-slate-500'
+                                  }`}>{fac}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       ))}
                     </div>
