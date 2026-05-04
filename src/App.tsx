@@ -62,15 +62,16 @@ import {
   signInWithPopup, 
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 
 // --- Shared Components ---
 
-const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, showMenu = false, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, isLanding?: boolean }) => {
+const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, onLogin, showMenu = false, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, onLogin?: () => void, isLanding?: boolean }) => {
   const { userData, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -105,7 +106,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
               {!userData ? (
                 <>
                   <button 
-                    onClick={onSignUp}
+                    onClick={onLogin}
                     className="hidden sm:block px-6 py-2.5 rounded-xl font-sans font-bold border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all"
                   >
                     Login
@@ -178,7 +179,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
 
               <div className="flex flex-col gap-4">
                 <button 
-                  onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
+                  onClick={() => { setIsMobileMenuOpen(false); onLogin?.(); }}
                   className="w-full py-5 rounded-2xl font-sans font-bold border-2 border-primary/20 text-primary"
                 >
                   Login
@@ -534,6 +535,302 @@ const Footer = () => {
   );
 };
 
+
+const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { onLoginSuccess: (role: string) => void, onSignUpClick: (type: 'Hospital' | 'Patient') => void, onForgotPasswordClick: () => void }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<{ email?: string; password?: string; general?: string }>({});
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError({});
+    
+    if (!email) {
+      setError(prev => ({ ...prev, email: 'Please fill all fields' }));
+      return;
+    }
+    if (!password) {
+      setError(prev => ({ ...prev, password: 'Please fill all fields' }));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.status === 'Under Review' && userData.role === 'Admin') {
+           setError({ general: 'Your account is under review. Please wait for approval.' });
+           setLoading(false);
+           return;
+        }
+        onLoginSuccess(userData.role);
+      } else {
+        setError({ general: 'User profile not found.' });
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email') {
+        setError({ email: 'Email not found' });
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError({ password: 'Incorrect password, try again' });
+      } else {
+        setError({ general: 'Login failed. Please check your credentials.' });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        onLoginSuccess(userDoc.data().role);
+      } else {
+        onSignUpClick('Patient');
+      }
+    } catch (error) {
+      console.error("Google login failed", error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+       <motion.div 
+         initial={{ opacity: 0, y: 20 }}
+         animate={{ opacity: 1, y: 0 }}
+         className="w-full max-w-md bg-white rounded-[40px] shadow-2xl shadow-slate-200/60 p-8 md:p-12 relative overflow-hidden"
+       >
+         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1]" />
+         
+         <div className="flex flex-col items-center mb-10">
+           <div className="w-16 h-16 rounded-2xl medical-cross-gradient flex items-center justify-center text-white shadow-xl shadow-primary/20 mb-4">
+             <Activity size={32} />
+           </div>
+           <h2 className="text-3xl font-display font-bold text-slate-900">Welcome Back</h2>
+           <p className="text-slate-500 font-medium">Login to your Xdoc account</p>
+         </div>
+
+         <form onSubmit={handleLogin} className="space-y-6">
+           <div className="space-y-2">
+             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-2">Email Address</label>
+             <div className="relative">
+               <input 
+                 type="email" 
+                 placeholder="Email address" 
+                 value={email}
+                 onChange={(e) => setEmail(e.target.value)}
+                 className={`w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium transition-all ${error.email ? 'ring-2 ring-[#FF3B5C]' : ''}`}
+               />
+               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+             </div>
+             {error.email && <p className="text-[#FF3B5C] text-xs font-bold pl-2 mt-1">{error.email}</p>}
+           </div>
+
+           <div className="space-y-2">
+             <div className="flex justify-between items-center px-2">
+               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Password</label>
+               <button 
+                 type="button" 
+                 onClick={onForgotPasswordClick}
+                 className="text-xs font-bold text-primary hover:underline"
+               >
+                 Forgot Password?
+               </button>
+             </div>
+             <div className="relative">
+               <input 
+                 type={showPassword ? "text" : "password"} 
+                 placeholder="Password" 
+                 value={password}
+                 onChange={(e) => setPassword(e.target.value)}
+                 className={`w-full pl-12 pr-12 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium transition-all ${error.password ? 'ring-2 ring-[#FF3B5C]' : ''}`}
+               />
+               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+               <button 
+                 type="button"
+                 onClick={() => setShowPassword(!showPassword)}
+                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+               >
+                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+               </button>
+             </div>
+             {error.password && <p className="text-[#FF3B5C] text-xs font-bold pl-2 mt-1">{error.password}</p>}
+           </div>
+
+           <div className="flex items-center gap-3 px-2">
+             <input 
+               type="checkbox" 
+               id="remember"
+               checked={rememberMe}
+               onChange={(e) => setRememberMe(e.target.checked)}
+               className="w-5 h-5 rounded-lg text-primary focus:ring-primary cursor-pointer border-slate-200" 
+             />
+             <label htmlFor="remember" className="text-sm font-bold text-slate-600 cursor-pointer">Remember Me</label>
+           </div>
+
+           {error.general && (
+             <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-[#FF3B5C]">
+               <AlertTriangle size={18} />
+               <p className="text-xs font-bold">{error.general}</p>
+             </div>
+           )}
+
+           <button 
+             type="submit"
+             disabled={loading}
+             className="w-full py-5 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1] text-white font-display font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+           >
+             {loading ? (
+               <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+             ) : (
+               <>Login to Xdoc <ArrowRight size={20} /></>
+             )}
+           </button>
+         </form>
+
+         <div className="my-8 flex items-center gap-4">
+           <div className="flex-1 h-[1px] bg-slate-100" />
+           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">OR</span>
+           <div className="flex-1 h-[1px] bg-slate-100" />
+         </div>
+
+         <button 
+           onClick={handleGoogleLogin}
+           className="w-full py-4 px-8 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-4 hover:border-primary transition-all font-sans font-bold text-slate-700 bg-white"
+         >
+           <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6" />
+           Continue with Google
+         </button>
+
+         <div className="mt-10 text-center space-y-4">
+           <p className="text-sm font-bold text-slate-500">Don't have an account?</p>
+           <div className="flex flex-col sm:flex-row gap-3 justify-center">
+             <button 
+               onClick={() => onSignUpClick('Hospital')}
+               className="text-xs font-bold text-primary hover:bg-primary/5 px-4 py-2 rounded-xl border border-primary/20 transition-all text-nowrap"
+             >
+               Sign Up as Hospital
+             </button>
+             <button 
+               onClick={() => onSignUpClick('Patient')}
+               className="text-xs font-bold text-health-teal hover:bg-health-teal/5 px-4 py-2 rounded-xl border border-health-teal/20 transition-all text-nowrap"
+             >
+               Sign Up as Patient
+             </button>
+           </div>
+         </div>
+       </motion.div>
+    </div>
+  );
+};
+
+const ForgotPasswordModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError('Please enter your email');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess(true);
+    } catch (err: any) {
+      setError('Failed to send reset link. Please check your email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-sm bg-white rounded-[40px] shadow-2xl p-8 relative"
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 transition-colors"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-primary/10 text-primary rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <Lock size={32} />
+          </div>
+          <h3 className="text-2xl font-display font-bold text-slate-900">Forgot Password?</h3>
+          <p className="text-sm text-slate-500 font-medium">No worries, we'll send you a reset link.</p>
+        </div>
+
+        {success ? (
+          <div className="text-center space-y-6">
+            <div className="p-6 bg-success-green/10 rounded-3xl border border-success-green/20">
+              <CheckCircle2 className="mx-auto text-success-green mb-3" size={32} />
+              <p className="text-sm font-bold text-success-green">Password reset link sent to your email</p>
+            </div>
+            <button 
+              onClick={onClose}
+              className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all"
+            >
+              Back to Login
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-2">Email Address</label>
+              <div className="relative">
+                <input 
+                  type="email" 
+                  placeholder="Enter your email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              </div>
+              {error && <p className="text-[#FF3B5C] text-xs font-bold pl-2 mt-1">{error}</p>}
+            </div>
+
+            <button 
+              type="submit"
+              disabled={loading}
+              className="w-full py-5 bg-primary text-white font-display font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center"
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                'Send Reset Link'
+              )}
+            </button>
+          </form>
+        )}
+      </motion.div>
+    </div>
+  );
+};
 
 const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') => void }) => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 md:px-6 py-12 md:py-20">
@@ -2700,10 +2997,11 @@ const GlobalStatsScreen = () => {
 
 export default function App() {
   const { currentUser, userData, logout } = useAuth();
-  const [viewState, setViewState] = useState<'hero' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
+  const [viewState, setViewState] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   
   // Patient flow states
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
@@ -2742,14 +3040,34 @@ export default function App() {
       case 'hero':
         return (
           <div className="bg-white min-h-screen">
-            <Header onLogoClick={() => setViewState('hero')} onSignUp={() => setViewState('auth_choice')} isLanding={true} />
+            <Header 
+              onLogoClick={() => setViewState('hero')} 
+              onSignUp={() => setViewState('auth_choice')} 
+              onLogin={() => setViewState('login')}
+              isLanding={true} 
+            />
             <HeroSection 
               onSignUp={() => setViewState('auth_choice')} 
-              onLogin={() => setViewState('auth_choice')}
+              onLogin={() => setViewState('login')}
             />
             <HowItWorks />
             <Footer />
           </div>
+        );
+      case 'login':
+        return (
+          <>
+            <LoginPage 
+              onLoginSuccess={(role) => {
+                if (role === 'Admin') setViewState('admin_dashboard');
+                else if (role === 'SuperAdmin') setViewState('super_admin');
+                else setViewState('patient_home');
+              }}
+              onSignUpClick={(type) => type === 'Hospital' ? setViewState('hospital_reg') : setViewState('patient_reg')}
+              onForgotPasswordClick={() => setIsForgotPasswordOpen(true)}
+            />
+            <ForgotPasswordModal isOpen={isForgotPasswordOpen} onClose={() => setIsForgotPasswordOpen(false)} />
+          </>
         );
       case 'auth_choice':
         return (
