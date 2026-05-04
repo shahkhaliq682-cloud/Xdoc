@@ -47,6 +47,8 @@ import {
   ArrowLeft,
   UserPlus,
   Ticket,
+  Trash2,
+  Upload,
   Hospital as HospitalIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -594,7 +596,22 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const [quickSelect, setQuickSelect] = useState<'Mon-Fri' | 'Mon-Sat' | 'All' | null>('Mon-Sat');
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
-  const totalSteps = 7;
+  
+  // Section 5: Staff
+  const [staffCounts, setStaffCounts] = useState({ doctors: 0, nurses: 0, receptionists: 0, support: 0 });
+  const [individualStaff, setIndividualStaff] = useState<any[]>([]);
+
+  // Section 6: Fees & Pricing
+  const [pricing, setPricing] = useState({ opd: '', emergency: '', isFree: false });
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+
+  // Section 7: Media & About
+  const [media, setMedia] = useState({ logo: null, photos: [] as any[], about: '' });
+
+  // Submission Status
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const totalSteps = 8;
 
   const allSpecs = [
     'General Physician', 'Cardiology', 'Neurology', 'Orthopedic', 'Gynecology', 
@@ -652,9 +669,10 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
     "Location & Contact",
     "Timings",
     "Services",
-    "Staff",
-    "Pricing",
-    "Media"
+    "Staff Info",
+    "Fees & Pricing",
+    "Media Upload",
+    "Review & Submit"
   ];
 
   return (
@@ -944,38 +962,387 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                 </>
               )}
 
-              {step >= 5 && <div className="text-center py-10 text-slate-400">Section details logic continues...</div>}
+              {step === 5 && (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                      { id: 'doctors', label: 'Doctors', icon: UserPlus },
+                      { id: 'nurses', label: 'Nurses', icon: Users },
+                      { id: 'receptionists', label: 'Receptionists', icon: MessageSquare },
+                      { id: 'support', label: 'Support Staff', icon: Building2 }
+                    ].map(type => (
+                      <div key={type.id} className="space-y-2">
+                        <label className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">{type.label}</label>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            value={staffCounts[type.id as keyof typeof staffCounts]}
+                            onChange={(e) => setStaffCounts({...staffCounts, [type.id]: parseInt(e.target.value) || 0})}
+                            className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
+                          />
+                          <type.icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-8 border-t border-slate-100">
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+                      <h4 className="text-lg font-bold text-slate-900">Individual Staff Members</h4>
+                      <button 
+                        type="button"
+                        onClick={() => setIndividualStaff([...individualStaff, { id: Date.now(), name: '', role: 'Doctor', dept: '', shift: 'Morning', phone: '' }])}
+                        className="flex items-center gap-2 text-primary font-bold hover:bg-primary/5 px-4 py-2 rounded-xl transition-all"
+                      >
+                        <Plus size={20} /> Add Staff Member
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {individualStaff.map((staff, index) => (
+                        <div key={staff.id} className="p-6 bg-slate-50 rounded-3xl border border-transparent hover:border-slate-200 transition-all space-y-4 relative group">
+                          <button 
+                            type="button"
+                            onClick={() => setIndividualStaff(individualStaff.filter(s => s.id !== staff.id))}
+                            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-emergency-red transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input 
+                              placeholder="Full Name" 
+                              value={staff.name}
+                              onChange={(e) => {
+                                const newStaff = [...individualStaff];
+                                newStaff[index].name = e.target.value;
+                                setIndividualStaff(newStaff);
+                              }}
+                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm" 
+                            />
+                            <select 
+                              value={staff.role}
+                              onChange={(e) => {
+                                const newStaff = [...individualStaff];
+                                newStaff[index].role = e.target.value;
+                                setIndividualStaff(newStaff);
+                              }}
+                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm"
+                            >
+                              <option>Doctor</option>
+                              <option>Nurse</option>
+                              <option>Receptionist</option>
+                              <option>Admin</option>
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input 
+                              placeholder="Department" 
+                              value={staff.dept}
+                              onChange={(e) => {
+                                const newStaff = [...individualStaff];
+                                newStaff[index].dept = e.target.value;
+                                setIndividualStaff(newStaff);
+                              }}
+                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm" 
+                            />
+                            <select 
+                              value={staff.shift}
+                              onChange={(e) => {
+                                const newStaff = [...individualStaff];
+                                newStaff[index].shift = e.target.value;
+                                setIndividualStaff(newStaff);
+                              }}
+                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm"
+                            >
+                              <option>Morning</option>
+                              <option>Evening</option>
+                              <option>Night</option>
+                            </select>
+                            <input 
+                              placeholder="Phone" 
+                              value={staff.phone}
+                              onChange={(e) => {
+                                const newStaff = [...individualStaff];
+                                newStaff[index].phone = e.target.value;
+                                setIndividualStaff(newStaff);
+                              }}
+                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm" 
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {step === 6 && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">General OPD Fee</label>
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          placeholder="Rs. 1,000" 
+                          value={pricing.opd}
+                          onChange={(e) => setPricing({...pricing, opd: e.target.value})}
+                          className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
+                        />
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rs.</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Emergency Consultation Fee</label>
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          placeholder="Rs. 2,000" 
+                          value={pricing.emergency}
+                          onChange={(e) => setPricing({...pricing, emergency: e.target.value})}
+                          className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
+                        />
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rs.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                        <Star />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 leading-tight">Free Service Option</p>
+                        <p className="text-xs text-slate-500">Do you offer any services for free?</p>
+                      </div>
+                    </div>
+                    <div 
+                      onClick={() => setPricing({...pricing, isFree: !pricing.isFree})}
+                      className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${pricing.isFree ? 'bg-health-teal' : 'bg-slate-200'}`}
+                    >
+                      <motion.div 
+                        animate={{ x: pricing.isFree ? 24 : 0 }}
+                        className="w-6 h-6 bg-white rounded-full shadow-sm" 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-8 border-t border-slate-100">
+                    <label className="text-sm font-bold text-slate-700">Accepted Payment Methods</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {['Cash', 'JazzCash', 'EasyPaisa', 'Bank Card', 'Sehat Card', 'Insurance'].map(method => {
+                        const isSelected = paymentMethods.includes(method);
+                        return (
+                          <div 
+                            key={method} 
+                            onClick={() => setPaymentMethods(prev => isSelected ? prev.filter(m => m !== method) : [...prev, method])}
+                            className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                              isSelected ? 'bg-primary/5 border-primary' : 'bg-slate-50 border-transparent hover:border-slate-200'
+                            }`}
+                          >
+                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-primary' : 'bg-white border-2 border-slate-200'}`}>
+                              {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
+                            </div>
+                            <span className="text-sm font-bold text-slate-700">{method}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {step === 7 && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <label className="text-sm font-bold text-slate-700">Hospital Logo</label>
+                      <div className="w-full aspect-square md:aspect-video rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
+                        {media.logo ? (
+                          <img src={URL.createObjectURL(media.logo as any)} className="w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 shadow-sm">
+                              <Upload size={24} />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm font-bold text-slate-900">Upload Logo</p>
+                              <p className="text-[10px] text-slate-500 font-medium">PNG, JPG up to 2MB</p>
+                            </div>
+                          </>
+                        )}
+                        <input 
+                          type="file" 
+                          className="absolute inset-0 opacity-0 cursor-pointer" 
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              setMedia({...media, logo: e.target.files[0] as any});
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-sm font-bold text-slate-700">Hospital Photos</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="aspect-square rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 relative group hover:border-primary transition-colors cursor-pointer">
+                          <Plus size={24} className="text-slate-400" />
+                          <p className="text-[10px] text-slate-500 font-bold uppercase">Add Photo</p>
+                          <input 
+                            type="file" 
+                            multiple 
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                const files = Array.from(e.target.files);
+                                setMedia({...media, photos: [...media.photos, ...files].slice(0, 10)});
+                              }
+                            }}
+                          />
+                        </div>
+                        {media.photos.map((file, i) => (
+                          <div key={i} className="aspect-square rounded-3xl bg-slate-50 relative overflow-hidden group">
+                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                            <button 
+                              type="button"
+                              onClick={() => setMedia({...media, photos: media.photos.filter((_, idx) => idx !== i)})}
+                              className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium">Up to 10 photos, max 5MB each</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-8 border-t border-slate-100">
+                    <label className="text-sm font-bold text-slate-700">About Hospital</label>
+                    <textarea 
+                      placeholder="Apne hospital ke baare mein likhen..." 
+                      value={media.about}
+                      onChange={(e) => setMedia({...media, about: e.target.value})}
+                      className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium min-h-[150px]" 
+                    />
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <span>Minimum 50 characters</span>
+                      <span className={media.about.length >= 50 ? 'text-health-teal' : 'text-slate-400'}>{media.about.length} / 50</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {step === 8 && !isSubmitted && (
+                <div className="space-y-8">
+                  <div className="p-8 bg-primary/5 rounded-[40px] border border-primary/10">
+                    <div className="flex items-center gap-4 mb-8">
+                      <div className="w-14 h-14 bg-primary text-white rounded-3xl flex items-center justify-center shadow-lg shadow-primary/20">
+                        <ShieldCheck size={32} />
+                      </div>
+                      <div>
+                        <h4 className="text-2xl font-bold text-slate-900">Review Information</h4>
+                        <p className="text-slate-500">Please verify all details before submitting</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                        <h5 className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-slate-400">Services & Staff</h5>
+                        <ul className="space-y-2">
+                          <li className="flex justify-between items-center">
+                            <span className="text-slate-500 font-medium text-sm">Specializations</span>
+                            <span className="text-slate-900 font-bold text-sm">{selectedSpecs.length} Selected</span>
+                          </li>
+                          <li className="flex justify-between items-center">
+                            <span className="text-slate-500 font-medium text-sm">Staff Members</span>
+                            <span className="text-slate-900 font-bold text-sm">{staffCounts.doctors + staffCounts.nurses + staffCounts.receptionists + staffCounts.support} Total</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div className="space-y-4">
+                        <h5 className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-slate-400">Fees & Policies</h5>
+                        <ul className="space-y-2">
+                          <li className="flex justify-between items-center">
+                            <span className="text-slate-500 font-medium text-sm">OPD Fee</span>
+                            <span className="text-slate-900 font-bold text-sm">Rs. {pricing.opd || '0'}</span>
+                          </li>
+                          <li className="flex justify-between items-center">
+                            <span className="text-slate-500 font-medium text-sm">Emergency</span>
+                            <span className="text-slate-900 font-bold text-sm">{isEmergency ? 'Available' : 'No'}</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-8 bg-slate-50 rounded-[40px] border border-slate-200">
+                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                      By submitting for approval, you agree to our <span className="text-primary font-bold cursor-pointer">Terms of Service</span> and <span className="text-primary font-bold cursor-pointer">Privacy Policy</span>. We may contact you for further verification of your medical license.
+                    </p>
+                    <button 
+                      type="button"
+                      onClick={() => setIsSubmitted(true)}
+                      className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                    >
+                      Submit for Approval <ArrowRight size={24} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isSubmitted && (
+                <div className="text-center py-20">
+                  <div className="w-24 h-24 bg-success-green/10 text-success-green rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
+                    <CheckCircle2 size={56} />
+                  </div>
+                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6">Registration Submitted!</h3>
+                  <div className="max-w-md mx-auto space-y-6">
+                    <p className="text-slate-500 text-lg leading-relaxed">
+                      We will review and approve your hospital within 24-48 hours. You will receive an email confirmation once verified.
+                    </p>
+                    <div className="p-6 bg-white rounded-3xl border-2 border-slate-100 shadow-sm">
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-2">Ticket ID</p>
+                      <p className="text-2xl font-mono font-bold text-primary">#HOS-8829</p>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={onComplete}
+                      className="w-full py-5 border-2 border-slate-200 rounded-2xl text-slate-500 font-bold hover:bg-slate-100 transition-all"
+                    >
+                      Return to Home
+                    </button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
 
-        <div className="flex items-center justify-between mt-12">
-          <button 
-            onClick={prevStep}
-            disabled={step === 1}
-            className={`px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all ${
-              step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            <ArrowLeft size={20} /> Previous
-          </button>
-          
-          {step < totalSteps ? (
+        {!isSubmitted && (
+          <div className="flex items-center justify-between mt-12">
             <button 
-              onClick={nextStep}
-              className="px-12 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              onClick={prevStep}
+              disabled={step === 1}
+              className={`px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all ${
+                step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-500 hover:bg-slate-100'
+              }`}
             >
-              Continue
+              <ArrowLeft size={20} /> Previous
             </button>
-          ) : (
-            <button 
-              onClick={onComplete}
-              className="px-12 py-4 cta-gradient text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-            >
-              Review & Submit
-            </button>
-          )}
-        </div>
+            
+            {step < totalSteps && (
+              <button 
+                onClick={nextStep}
+                className="px-12 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              >
+                {step === 7 ? 'Review & Submit' : 'Continue'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
