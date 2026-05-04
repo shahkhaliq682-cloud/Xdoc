@@ -38,6 +38,9 @@ import {
   Download,
   CreditCard,
   MessageSquare,
+  MessageCircle,
+  Eye,
+  EyeOff,
   Building2,
   Lock,
   Mail,
@@ -588,6 +591,467 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
     </div>
   </div>
 );
+
+const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
+  const [step, setStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const totalSteps = 5;
+
+  const [formData, setFormData] = useState({
+    fullName: '',
+    dob: '',
+    gender: 'Male',
+    cnic: '',
+    phone: '+92 ',
+    whatsapp: '',
+    sameAsPhone: true,
+    email: '',
+    password: '',
+    confirmPassword: '',
+    city: 'Karachi',
+    area: '',
+    bloodGroup: 'Don\'t Know',
+    allergies: '',
+    chronicConditions: [] as string[],
+    language: 'English',
+    whatsappNotifications: true,
+    emailNotifications: true
+  });
+
+  const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
+  const prevStep = () => setStep(s => Math.max(s - 1, 1));
+
+  const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad'];
+  const chronicList = ['Diabetes', 'High Blood Pressure', 'Heart Disease', 'Asthma', 'Kidney Disease'];
+
+  const steps = [
+    { title: "Basic Info", icon: User },
+    { title: "Contact", icon: MessageCircle },
+    { title: "Location", icon: MapPin },
+    { title: "Medical", icon: Activity },
+    { title: "Preferences", icon: Settings }
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50 pt-24 pb-12 px-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div>
+            <h2 className="text-4xl font-bold text-slate-900 mb-3">Patient Registration</h2>
+            <p className="text-slate-500 font-medium">Join Pakistan's largest digital health network</p>
+          </div>
+          <div className="flex items-center gap-4 bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+            <span className="text-sm font-bold text-slate-400">Step {step} of {totalSteps}</span>
+            <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div 
+                animate={{ width: `${(step / totalSteps) * 100}%` }}
+                className="h-full bg-health-teal"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 gap-3 mb-12">
+          {steps.map((s, i) => (
+            <div key={i} className="flex flex-col items-center gap-3">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+                step > i + 1 ? 'bg-success-green text-white' : 
+                step === i + 1 ? 'bg-primary text-white shadow-xl shadow-primary/20' : 
+                'bg-white text-slate-300'
+              }`}>
+                {step > i + 1 ? <Check size={20} strokeWidth={3} /> : <s.icon size={20} />}
+              </div>
+              <span className={`text-[10px] font-bold uppercase tracking-widest hidden md:block ${
+                step === i + 1 ? 'text-primary' : 'text-slate-400'
+              }`}>{s.title}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-white rounded-[48px] p-8 md:p-12 shadow-xl shadow-slate-200/50 border border-slate-100 min-h-[500px] flex flex-col">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex-1"
+            >
+              {!isSubmitted ? (
+                <>
+                  {step === 1 && (
+                    <div className="space-y-8">
+                      <div className="flex flex-col items-center gap-4 mb-8">
+                        <div className="w-32 h-32 rounded-full bg-slate-50 border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
+                          <Upload size={32} />
+                          <span className="text-[10px] font-bold uppercase mt-2">Photo</span>
+                          <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
+                        </div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Optional Profile Photo</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Full Name</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Ahmed Khan" 
+                            value={formData.fullName}
+                            onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Date of Birth</label>
+                          <input 
+                            type="date" 
+                            value={formData.dob}
+                            onChange={(e) => setFormData({...formData, dob: e.target.value})}
+                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Gender</label>
+                          <div className="flex gap-4">
+                            {['Male', 'Female', 'Other'].map(g => (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => setFormData({...formData, gender: g})}
+                                className={`flex-1 py-4 rounded-2xl font-bold transition-all border-2 ${
+                                  formData.gender === g ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-50 border-transparent text-slate-500'
+                                }`}
+                              >
+                                {g}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">CNIC (Optional)</label>
+                          <input 
+                            type="text" 
+                            placeholder="42101-XXXXXXX-X" 
+                            value={formData.cnic}
+                            onChange={(e) => setFormData({...formData, cnic: e.target.value})}
+                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 2 && (
+                    <div className="space-y-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Phone Number</label>
+                          <input 
+                            type="tel" 
+                            placeholder="+92 300 0000000" 
+                            value={formData.phone}
+                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <label className="text-sm font-bold text-slate-700">WhatsApp Number</label>
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                              <input 
+                                type="checkbox" 
+                                checked={formData.sameAsPhone}
+                                onChange={(e) => setFormData({...formData, sameAsPhone: e.target.checked})}
+                                className="w-4 h-4 rounded text-primary" 
+                              />
+                              <span className="text-[10px] font-bold text-slate-400 group-hover:text-primary transition-colors">Same as phone</span>
+                            </label>
+                          </div>
+                          <input 
+                            type="tel" 
+                            disabled={formData.sameAsPhone}
+                            placeholder="+92 300 0000000" 
+                            value={formData.sameAsPhone ? formData.phone : formData.whatsapp}
+                            onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
+                            className={`w-full px-6 py-4 rounded-2xl border-none focus:ring-2 focus:ring-primary font-bold ${formData.sameAsPhone ? 'bg-slate-100 text-slate-400' : 'bg-slate-50 text-slate-900'}`} 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Email Address</label>
+                        <input 
+                          type="email" 
+                          placeholder="your.name@example.com" 
+                          value={formData.email}
+                          onChange={(e) => setFormData({...formData, email: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2 relative">
+                          <label className="text-sm font-bold text-slate-700">Password</label>
+                          <div className="relative">
+                            <input 
+                              type={showPassword ? "text" : "password"} 
+                              value={formData.password}
+                              onChange={(e) => setFormData({...formData, password: e.target.value})}
+                              className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                            >
+                              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Confirm Password</label>
+                          <input 
+                            type="password" 
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 3 && (
+                    <div className="space-y-8">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">City</label>
+                        <select 
+                          value={formData.city}
+                          onChange={(e) => setFormData({...formData, city: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold appearance-none"
+                        >
+                          {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Area / Neighborhood</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. Gulshan-e-Iqbal, Block 13" 
+                          value={formData.area}
+                          onChange={(e) => setFormData({...formData, area: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                        />
+                      </div>
+                      <div className="p-8 bg-blue-50/50 rounded-[40px] border border-blue-100 flex items-center gap-6">
+                        <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center text-primary shadow-sm ring-8 ring-blue-50">
+                          <MapPin size={32} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-slate-900">Locating Doctors</h4>
+                          <p className="text-sm text-slate-500 font-medium">We'll prioritize showing doctors near {formData.area || 'your area'} in {formData.city}.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 4 && (
+                    <div className="space-y-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Blood Group</label>
+                          <select 
+                            value={formData.bloodGroup}
+                            onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}
+                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold appearance-none"
+                          >
+                            {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'].map(g => (
+                              <option key={g} value={g}>{g}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Any Allergies (Optional)</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Penicillin, Peanuts" 
+                            value={formData.allergies}
+                            onChange={(e) => setFormData({...formData, allergies: e.target.value})}
+                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <label className="text-sm font-bold text-slate-700">Chronic Conditions</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {chronicList.map(item => {
+                            const isSelected = formData.chronicConditions.includes(item);
+                            return (
+                              <div 
+                                key={item}
+                                onClick={() => setFormData(prev => ({
+                                  ...prev,
+                                  chronicConditions: isSelected 
+                                    ? prev.chronicConditions.filter(c => c !== item)
+                                    : [...prev.chronicConditions, item]
+                                }))}
+                                className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                                  isSelected ? 'bg-primary/5 border-primary' : 'bg-slate-50 border-transparent hover:border-slate-200'
+                                }`}
+                              >
+                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-primary' : 'bg-white border-2 border-slate-200'}`}>
+                                  {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
+                                </div>
+                                <span className={`text-sm font-bold ${isSelected ? 'text-slate-900' : 'text-slate-500'}`}>{item}</span>
+                              </div>
+                            );
+                          })}
+                          <div 
+                            onClick={() => setFormData({...formData, chronicConditions: []})}
+                            className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                              formData.chronicConditions.length === 0 ? 'bg-success-green/5 border-success-green' : 'bg-slate-50 border-transparent hover:border-slate-200'
+                            }`}
+                          >
+                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${formData.chronicConditions.length === 0 ? 'bg-success-green' : 'bg-white border-2 border-slate-200'}`}>
+                              {formData.chronicConditions.length === 0 && <Check size={14} className="text-white" strokeWidth={4} />}
+                            </div>
+                            <span className={`text-sm font-bold ${formData.chronicConditions.length === 0 ? 'text-slate-900' : 'text-slate-500'}`}>None</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 5 && (
+                    <div className="space-y-8">
+                      <div className="space-y-4">
+                        <label className="text-sm font-bold text-slate-700">Preferred Language</label>
+                        <div className="flex gap-4">
+                          {['Urdu', 'English'].map(l => (
+                            <button
+                              key={l}
+                              type="button"
+                              onClick={() => setFormData({...formData, language: l})}
+                              className={`flex-1 py-5 rounded-3xl font-bold text-lg transition-all border-2 ${
+                                formData.language === l ? 'bg-primary/5 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-slate-50 border-transparent text-slate-400'
+                              }`}
+                            >
+                              {l === 'Urdu' ? 'اردو' : 'English'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 pt-8 border-t border-slate-100">
+                        <label className="text-sm font-bold text-slate-700">Communication Settings</label>
+                        <div className="space-y-4">
+                          <div className={`flex items-center justify-between p-6 rounded-3xl border-2 transition-all ${formData.whatsappNotifications ? 'bg-[#00C9B1]/5 border-[#00C9B1]' : 'bg-slate-50 border-transparent'}`}>
+                            <div className="flex items-center gap-4">
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${formData.whatsappNotifications ? 'bg-[#00C9B1] text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                <MessageCircle size={24} />
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-900">WhatsApp Alerts</p>
+                                <p className="text-xs text-slate-500 font-medium">Receive tokens & reminders</p>
+                              </div>
+                            </div>
+                            <div 
+                              onClick={() => setFormData({...formData, whatsappNotifications: !formData.whatsappNotifications})}
+                              className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${formData.whatsappNotifications ? 'bg-[#00C9B1]' : 'bg-slate-200'}`}
+                            >
+                              <motion.div animate={{ x: formData.whatsappNotifications ? 24 : 0 }} className="w-6 h-6 bg-white rounded-full shadow-sm" />
+                            </div>
+                          </div>
+
+                          <div className={`flex items-center justify-between p-6 rounded-3xl border-2 transition-all ${formData.emailNotifications ? 'bg-primary/5 border-primary' : 'bg-slate-50 border-transparent'}`}>
+                            <div className="flex items-center gap-4">
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${formData.emailNotifications ? 'bg-primary text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                <Mail size={24} />
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-900">Email Notifications</p>
+                                <p className="text-xs text-slate-500 font-medium">Security & medical reports</p>
+                              </div>
+                            </div>
+                            <div 
+                              onClick={() => setFormData({...formData, emailNotifications: !formData.emailNotifications})}
+                              className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${formData.emailNotifications ? 'bg-primary' : 'bg-slate-200'}`}
+                            >
+                              <motion.div animate={{ x: formData.emailNotifications ? 24 : 0 }} className="w-6 h-6 bg-white rounded-full shadow-sm" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-8">
+                        <button 
+                          type="button"
+                          onClick={() => setIsSubmitted(true)}
+                          className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                        >
+                          Create My Account <ArrowRight size={24} />
+                        </button>
+                        <p className="text-center mt-6 text-slate-500 font-medium">
+                          Already have an account? <span className="text-primary font-bold cursor-pointer hover:underline" onClick={onComplete}>Login here</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-20">
+                  <div className="w-24 h-24 bg-success-green/10 text-success-green rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
+                    <CheckCircle2 size={56} />
+                  </div>
+                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6">Account Created!</h3>
+                  <div className="max-w-md mx-auto space-y-6">
+                    <p className="text-slate-500 text-lg leading-relaxed">
+                      Welcome to Xdoc, {formData.fullName.split(' ')[0]}. Find your doctor now and book appointments seamlessly.
+                    </p>
+                    <button 
+                      type="button"
+                      onClick={onComplete}
+                      className="w-full py-5 bg-primary text-white rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+                    >
+                      Find Your Doctor <ArrowRight size={20} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {!isSubmitted && (
+          <div className="flex items-center justify-between mt-12">
+            <button 
+              onClick={prevStep}
+              disabled={step === 1}
+              className={`px-12 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all ${
+                step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              <ArrowLeft size={20} /> Back
+            </button>
+            {step < totalSteps && (
+              <button 
+                onClick={nextStep}
+                className="px-16 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              >
+                Continue
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const [step, setStep] = useState(1);
@@ -2236,7 +2700,7 @@ const GlobalStatsScreen = () => {
 
 export default function App() {
   const { currentUser, userData, logout } = useAuth();
-  const [viewState, setViewState] = useState<'hero' | 'auth_choice' | 'hospital_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
+  const [viewState, setViewState] = useState<'hero' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -2290,7 +2754,7 @@ export default function App() {
       case 'auth_choice':
         return (
           <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-8">
-            <SignUpChoice onSelect={(type) => type === 'Hospital' ? setViewState('hospital_reg') : setViewState('patient_home')} />
+            <SignUpChoice onSelect={(type) => type === 'Hospital' ? setViewState('hospital_reg') : setViewState('patient_reg')} />
             <div className="w-full max-w-md p-8 bg-white rounded-3xl shadow-xl flex flex-col items-center gap-6">
               <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Recommended</p>
               <button 
@@ -2305,6 +2769,8 @@ export default function App() {
         );
       case 'hospital_reg':
         return <HospitalRegistration onComplete={() => setViewState('admin_dashboard')} />;
+      case 'patient_reg':
+        return <PatientRegistration onComplete={() => setViewState('patient_home')} />;
       case 'admin_dashboard':
         return (
           <div className="flex bg-bg-dark text-white min-h-screen">
