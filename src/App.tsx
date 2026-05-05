@@ -45,7 +45,6 @@ import {
   Lock,
   Mail,
   Camera,
-  Map,
   Layers,
   ArrowLeft,
   UserPlus,
@@ -68,11 +67,91 @@ import {
 import { auth, db } from './firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
+import { APIProvider, Map, AdvancedMarker, Pin, useMap, useMapsLibrary, MapControl, ControlPosition } from '@vis.gl/react-google-maps';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
-// --- Shared Components ---
+const MAPS_API_KEY =
+  import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
+  process.env.VITE_GOOGLE_MAPS_API_KEY ||
+  '';
+
+// --- Location Picker Component ---
+
+const LocationPicker = ({ onLocationSelect, initialLocation }: { onLocationSelect: (lat: number, lng: number, address: string) => void, initialLocation?: { lat: number, lng: number } }) => {
+  const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral | null>(initialLocation || null);
+  const [address, setAddress] = useState('');
+  const map = useMap();
+  
+  useEffect(() => {
+    if (markerPosition && map) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ location: markerPosition }, (results, status) => {
+        if (status === 'OK' && results?.[0]) {
+          setAddress(results[0].formatted_address);
+          onLocationSelect(markerPosition.lat, markerPosition.lng, results[0].formatted_address);
+        }
+      });
+    }
+  }, [markerPosition, map]);
+
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      setMarkerPosition({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+    }
+  };
+
+  const useCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setMarkerPosition(pos);
+          map?.panTo(pos);
+        },
+        (error) => {
+          console.error("Geolocation error", error);
+        }
+      );
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="h-[300px] w-full rounded-2xl overflow-hidden border-2 border-slate-100 relative shadow-inner">
+        <Map
+          defaultCenter={initialLocation || { lat: 30.3753, lng: 69.3451 }}
+          defaultZoom={initialLocation ? 15 : 5}
+          onClick={handleMapClick}
+          mapId="HOSPITAL_MAP"
+          style={{ width: '100%', height: '100%' }}
+        >
+          {markerPosition && <AdvancedMarker position={markerPosition} />}
+        </Map>
+        <button 
+          type="button"
+          onClick={useCurrentLocation}
+          className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-xl shadow-lg border border-slate-100 text-[10px] font-bold text-primary flex items-center gap-2 z-10 hover:bg-slate-50 active:scale-95 transition-all"
+        >
+          <MapPin size={14} /> Use My Current Location
+        </button>
+      </div>
+      {address && (
+        <motion.div 
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-primary/5 rounded-2xl border border-primary/10"
+        >
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Selected Address</p>
+          <p className="text-xs font-bold text-slate-800 leading-tight">{address}</p>
+        </motion.div>
+      )}
+    </div>
+  );
+};
 
 const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, onLogin, showMenu = false, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, onLogin?: () => void, isLanding?: boolean }) => {
   const { userData, logout } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -97,25 +176,33 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
             </div>
 
             <nav className="hidden lg:flex items-center gap-12">
-              {['Home', 'Find Hospital', 'About'].map((link) => (
-                <a key={link} href="#" className="font-sans font-bold text-slate-600 hover:text-primary transition-colors">{link}</a>
-              ))}
+              <a href="#" className="font-sans font-bold text-slate-600 hover:text-primary transition-colors">{t.nav.home}</a>
+              <a href="#" className="font-sans font-bold text-slate-600 hover:text-primary transition-colors">{t.nav.findHospital}</a>
+              <a href="#" className="font-sans font-bold text-slate-600 hover:text-primary transition-colors">{t.nav.about}</a>
             </nav>
             
             <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setLanguage(language === 'EN' ? 'UR' : 'EN')}
+                className="px-3 py-1.5 rounded-lg font-bold border-2 border-slate-100 hover:border-primary transition-all text-sm min-w-[50px] bg-white flex items-center justify-center gap-1"
+              >
+                {language === 'EN' ? 'اردو' : 'EN'}
+                <Volume2 size={14} className="opacity-50" />
+              </button>
+
               {!userData ? (
                 <>
                   <button 
                     onClick={onLogin}
-                    className="hidden sm:block px-6 py-2.5 rounded-xl font-sans font-bold border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all"
+                    className="hidden sm:block px-6 py-2.5 rounded-xl font-sans font-bold border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all text-sm"
                   >
-                    Login
+                    {t.nav.login}
                   </button>
                   <button 
                     onClick={onSignUp}
-                    className="hidden sm:block px-6 py-3 rounded-xl bg-health-teal text-white font-sans font-bold shadow-lg shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all"
+                    className="hidden sm:block px-6 py-3 rounded-xl bg-health-teal text-white font-sans font-bold shadow-lg shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all text-sm"
                   >
-                    Sign Up
+                    {t.nav.signUp}
                   </button>
                   <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -165,16 +252,9 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
               </div>
 
               <nav className="flex flex-col gap-8 mb-auto">
-                {['Home', 'Find Hospital', 'About'].map((link) => (
-                  <a 
-                    key={link} 
-                    href="#" 
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="text-3xl font-bold text-slate-900 border-b border-slate-100 pb-4"
-                  >
-                    {link}
-                  </a>
-                ))}
+                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold text-slate-900 border-b border-slate-100 pb-4">{t.nav.home}</a>
+                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold text-slate-900 border-b border-slate-100 pb-4">{t.nav.findHospital}</a>
+                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold text-slate-900 border-b border-slate-100 pb-4">{t.nav.about}</a>
               </nav>
 
               <div className="flex flex-col gap-4">
@@ -182,13 +262,13 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                   onClick={() => { setIsMobileMenuOpen(false); onLogin?.(); }}
                   className="w-full py-5 rounded-2xl font-sans font-bold border-2 border-primary/20 text-primary"
                 >
-                  Login
+                  {t.nav.login}
                 </button>
                 <button 
                   onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
                   className="w-full py-5 rounded-2xl bg-health-teal text-white font-sans font-bold shadow-xl shadow-health-teal/20"
                 >
-                  Sign Up Free
+                  {t.nav.signUpFree}
                 </button>
               </div>
             </motion.div>
@@ -537,6 +617,7 @@ const Footer = () => {
 
 
 const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { onLoginSuccess: (role: string) => void, onSignUpClick: (type: 'Hospital' | 'Patient') => void, onForgotPasswordClick: () => void }) => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -549,11 +630,11 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
     setError({});
     
     if (!email) {
-      setError(prev => ({ ...prev, email: 'Please fill all fields' }));
+      setError(prev => ({ ...prev, email: t.signup.errors.required }));
       return;
     }
     if (!password) {
-      setError(prev => ({ ...prev, password: 'Please fill all fields' }));
+      setError(prev => ({ ...prev, password: t.signup.errors.required }));
       return;
     }
 
@@ -565,21 +646,32 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        if (userData.status === 'Under Review' && userData.role === 'Admin') {
-           setError({ general: 'Your account is under review. Please wait for approval.' });
+        if (userData.status === 'Under Review' && (userData.role === 'Admin' || userData.role === 'hospital_admin')) {
+           setError({ general: t.auth.underReview });
            setLoading(false);
            return;
         }
-        onLoginSuccess(userData.role);
+        
+        // Normalize roles for redirection
+        let role = userData.role;
+        if (role === 'Admin' || role === 'hospital_admin') role = 'hospital_admin';
+        else if (role === 'SuperAdmin' || role === 'super_admin') role = 'super_admin';
+        else role = 'patient';
+
+        onLoginSuccess(role);
       } else {
         setError({ general: 'User profile not found.' });
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email') {
-        setError({ email: 'Email not found' });
+      if (err.code === 'auth/user-not-found') {
+        setError({ email: t.auth.emailNotFound });
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError({ password: 'Incorrect password, try again' });
+        setError({ password: t.auth.incorrectPassword });
+      } else if (err.code === 'auth/invalid-email') {
+        setError({ email: t.auth.invalidEmail });
+      } else if (err.code === 'auth/too-many-requests') {
+        setError({ general: t.auth.tooManyRequests });
       } else {
         setError({ general: 'Login failed. Please check your credentials.' });
       }
@@ -596,8 +688,14 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
-        onLoginSuccess(userDoc.data().role);
+        const userData = userDoc.data();
+        let role = userData.role;
+        if (role === 'Admin' || role === 'hospital_admin') role = 'hospital_admin';
+        else if (role === 'SuperAdmin' || role === 'super_admin') role = 'super_admin';
+        else role = 'patient';
+        onLoginSuccess(role);
       } else {
+        // New Google user, proceed to signup choice or default to patient
         onSignUpClick('Patient');
       }
     } catch (error) {
@@ -608,62 +706,62 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
        <motion.div 
-         initial={{ opacity: 0, y: 20 }}
+         initial={{ opacity: 0, y: 30 }}
          animate={{ opacity: 1, y: 0 }}
-         className="w-full max-w-md bg-white rounded-[40px] shadow-2xl shadow-slate-200/60 p-8 md:p-12 relative overflow-hidden"
+         className="w-full max-w-[480px] bg-white rounded-[48px] shadow-2xl shadow-slate-200/60 p-8 md:p-12 relative overflow-hidden border border-slate-100"
        >
          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1]" />
          
-         <div className="flex flex-col items-center mb-10">
-           <div className="w-16 h-16 rounded-2xl medical-cross-gradient flex items-center justify-center text-white shadow-xl shadow-primary/20 mb-4">
-             <Activity size={32} />
-           </div>
-           <h2 className="text-3xl font-display font-bold text-slate-900">Welcome Back</h2>
-           <p className="text-slate-500 font-medium">Login to your Xdoc account</p>
+         <div className="flex flex-col items-center mb-10 text-center">
+            <div className="w-20 h-20 rounded-[28px] medical-cross-gradient flex items-center justify-center text-white shadow-2xl shadow-primary/30 mb-6 group cursor-pointer">
+              <Activity size={40} className="group-hover:scale-110 transition-transform" />
+            </div>
+           <h2 className="text-4xl font-display font-bold text-slate-900 tracking-tight">{t.auth.loginTitle}</h2>
+           <p className="text-slate-500 font-medium mt-3">{t.auth.loginSubTitle}</p>
          </div>
 
          <form onSubmit={handleLogin} className="space-y-6">
            <div className="space-y-2">
-             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-2">Email Address</label>
-             <div className="relative">
+             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] pl-2">{t.signup.labels.email}</label>
+             <div className="relative group">
                <input 
                  type="email" 
-                 placeholder="Email address" 
+                 placeholder="yourname@example.com" 
                  value={email}
                  onChange={(e) => setEmail(e.target.value)}
-                 className={`w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium transition-all ${error.email ? 'ring-2 ring-[#FF3B5C]' : ''}`}
+                 className={`w-full pl-14 pr-6 py-4.5 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium transition-all group-hover:bg-slate-100/50 ${error.email ? 'ring-2 ring-[#FF3B5C] bg-red-50/30' : ''}`}
                />
-               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+               <Mail className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${error.email ? 'text-[#FF3B5C]' : 'text-slate-400 group-focus-within:text-primary'}`} size={22} />
              </div>
              {error.email && <p className="text-[#FF3B5C] text-xs font-bold pl-2 mt-1">{error.email}</p>}
            </div>
 
            <div className="space-y-2">
              <div className="flex justify-between items-center px-2">
-               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Password</label>
+               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{t.signup.labels.password}</label>
                <button 
                  type="button" 
                  onClick={onForgotPasswordClick}
-                 className="text-xs font-bold text-primary hover:underline"
+                 className="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest"
                >
-                 Forgot Password?
+                 {t.auth.forgotPassword}
                </button>
              </div>
-             <div className="relative">
+             <div className="relative group">
                <input 
                  type={showPassword ? "text" : "password"} 
-                 placeholder="Password" 
+                 placeholder="••••••••" 
                  value={password}
                  onChange={(e) => setPassword(e.target.value)}
-                 className={`w-full pl-12 pr-12 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium transition-all ${error.password ? 'ring-2 ring-[#FF3B5C]' : ''}`}
+                 className={`w-full pl-14 pr-14 py-4.5 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium transition-all group-hover:bg-slate-100/50 ${error.password ? 'ring-2 ring-[#FF3B5C] bg-red-50/30' : ''}`}
                />
-               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+               <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${error.password ? 'text-[#FF3B5C]' : 'text-slate-400 group-focus-within:text-primary'}`} size={22} />
                <button 
                  type="button"
                  onClick={() => setShowPassword(!showPassword)}
-                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                 className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
                >
-                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                 {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
                </button>
              </div>
              {error.password && <p className="text-[#FF3B5C] text-xs font-bold pl-2 mt-1">{error.password}</p>}
@@ -675,59 +773,63 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
                id="remember"
                checked={rememberMe}
                onChange={(e) => setRememberMe(e.target.checked)}
-               className="w-5 h-5 rounded-lg text-primary focus:ring-primary cursor-pointer border-slate-200" 
+               className="w-5 h-5 rounded-lg text-primary focus:ring-primary cursor-pointer border-slate-300" 
              />
-             <label htmlFor="remember" className="text-sm font-bold text-slate-600 cursor-pointer">Remember Me</label>
+             <label htmlFor="remember" className="text-sm font-bold text-slate-600 cursor-pointer select-none">{t.auth.rememberMe}</label>
            </div>
 
            {error.general && (
-             <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-[#FF3B5C]">
+             <motion.div 
+               initial={{ opacity: 0, y: -10 }}
+               animate={{ opacity: 1, y: 0 }}
+               className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-[#FF3B5C]"
+             >
                <AlertTriangle size={18} />
                <p className="text-xs font-bold">{error.general}</p>
-             </div>
+             </motion.div>
            )}
 
            <button 
              type="submit"
              disabled={loading}
-             className="w-full py-5 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1] text-white font-display font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+             className="w-full py-5 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1] text-white font-display font-bold text-xl rounded-[24px] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:scale-100"
            >
              {loading ? (
                <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
              ) : (
-               <>Login to Xdoc <ArrowRight size={20} /></>
+               <>{t.auth.loginBtn} <ArrowRight size={22} /></>
              )}
            </button>
          </form>
 
-         <div className="my-8 flex items-center gap-4">
+         <div className="my-10 flex items-center gap-4">
            <div className="flex-1 h-[1px] bg-slate-100" />
-           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">OR</span>
+           <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]">OR</span>
            <div className="flex-1 h-[1px] bg-slate-100" />
          </div>
 
          <button 
            onClick={handleGoogleLogin}
-           className="w-full py-4 px-8 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-4 hover:border-primary transition-all font-sans font-bold text-slate-700 bg-white"
+           className="w-full py-4.5 px-8 border-2 border-slate-100 rounded-[24px] flex items-center justify-center gap-4 hover:border-primary/30 hover:bg-slate-50 transition-all font-sans font-bold text-slate-700 bg-white group"
          >
-           <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6" />
-           Continue with Google
+           <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6 group-hover:scale-110 transition-transform" />
+           {t.auth.googleBtn}
          </button>
 
-         <div className="mt-10 text-center space-y-4">
-           <p className="text-sm font-bold text-slate-500">Don't have an account?</p>
-           <div className="flex flex-col sm:flex-row gap-3 justify-center">
+         <div className="mt-12 text-center space-y-6">
+           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t.auth.noAccount}</p>
+           <div className="flex flex-col gap-4 max-w-[320px] mx-auto">
              <button 
                onClick={() => onSignUpClick('Hospital')}
-               className="text-xs font-bold text-primary hover:bg-primary/5 px-4 py-2 rounded-xl border border-primary/20 transition-all text-nowrap"
+               className="w-full py-4 rounded-2xl bg-primary/5 text-primary font-bold text-sm hover:bg-primary hover:text-white transition-all shadow-sm border border-primary/10"
              >
-               Sign Up as Hospital
+               {t.auth.signUpHospital}
              </button>
              <button 
                onClick={() => onSignUpClick('Patient')}
-               className="text-xs font-bold text-health-teal hover:bg-health-teal/5 px-4 py-2 rounded-xl border border-health-teal/20 transition-all text-nowrap"
+               className="text-full py-4 rounded-2xl bg-health-teal/5 text-health-teal font-bold text-sm hover:bg-health-teal hover:text-white transition-all shadow-sm border border-health-teal/10"
              >
-               Sign Up as Patient
+               {t.auth.signUpPatient}
              </button>
            </div>
          </div>
@@ -737,6 +839,7 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
 };
 
 const ForgotPasswordModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -745,7 +848,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      setError('Please enter your email');
+      setError(t.signup.errors.required);
       return;
     }
     setLoading(true);
@@ -754,7 +857,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
       await sendPasswordResetEmail(auth, email);
       setSuccess(true);
     } catch (err: any) {
-      setError('Failed to send reset link. Please check your email.');
+      setError(t.auth.emailNotFound || 'Failed to send reset link. Please check your email.');
     } finally {
       setLoading(false);
     }
@@ -763,53 +866,58 @@ const ForgotPasswordModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-sm bg-white rounded-[40px] shadow-2xl p-8 relative"
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-md bg-white rounded-[40px] shadow-2xl p-8 md:p-12 relative border border-slate-100"
       >
         <button 
           onClick={onClose}
-          className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 transition-colors"
+          className="absolute top-8 right-8 p-3 text-slate-400 hover:text-slate-900 transition-colors bg-slate-50 rounded-2xl"
         >
           <X size={20} />
         </button>
 
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary/10 text-primary rounded-3xl flex items-center justify-center mx-auto mb-4">
-            <Lock size={32} />
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 bg-primary/10 text-primary rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-inner shadow-primary/5">
+            <Lock size={36} />
           </div>
-          <h3 className="text-2xl font-display font-bold text-slate-900">Forgot Password?</h3>
-          <p className="text-sm text-slate-500 font-medium">No worries, we'll send you a reset link.</p>
+          <h3 className="text-3xl font-display font-bold text-slate-900 tracking-tight">{t.auth.forgotPassword}</h3>
+          <p className="text-slate-500 font-medium mt-3">Enter your email and we'll send you instructions to reset your password.</p>
         </div>
 
         {success ? (
-          <div className="text-center space-y-6">
-            <div className="p-6 bg-success-green/10 rounded-3xl border border-success-green/20">
-              <CheckCircle2 className="mx-auto text-success-green mb-3" size={32} />
-              <p className="text-sm font-bold text-success-green">Password reset link sent to your email</p>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-8"
+          >
+            <div className="p-8 bg-success-green/5 rounded-[32px] border-2 border-success-green/10">
+              <CheckCircle2 className="mx-auto text-success-green mb-4" size={48} />
+              <p className="text-lg font-bold text-success-green leading-tight">Password reset link sent to your email</p>
+              <p className="text-xs text-slate-500 mt-2">Please check your inbox (and spam folder).</p>
             </div>
             <button 
               onClick={onClose}
-              className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all"
+              className="w-full py-5 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all shadow-xl"
             >
               Back to Login
             </button>
-          </div>
+          </motion.div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-2">Email Address</label>
-              <div className="relative">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Email Address</label>
+              <div className="relative group">
                 <input 
                   type="email" 
                   placeholder="Enter your email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                  className="w-full pl-14 pr-6 py-4.5 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium transition-all group-hover:bg-slate-100/50 shadow-sm" 
                 />
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={22} />
               </div>
               {error && <p className="text-[#FF3B5C] text-xs font-bold pl-2 mt-1">{error}</p>}
             </div>
@@ -817,12 +925,12 @@ const ForgotPasswordModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             <button 
               type="submit"
               disabled={loading}
-              className="w-full py-5 bg-primary text-white font-display font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center"
+              className="w-full py-5 bg-primary text-white font-display font-bold text-xl rounded-[24px] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-70 disabled:scale-100"
             >
               {loading ? (
                 <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                'Send Reset Link'
+                <>Send Reset Link <ArrowRight size={22} className="ml-2" /></>
               )}
             </button>
           </form>
@@ -890,9 +998,11 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
 );
 
 const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const totalSteps = 5;
 
   const [formData, setFormData] = useState({
@@ -916,11 +1026,82 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
     emailNotifications: true
   });
 
-  const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
-  const prevStep = () => setStep(s => Math.max(s - 1, 1));
-
   const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad'];
   const chronicList = ['Diabetes', 'High Blood Pressure', 'Heart Disease', 'Asthma', 'Kidney Disease'];
+
+  const validateStep = () => {
+    const newErrors: Record<string, string> = {};
+    if (step === 1) {
+      if (!formData.fullName) newErrors.fullName = t.signup.errors.required;
+      if (!formData.dob) newErrors.dob = t.signup.errors.required;
+    } else if (step === 2) {
+      if (!formData.phone || formData.phone === '+92 ') newErrors.phone = t.signup.errors.required;
+      if (!formData.email) newErrors.email = t.signup.errors.required;
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.signup.errors.invalidEmail;
+      if (!formData.password) newErrors.password = t.signup.errors.required;
+      else if (formData.password.length < 8) newErrors.password = t.signup.errors.passwordTooShort;
+      if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
+    } else if (step === 3) {
+      if (!formData.area) newErrors.area = t.signup.errors.required;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const nextStep = () => {
+    if (validateStep()) setStep(s => Math.min(s + 1, totalSteps));
+  };
+  const prevStep = () => setStep(s => Math.max(s - 1, 1));
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setErrors({});
+    try {
+      // 1. Create Auth Account
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+
+      // 2. Prepare Data
+      const patientData = {
+        uid: user.uid,
+        name: formData.fullName,
+        email: formData.email,
+        dob: formData.dob,
+        gender: formData.gender,
+        cnic: formData.cnic,
+        phone: formData.phone,
+        whatsapp: formData.sameAsPhone ? formData.phone : formData.whatsapp,
+        city: formData.city,
+        area: formData.area,
+        bloodGroup: formData.bloodGroup,
+        allergies: formData.allergies,
+        chronicConditions: formData.chronicConditions,
+        language: formData.language,
+        whatsappNotifications: formData.whatsappNotifications,
+        emailNotifications: formData.emailNotifications,
+        role: 'patient',
+        status: 'Active',
+        createdAt: new Date().toISOString()
+      };
+
+      // 3. Save to Firestore
+      await setDoc(doc(db, 'users', user.uid), patientData);
+      
+      setIsSubmitted(true);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/email-already-in-use') {
+        setErrors({ email: 'Email already registered' });
+      } else {
+        setErrors({ general: 'Failed to create account. Please try again.' });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const steps = [
     { title: "Basic Info", icon: User },
@@ -931,12 +1112,12 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-24 pb-12 px-4">
+    <div className="min-h-screen bg-slate-50 pt-24 pb-32 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
-            <h2 className="text-4xl font-bold text-slate-900 mb-3">Patient Registration</h2>
-            <p className="text-slate-500 font-medium">Join Pakistan's largest digital health network</p>
+            <h2 className="text-4xl font-bold text-slate-900 mb-3">{t.signup.patientTitle}</h2>
+            <p className="text-slate-500 font-medium tracking-tight">Join Pakistan's largest digital health network</p>
           </div>
           <div className="flex items-center gap-4 bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
             <span className="text-sm font-bold text-slate-400">Step {step} of {totalSteps}</span>
@@ -947,23 +1128,6 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
               />
             </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-5 gap-3 mb-12">
-          {steps.map((s, i) => (
-            <div key={i} className="flex flex-col items-center gap-3">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-                step > i + 1 ? 'bg-success-green text-white' : 
-                step === i + 1 ? 'bg-primary text-white shadow-xl shadow-primary/20' : 
-                'bg-white text-slate-300'
-              }`}>
-                {step > i + 1 ? <Check size={20} strokeWidth={3} /> : <s.icon size={20} />}
-              </div>
-              <span className={`text-[10px] font-bold uppercase tracking-widest hidden md:block ${
-                step === i + 1 ? 'text-primary' : 'text-slate-400'
-              }`}>{s.title}</span>
-            </div>
-          ))}
         </div>
 
         <div className="bg-white rounded-[48px] p-8 md:p-12 shadow-xl shadow-slate-200/50 border border-slate-100 min-h-[500px] flex flex-col">
@@ -980,9 +1144,9 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   {step === 1 && (
                     <div className="space-y-8">
                       <div className="flex flex-col items-center gap-4 mb-8">
-                        <div className="w-32 h-32 rounded-full bg-slate-50 border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
-                          <Upload size={32} />
-                          <span className="text-[10px] font-bold uppercase mt-2">Photo</span>
+                        <div className="w-32 h-32 rounded-full bg-slate-50 border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 relative overflow-hidden group hover:border-primary transition-colors cursor-pointer text-center">
+                          <Camera size={32} />
+                          <span className="text-[10px] font-bold uppercase mt-2">Upload Photo</span>
                           <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
                         </div>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Optional Profile Photo</p>
@@ -990,29 +1154,31 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">Full Name</label>
+                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.fullName} *</label>
                           <input 
                             type="text" 
-                            placeholder="e.g. Ahmed Khan" 
+                            placeholder="e.g. Ahmed Ali" 
                             value={formData.fullName}
                             onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                            className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.fullName ? 'ring-2 ring-red-500' : ''}`} 
                           />
+                          {errors.fullName && <p className="text-red-500 text-xs font-bold pl-2">{errors.fullName}</p>}
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">Date of Birth</label>
+                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.dob} *</label>
                           <input 
                             type="date" 
                             value={formData.dob}
                             onChange={(e) => setFormData({...formData, dob: e.target.value})}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                            className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.dob ? 'ring-2 ring-red-500' : ''}`} 
                           />
+                          {errors.dob && <p className="text-red-500 text-xs font-bold pl-2">{errors.dob}</p>}
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">Gender</label>
+                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.gender} *</label>
                           <div className="flex gap-4">
                             {['Male', 'Female', 'Other'].map(g => (
                               <button
@@ -1029,7 +1195,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">CNIC (Optional)</label>
+                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.cnic}</label>
                           <input 
                             type="text" 
                             placeholder="42101-XXXXXXX-X" 
@@ -1046,18 +1212,19 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                     <div className="space-y-8">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">Phone Number</label>
+                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.phone} *</label>
                           <input 
                             type="tel" 
-                            placeholder="+92 300 0000000" 
+                            placeholder="+92 3XX XXXXXXX" 
                             value={formData.phone}
                             onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
+                            className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold ${errors.phone ? 'ring-2 ring-red-500' : ''}`} 
                           />
+                          {errors.phone && <p className="text-red-500 text-xs font-bold pl-2">{errors.phone}</p>}
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <label className="text-sm font-bold text-slate-700">WhatsApp Number</label>
+                            <label className="text-sm font-bold text-slate-700">{t.signup.labels.whatsapp}</label>
                             <label className="flex items-center gap-2 cursor-pointer group">
                               <input 
                                 type="checkbox" 
@@ -1071,7 +1238,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                           <input 
                             type="tel" 
                             disabled={formData.sameAsPhone}
-                            placeholder="+92 300 0000000" 
+                            placeholder="+92 3XX XXXXXXX" 
                             value={formData.sameAsPhone ? formData.phone : formData.whatsapp}
                             onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
                             className={`w-full px-6 py-4 rounded-2xl border-none focus:ring-2 focus:ring-primary font-bold ${formData.sameAsPhone ? 'bg-slate-100 text-slate-400' : 'bg-slate-50 text-slate-900'}`} 
@@ -1080,25 +1247,26 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Email Address</label>
+                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.email} *</label>
                         <input 
                           type="email" 
-                          placeholder="your.name@example.com" 
+                          placeholder="yourname@example.com" 
                           value={formData.email}
                           onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                          className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.email ? 'ring-2 ring-red-500' : ''}`} 
                         />
+                        {errors.email && <p className="text-red-500 text-xs font-bold pl-2">{errors.email}</p>}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2 relative">
-                          <label className="text-sm font-bold text-slate-700">Password</label>
+                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.password} *</label>
                           <div className="relative">
                             <input 
                               type={showPassword ? "text" : "password"} 
                               value={formData.password}
                               onChange={(e) => setFormData({...formData, password: e.target.value})}
-                              className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                              className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.password ? 'ring-2 ring-red-500' : ''}`} 
                             />
                             <button 
                               type="button"
@@ -1108,15 +1276,17 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                             </button>
                           </div>
+                          {errors.password && <p className="text-red-500 text-xs font-bold pl-2">{errors.password}</p>}
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">Confirm Password</label>
+                          <label className="text-sm font-bold text-slate-700">Confirm Password *</label>
                           <input 
                             type="password" 
                             value={formData.confirmPassword}
                             onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                            className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.confirmPassword ? 'ring-2 ring-red-500' : ''}`} 
                           />
+                          {errors.confirmPassword && <p className="text-red-500 text-xs font-bold pl-2">{errors.confirmPassword}</p>}
                         </div>
                       </div>
                     </div>
@@ -1125,24 +1295,25 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   {step === 3 && (
                     <div className="space-y-8">
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">City</label>
+                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.city} *</label>
                         <select 
                           value={formData.city}
                           onChange={(e) => setFormData({...formData, city: e.target.value})}
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold appearance-none"
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold appearance-none shadow-sm"
                         >
                           {cities.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Area / Neighborhood</label>
+                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.area} *</label>
                         <input 
                           type="text" 
                           placeholder="e.g. Gulshan-e-Iqbal, Block 13" 
                           value={formData.area}
                           onChange={(e) => setFormData({...formData, area: e.target.value})}
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                          className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.area ? 'ring-2 ring-red-500' : ''}`} 
                         />
+                        {errors.area && <p className="text-red-500 text-xs font-bold pl-2">{errors.area}</p>}
                       </div>
                       <div className="p-8 bg-blue-50/50 rounded-[40px] border border-blue-100 flex items-center gap-6">
                         <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center text-primary shadow-sm ring-8 ring-blue-50">
@@ -1160,7 +1331,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                     <div className="space-y-8">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">Blood Group</label>
+                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.bloodGroup}</label>
                           <select 
                             value={formData.bloodGroup}
                             onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}
@@ -1172,7 +1343,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">Any Allergies (Optional)</label>
+                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.allergies}</label>
                           <input 
                             type="text" 
                             placeholder="e.g. Penicillin, Peanuts" 
@@ -1184,7 +1355,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                       </div>
 
                       <div className="space-y-4">
-                        <label className="text-sm font-bold text-slate-700">Chronic Conditions</label>
+                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.chronicConditions}</label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {chronicList.map(item => {
                             const isSelected = formData.chronicConditions.includes(item);
@@ -1198,7 +1369,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                                     : [...prev.chronicConditions, item]
                                 }))}
                                 className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                                  isSelected ? 'bg-primary/5 border-primary' : 'bg-slate-50 border-transparent hover:border-slate-200'
+                                  isSelected ? 'bg-primary/5 border-primary shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
                                 }`}
                               >
                                 <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-primary' : 'bg-white border-2 border-slate-200'}`}>
@@ -1211,7 +1382,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                           <div 
                             onClick={() => setFormData({...formData, chronicConditions: []})}
                             className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                              formData.chronicConditions.length === 0 ? 'bg-success-green/5 border-success-green' : 'bg-slate-50 border-transparent hover:border-slate-200'
+                              formData.chronicConditions.length === 0 ? 'bg-success-green/5 border-success-green shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
                             }`}
                           >
                             <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${formData.chronicConditions.length === 0 ? 'bg-success-green' : 'bg-white border-2 border-slate-200'}`}>
@@ -1227,7 +1398,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   {step === 5 && (
                     <div className="space-y-8">
                       <div className="space-y-4">
-                        <label className="text-sm font-bold text-slate-700">Preferred Language</label>
+                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.languagePref}</label>
                         <div className="flex gap-4">
                           {['Urdu', 'English'].map(l => (
                             <button
@@ -1235,7 +1406,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                               type="button"
                               onClick={() => setFormData({...formData, language: l})}
                               className={`flex-1 py-5 rounded-3xl font-bold text-lg transition-all border-2 ${
-                                formData.language === l ? 'bg-primary/5 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-slate-50 border-transparent text-slate-400'
+                                formData.language === l ? 'bg-primary/5 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-slate-50 border-transparent text-slate-400 hover:border-slate-200'
                               }`}
                             >
                               {l === 'Urdu' ? 'اردو' : 'English'}
@@ -1245,39 +1416,39 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                       </div>
 
                       <div className="space-y-4 pt-8 border-t border-slate-100">
-                        <label className="text-sm font-bold text-slate-700">Communication Settings</label>
+                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.notifications}</label>
                         <div className="space-y-4">
-                          <div className={`flex items-center justify-between p-6 rounded-3xl border-2 transition-all ${formData.whatsappNotifications ? 'bg-[#00C9B1]/5 border-[#00C9B1]' : 'bg-slate-50 border-transparent'}`}>
+                          <div className={`flex items-center justify-between p-6 rounded-[32px] border-2 transition-all ${formData.whatsappNotifications ? 'bg-[#00C9B1]/5 border-[#00C9B1] shadow-md shadow-[#00C9B1]/5' : 'bg-slate-50 border-transparent'}`}>
                             <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${formData.whatsappNotifications ? 'bg-[#00C9B1] text-white' : 'bg-slate-200 text-slate-400'}`}>
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${formData.whatsappNotifications ? 'bg-[#00C9B1] text-white rotate-3' : 'bg-slate-200 text-slate-400'}`}>
                                 <MessageCircle size={24} />
                               </div>
                               <div>
-                                <p className="font-bold text-slate-900">WhatsApp Alerts</p>
+                                <p className="font-bold text-slate-900 tracking-tight">WhatsApp Alerts</p>
                                 <p className="text-xs text-slate-500 font-medium">Receive tokens & reminders</p>
                               </div>
                             </div>
                             <div 
                               onClick={() => setFormData({...formData, whatsappNotifications: !formData.whatsappNotifications})}
-                              className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${formData.whatsappNotifications ? 'bg-[#00C9B1]' : 'bg-slate-200'}`}
+                              className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 shadow-inner ${formData.whatsappNotifications ? 'bg-[#00C9B1]' : 'bg-slate-200'}`}
                             >
                               <motion.div animate={{ x: formData.whatsappNotifications ? 24 : 0 }} className="w-6 h-6 bg-white rounded-full shadow-sm" />
                             </div>
                           </div>
 
-                          <div className={`flex items-center justify-between p-6 rounded-3xl border-2 transition-all ${formData.emailNotifications ? 'bg-primary/5 border-primary' : 'bg-slate-50 border-transparent'}`}>
+                          <div className={`flex items-center justify-between p-6 rounded-[32px] border-2 transition-all ${formData.emailNotifications ? 'bg-primary/5 border-primary shadow-md shadow-primary/5' : 'bg-slate-50 border-transparent'}`}>
                             <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${formData.emailNotifications ? 'bg-primary text-white' : 'bg-slate-200 text-slate-400'}`}>
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${formData.emailNotifications ? 'bg-primary text-white -rotate-3' : 'bg-slate-200 text-slate-400'}`}>
                                 <Mail size={24} />
                               </div>
                               <div>
-                                <p className="font-bold text-slate-900">Email Notifications</p>
+                                <p className="font-bold text-slate-900 tracking-tight">Email Notifications</p>
                                 <p className="text-xs text-slate-500 font-medium">Security & medical reports</p>
                               </div>
                             </div>
                             <div 
                               onClick={() => setFormData({...formData, emailNotifications: !formData.emailNotifications})}
-                              className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${formData.emailNotifications ? 'bg-primary' : 'bg-slate-200'}`}
+                              className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 shadow-inner ${formData.emailNotifications ? 'bg-primary' : 'bg-slate-200'}`}
                             >
                               <motion.div animate={{ x: formData.emailNotifications ? 24 : 0 }} className="w-6 h-6 bg-white rounded-full shadow-sm" />
                             </div>
@@ -1285,14 +1456,20 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         </div>
                       </div>
 
-                      <div className="pt-8">
+                      <div className="pt-8 text-center">
                         <button 
                           type="button"
-                          onClick={() => setIsSubmitted(true)}
-                          className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                          disabled={isSubmitting}
+                          onClick={handleSubmit}
+                          className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] hover:shadow-health-teal/40 active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70 disabled:scale-100"
                         >
-                          Create My Account <ArrowRight size={24} />
+                          {isSubmitting ? (
+                            <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <>Create My Account <ArrowRight size={24} /></>
+                          )}
                         </button>
+                        {errors.general && <p className="text-red-500 text-xs font-bold mt-4">{errors.general}</p>}
                         <p className="text-center mt-6 text-slate-500 font-medium">
                           Already have an account? <span className="text-primary font-bold cursor-pointer hover:underline" onClick={onComplete}>Login here</span>
                         </p>
@@ -1301,11 +1478,11 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   )}
                 </>
               ) : (
-                <div className="text-center py-20">
+                <div className="text-center py-20 flex-1 flex flex-col justify-center">
                   <div className="w-24 h-24 bg-success-green/10 text-success-green rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
                     <CheckCircle2 size={56} />
                   </div>
-                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6">Account Created!</h3>
+                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6 tracking-tight">Account Created!</h3>
                   <div className="max-w-md mx-auto space-y-6">
                     <p className="text-slate-500 text-lg leading-relaxed">
                       Welcome to Xdoc, {formData.fullName.split(' ')[0]}. Find your doctor now and book appointments seamlessly.
@@ -1313,7 +1490,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                     <button 
                       type="button"
                       onClick={onComplete}
-                      className="w-full py-5 bg-primary text-white rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
+                      className="w-full py-5 bg-primary text-white rounded-2xl font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
                     >
                       Find Your Doctor <ArrowRight size={20} />
                     </button>
@@ -1325,12 +1502,12 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
         </div>
 
         {!isSubmitted && (
-          <div className="flex items-center justify-between mt-12">
+          <div className="flex items-center justify-between mt-12 bg-white/50 backdrop-blur-sm p-4 rounded-3xl border border-white">
             <button 
               onClick={prevStep}
               disabled={step === 1}
               className={`px-12 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all ${
-                step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-500 hover:bg-slate-100'
+                step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-600 hover:bg-white hover:shadow-sm active:scale-95'
               }`}
             >
               <ArrowLeft size={20} /> Back
@@ -1338,9 +1515,9 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
             {step < totalSteps && (
               <button 
                 onClick={nextStep}
-                className="px-16 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                className="px-16 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/25 hover:scale-[1.05] active:scale-95 transition-all flex items-center gap-2"
               >
-                Continue
+                Continue <ArrowRight size={20} />
               </button>
             )}
           </div>
@@ -1350,8 +1527,26 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
+const getPasswordStrength = (pw: string) => {
+  if (!pw) return { label: '', color: 'bg-slate-200' };
+  if (pw.length < 6) return { label: 'Weak', color: 'bg-red-500' };
+  const hasNum = /\d/.test(pw);
+  const hasCap = /[A-Z]/.test(pw);
+  if (pw.length >= 8 && hasNum && hasCap) return { label: 'Strong', color: 'bg-green-500' };
+  return { label: 'Medium', color: 'bg-amber-500' };
+};
+
 const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    name: '', type: 'Private Hospital', medicalLicense: '', ownerName: '', email: '', password: '', confirmPassword: '',
+    city: '', address: '', phone: '', whatsapp: '', emergencyContact: '',
+    openingTime: '09:00', closingTime: '21:00',
+    opd: '', emergency: '', isFree: false
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [location, setLocation] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
   const [isEmergency, setIsEmergency] = useState(false);
   const [quickSelect, setQuickSelect] = useState<'Mon-Fri' | 'Mon-Sat' | 'All' | null>('Mon-Sat');
@@ -1363,17 +1558,13 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const [individualStaff, setIndividualStaff] = useState<any[]>([]);
 
   // Section 6: Fees & Pricing
-  const [pricing, setPricing] = useState({ opd: '', emergency: '', isFree: false });
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
 
   // Section 7: Media & About
   const [media, setMedia] = useState({ logo: null, photos: [] as any[], about: '' });
 
-  // Submission Status
   const [isSubmitted, setIsSubmitted] = useState(false);
-
   const totalSteps = 8;
-
   const allSpecs = [
     'General Physician', 'Cardiology', 'Neurology', 'Orthopedic', 'Gynecology', 
     'Pediatrics', 'Dentistry', 'Dermatology (Skin)', 'Ophthalmology (Eye)', 
@@ -1422,26 +1613,121 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
     );
   };
 
-  const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
+  const validateStep = () => {
+    const newErrors: Record<string, string> = {};
+    if (step === 1) {
+      if (!formData.name) newErrors.name = t.signup.errors.required;
+      if (!formData.ownerName) newErrors.ownerName = t.signup.errors.required;
+      if (!formData.email) newErrors.email = t.signup.errors.required;
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.signup.errors.invalidEmail;
+      if (!formData.password) newErrors.password = t.signup.errors.required;
+      else if (formData.password.length < 8) newErrors.password = t.signup.errors.passwordTooShort;
+      else if (!/\d/.test(formData.password) || !/[A-Z]/.test(formData.password)) newErrors.password = t.signup.errors.passwordComplexity;
+    } else if (step === 2) {
+      if (!formData.city) newErrors.city = t.signup.errors.required;
+      if (!formData.address) newErrors.address = t.signup.errors.required;
+      if (!formData.phone) newErrors.phone = t.signup.errors.required;
+      else if (!/^03\d{2}-\d{7}$/.test(formData.phone)) newErrors.phone = t.signup.errors.invalidPhone;
+    } else if (step === 3) {
+      if (selectedDays.length === 0) newErrors.days = t.signup.errors.atLeastOneDay;
+    } else if (step === 4) {
+      if (selectedSpecs.length === 0) newErrors.specs = t.signup.errors.atLeastOneSpec;
+    } else if (step === 6) {
+      if (!formData.opd && !formData.isFree) newErrors.opd = t.signup.errors.required;
+      if (paymentMethods.length === 0) newErrors.paymentMethods = t.signup.errors.paymentMethod;
+    }
+    
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return false;
+    return true;
+  };
+
+  const nextStep = () => {
+    if (validateStep()) setStep(s => Math.min(s + 1, totalSteps));
+  };
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setErrors({});
+    try {
+      // 1. Create Auth Account
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+
+      // 2. Prepare Hospital Data
+      const hospitalData = {
+        uid: user.uid,
+        name: formData.name,
+        type: formData.type,
+        ownerName: formData.ownerName,
+        email: formData.email,
+        city: formData.city,
+        address: formData.address,
+        phone: formData.phone,
+        location: location,
+        timings: {
+          openingTime: formData.openingTime,
+          closingTime: formData.closingTime,
+          selectedDays,
+          isEmergency
+        },
+        specializations: selectedSpecs,
+        facilities: selectedFacilities,
+        staff: {
+          counts: staffCounts,
+          individual: individualStaff
+        },
+        pricing: {
+          opd: formData.opd,
+          emergency: formData.emergency,
+          isFree: formData.isFree,
+          paymentMethods
+        },
+        about: media.about,
+        role: 'hospital_admin',
+        status: 'Under Review',
+        createdAt: new Date().toISOString()
+      };
+
+      // 3. Save to Firestore
+      await setDoc(doc(db, 'users', user.uid), hospitalData);
+      
+      setIsSubmitted(true);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/email-already-in-use') {
+        setErrors({ email: 'Email already registered' });
+      } else {
+        setErrors({ general: 'Failed to register hospital. Please try again.' });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const sections = [
-    "Basic Information",
-    "Location & Contact",
-    "Timings",
-    "Services",
-    "Staff Info",
-    "Fees & Pricing",
-    "Media Upload",
-    "Review & Submit"
+    t.signup.hospitalTitle,
+    t.signup.sections.location,
+    t.signup.sections.timings,
+    t.signup.sections.services,
+    t.signup.sections.staff,
+    t.signup.sections.pricing,
+    t.signup.sections.media,
+    t.signup.sections.review
   ];
+
+  const pwStrength = getPasswordStrength(formData.password);
 
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-20 pb-40">
+      <APIProvider apiKey={MAPS_API_KEY} version="weekly">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h2 className="text-4xl font-bold text-slate-900">Facility Registration</h2>
+            <h2 className="text-4xl font-bold text-slate-900">{t.signup.hospitalTitle}</h2>
             <p className="text-slate-500 font-medium mt-1">Section {step}: {sections[step-1]}</p>
           </div>
           <div className="flex gap-1.5">
@@ -1469,13 +1755,25 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
               {step === 1 && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Full Name of Facility</label>
-                    <input type="text" placeholder="e.g. City Care Clinic" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                    <label className="text-sm font-bold text-slate-700">{t.signup.labels.name} *</label>
+                    <input 
+                      type="text" 
+                      name="name"
+                      placeholder="e.g. City Care Clinic" 
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.name ? 'ring-2 ring-red-500' : ''}`} 
+                    />
+                    {errors.name && <p className="text-red-500 text-xs font-bold pl-2">{errors.name}</p>}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Establishment Type</label>
-                      <select className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium">
+                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.type} *</label>
+                      <select 
+                        value={formData.type}
+                        onChange={(e) => setFormData({...formData, type: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium"
+                      >
                         <option>Private Hospital</option>
                         <option>Government Hospital</option>
                         <option>Private Clinic</option>
@@ -1483,44 +1781,115 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Medical License Number</label>
-                      <input type="text" placeholder="PMDC-XXXXX" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.ownerName} *</label>
+                      <input 
+                        type="text" 
+                        name="ownerName"
+                        placeholder="Owner Full Name" 
+                        value={formData.ownerName}
+                        onChange={(e) => setFormData({...formData, ownerName: e.target.value})}
+                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.ownerName ? 'ring-2 ring-red-500' : ''}`} 
+                      />
+                      {errors.ownerName && <p className="text-red-500 text-xs font-bold pl-2">{errors.ownerName}</p>}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Email Address</label>
-                    <input type="email" placeholder="contact@hospital.com" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                    <label className="text-sm font-bold text-slate-700">{t.signup.labels.email} *</label>
+                    <input 
+                      type="email" 
+                      name="email"
+                      placeholder="contact@hospital.com" 
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.email ? 'ring-2 ring-red-500' : ''}`} 
+                    />
+                    {errors.email && <p className="text-red-500 text-xs font-bold pl-2">{errors.email}</p>}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <input type="password" placeholder="Create Password" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
-                    <input type="password" placeholder="Confirm Password" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <input 
+                        type="password" 
+                        name="password"
+                        placeholder={t.signup.labels.password + " *"} 
+                        value={formData.password}
+                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.password ? 'ring-2 ring-red-500' : ''}`} 
+                      />
+                      {formData.password && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
+                          <div className="flex gap-1 mb-1">
+                            {[1, 2, 3].map(i => (
+                              <div key={i} className={`h-1 w-4 rounded-full transition-colors ${i === 1 ? pwStrength.color : (i === 2 && (pwStrength.label === 'Medium' || pwStrength.label === 'Strong') ? pwStrength.color : (i === 3 && pwStrength.label === 'Strong' ? pwStrength.color : 'bg-slate-200'))}`} />
+                            ))}
+                          </div>
+                          <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">{pwStrength.label}</span>
+                        </div>
+                      )}
+                    </div>
+                    {errors.password && <p className="text-red-500 text-xs font-bold pl-2">{errors.password}</p>}
                   </div>
                 </>
               )}
 
               {step === 2 && (
                 <>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Complete Address</label>
-                    <textarea placeholder="Plot #, Street, etc." className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium min-h-[100px]" />
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.address} *</label>
+                      <textarea 
+                        name="address"
+                        placeholder="Plot #, Street, etc." 
+                        value={formData.address}
+                        onChange={(e) => setFormData({...formData, address: e.target.value})}
+                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium min-h-[80px] ${errors.address ? 'ring-2 ring-red-500' : ''}`} 
+                      />
+                      {errors.address && <p className="text-red-500 text-xs font-bold pl-2">{errors.address}</p>}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase">{t.signup.labels.city} *</label>
+                        <select 
+                          value={formData.city}
+                          onChange={(e) => setFormData({...formData, city: e.target.value})}
+                          className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.city ? 'ring-2 ring-red-500' : ''}`}
+                        >
+                          <option value="">Select City</option>
+                          <option>Karachi</option>
+                          <option>Lahore</option>
+                          <option>Islamabad</option>
+                          <option>Faisalabad</option>
+                          <option>Rawalpindi</option>
+                          <option>Multan</option>
+                          <option>Peshawar</option>
+                          <option>Quetta</option>
+                        </select>
+                        {errors.city && <p className="text-red-500 text-xs font-bold pl-2">{errors.city}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase">{t.signup.labels.phone} *</label>
+                        <input 
+                          type="tel" 
+                          name="phone"
+                          placeholder="03XX-XXXXXXX" 
+                          value={formData.phone}
+                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                          className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.phone ? 'ring-2 ring-red-500' : ''}`} 
+                        />
+                        {errors.phone && <p className="text-red-500 text-xs font-bold pl-2">{errors.phone}</p>}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-sm font-bold text-slate-700">Pin Location on Map *</label>
+                      <LocationPicker 
+                        onLocationSelect={(lat, lng, addr) => {
+                          setLocation({ lat, lng, address: addr });
+                          if (!formData.address) setFormData(prev => ({ ...prev, address: addr }));
+                        }} 
+                      />
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <select className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium">
-                      <option>Select City</option>
-                      <option>Karachi</option>
-                      <option>Lahore</option>
-                      <option>Islamabad</option>
-                    </select>
-                    <input type="text" placeholder="Area / Neighborhood" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input type="tel" placeholder="Phone Number" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
-                    <input type="tel" placeholder="WhatsApp Number" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
-                    <input type="tel" placeholder="Emergency Contact" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
-                  </div>
-                  <button className="flex items-center gap-3 text-primary font-bold bg-primary/5 px-6 py-3 rounded-xl hover:bg-primary/10 transition-colors">
-                    <MapPin size={20} /> Pin Google Maps Location
-                  </button>
                 </>
               )}
 
@@ -1528,17 +1897,27 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                 <>
                   <div className="grid grid-cols-2 gap-8">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Opening Time</label>
-                      <input type="time" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                      <label className="text-sm font-bold text-slate-700">Opening Time *</label>
+                      <input 
+                        type="time" 
+                        value={formData.openingTime}
+                        onChange={(e) => setFormData({...formData, openingTime: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                      />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Closing Time</label>
-                      <input type="time" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" />
+                      <label className="text-sm font-bold text-slate-700">Closing Time *</label>
+                      <input 
+                        type="time" 
+                        value={formData.closingTime}
+                        onChange={(e) => setFormData({...formData, closingTime: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                      />
                     </div>
                   </div>
                   <div className="space-y-6">
                     <div className="flex flex-wrap items-center justify-between gap-4">
-                      <label className="text-sm font-bold text-slate-700">Open Days</label>
+                      <label className="text-sm font-bold text-slate-700">Open Days *</label>
                       <div className="flex gap-2">
                         {[
                           { id: 'Mon-Fri', label: 'Mon - Fri' },
@@ -1585,6 +1964,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         );
                       })}
                     </div>
+                    {errors.days && <p className="text-red-500 text-xs font-bold pl-2">{errors.days}</p>}
                   </div>
 
                   <div className="space-y-4">
@@ -1636,7 +2016,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                 <>
                   <div className="space-y-6">
                     <div className="flex flex-wrap items-center justify-between gap-4">
-                      <label className="text-sm font-bold text-slate-700">Specializations</label>
+                      <label className="text-sm font-bold text-slate-700">Specializations *</label>
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -1662,10 +2042,10 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                             key={spec} 
                             type="button"
                             onClick={() => setSelectedSpecs(prev => isSelected ? prev.filter(s => s !== spec) : [...prev, spec])}
-                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
+                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all border shadow-sm ${
                               isSelected 
-                                ? 'bg-primary border-primary text-white shadow-md shadow-primary/20' 
-                                : 'bg-white border-[#0B5FFF] text-[#0B5FFF] hover:bg-primary/5'
+                                ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-105' 
+                                : 'bg-white border-[#0B5FFF] text-[#0B5FFF] hover:bg-primary/5 active:scale-95'
                             }`}
                           >
                             {spec}
@@ -1673,6 +2053,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         );
                       })}
                     </div>
+                    {errors.specs && <p className="text-red-500 text-xs font-bold pl-2">{errors.specs}</p>}
                   </div>
 
                   <div className="space-y-8 pt-8 border-t border-slate-100">
@@ -1841,26 +2222,27 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">General OPD Fee</label>
+                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.opdFee || "General OPD Fee"}</label>
                       <div className="relative">
                         <input 
                           type="number" 
                           placeholder="Rs. 1,000" 
-                          value={pricing.opd}
-                          onChange={(e) => setPricing({...pricing, opd: e.target.value})}
-                          className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
+                          value={formData.opd}
+                          onChange={(e) => setFormData({...formData, opd: e.target.value})}
+                          className={`w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold ${errors.opd ? 'ring-2 ring-red-500' : ''}`} 
                         />
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rs.</span>
                       </div>
+                      {errors.opd && <p className="text-red-500 text-xs font-bold pl-2">{errors.opd}</p>}
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Emergency Consultation Fee</label>
+                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.emergencyFee || "Emergency Consultation Fee"}</label>
                       <div className="relative">
                         <input 
                           type="number" 
                           placeholder="Rs. 2,000" 
-                          value={pricing.emergency}
-                          onChange={(e) => setPricing({...pricing, emergency: e.target.value})}
+                          value={formData.emergency}
+                          onChange={(e) => setFormData({...formData, emergency: e.target.value})}
                           className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
                         />
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rs.</span>
@@ -1879,18 +2261,18 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                       </div>
                     </div>
                     <div 
-                      onClick={() => setPricing({...pricing, isFree: !pricing.isFree})}
-                      className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${pricing.isFree ? 'bg-health-teal' : 'bg-slate-200'}`}
+                      onClick={() => setFormData({...formData, isFree: !formData.isFree})}
+                      className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${formData.isFree ? 'bg-health-teal' : 'bg-slate-200'}`}
                     >
                       <motion.div 
-                        animate={{ x: pricing.isFree ? 24 : 0 }}
+                        animate={{ x: formData.isFree ? 24 : 0 }}
                         className="w-6 h-6 bg-white rounded-full shadow-sm" 
                       />
                     </div>
                   </div>
 
                   <div className="space-y-4 pt-8 border-t border-slate-100">
-                    <label className="text-sm font-bold text-slate-700">Accepted Payment Methods</label>
+                    <label className="text-sm font-bold text-slate-700">Accepted Payment Methods *</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {['Cash', 'JazzCash', 'EasyPaisa', 'Bank Card', 'Sehat Card', 'Insurance'].map(method => {
                         const isSelected = paymentMethods.includes(method);
@@ -1899,7 +2281,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                             key={method} 
                             onClick={() => setPaymentMethods(prev => isSelected ? prev.filter(m => m !== method) : [...prev, method])}
                             className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                              isSelected ? 'bg-primary/5 border-primary' : 'bg-slate-50 border-transparent hover:border-slate-200'
+                              isSelected ? 'bg-primary/5 border-primary shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
                             }`}
                           >
                             <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-primary' : 'bg-white border-2 border-slate-200'}`}>
@@ -1910,6 +2292,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         );
                       })}
                     </div>
+                    {errors.paymentMethods && <p className="text-red-500 text-xs font-bold pl-2">{errors.paymentMethods}</p>}
                   </div>
                 </>
               )}
@@ -2028,7 +2411,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         <ul className="space-y-2">
                           <li className="flex justify-between items-center">
                             <span className="text-slate-500 font-medium text-sm">OPD Fee</span>
-                            <span className="text-slate-900 font-bold text-sm">Rs. {pricing.opd || '0'}</span>
+                            <span className="text-slate-900 font-bold text-sm">Rs. {formData.opd || '0'}</span>
                           </li>
                           <li className="flex justify-between items-center">
                             <span className="text-slate-500 font-medium text-sm">Emergency</span>
@@ -2037,6 +2420,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         </ul>
                       </div>
                     </div>
+                    {errors.general && <p className="text-red-500 text-xs font-bold text-center mt-4">{errors.general}</p>}
                   </div>
 
                   <div className="p-8 bg-slate-50 rounded-[40px] border border-slate-200">
@@ -2045,10 +2429,15 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                     </p>
                     <button 
                       type="button"
-                      onClick={() => setIsSubmitted(true)}
-                      className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                      disabled={isSubmitting}
+                      onClick={handleSubmit}
+                      className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70 disabled:scale-100"
                     >
-                      Submit for Approval <ArrowRight size={24} />
+                      {isSubmitting ? (
+                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>Submit for Approval <ArrowRight size={24} /></>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -2105,6 +2494,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
           </div>
         )}
       </div>
+      </APIProvider>
     </div>
   );
 };
