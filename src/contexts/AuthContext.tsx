@@ -50,9 +50,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         } catch (error: any) {
+          const errorMessage = error.message || String(error);
           console.error("Error fetching user data:", error);
-          if (error.code === 'permission-denied') {
+          if (error.code === 'permission-denied' || errorMessage.toLowerCase().includes('permission')) {
              // If permission denied, we still want the app to load, maybe with a warning
+             // This can happen during propagation or if rules are still being updated
              setUserData({ uid: user.uid, email: user.email, role: 'Patient', permissionError: true });
           } else {
              handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
