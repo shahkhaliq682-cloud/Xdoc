@@ -67,87 +67,9 @@ import {
 import { auth, db } from './firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
-import { APIProvider, Map, AdvancedMarker, Pin, useMap, useMapsLibrary, MapControl, ControlPosition } from '@vis.gl/react-google-maps';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
-const MAPS_API_KEY =
-  import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
-  process.env.VITE_GOOGLE_MAPS_API_KEY ||
-  '';
-
-// --- Location Picker Component ---
-
-const LocationPicker = ({ onLocationSelect, initialLocation }: { onLocationSelect: (lat: number, lng: number, address: string) => void, initialLocation?: { lat: number, lng: number } }) => {
-  const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral | null>(initialLocation || null);
-  const [address, setAddress] = useState('');
-  const map = useMap();
-  
-  useEffect(() => {
-    if (markerPosition && map) {
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ location: markerPosition }, (results, status) => {
-        if (status === 'OK' && results?.[0]) {
-          setAddress(results[0].formatted_address);
-          onLocationSelect(markerPosition.lat, markerPosition.lng, results[0].formatted_address);
-        }
-      });
-    }
-  }, [markerPosition, map]);
-
-  const handleMapClick = (e: google.maps.MapMouseEvent) => {
-    if (e.latLng) {
-      setMarkerPosition({ lat: e.latLng.lat(), lng: e.latLng.lng() });
-    }
-  };
-
-  const useCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setMarkerPosition(pos);
-          map?.panTo(pos);
-        },
-        (error) => {
-          console.error("Geolocation error", error);
-        }
-      );
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="h-[300px] w-full rounded-2xl overflow-hidden border-2 border-slate-100 relative shadow-inner">
-        <Map
-          defaultCenter={initialLocation || { lat: 30.3753, lng: 69.3451 }}
-          defaultZoom={initialLocation ? 15 : 5}
-          onClick={handleMapClick}
-          mapId="HOSPITAL_MAP"
-          style={{ width: '100%', height: '100%' }}
-        >
-          {markerPosition && <AdvancedMarker position={markerPosition} />}
-        </Map>
-        <button 
-          type="button"
-          onClick={useCurrentLocation}
-          className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-xl shadow-lg border border-slate-100 text-[10px] font-bold text-primary flex items-center gap-2 z-10 hover:bg-slate-50 active:scale-95 transition-all"
-        >
-          <MapPin size={14} /> Use My Current Location
-        </button>
-      </div>
-      {address && (
-        <motion.div 
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-primary/5 rounded-2xl border border-primary/10"
-        >
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Selected Address</p>
-          <p className="text-xs font-bold text-slate-800 leading-tight">{address}</p>
-        </motion.div>
-      )}
-    </div>
-  );
-};
+// --- Header Component ---
 
 const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, onLogin, showMenu = false, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, onLogin?: () => void, isLanding?: boolean }) => {
   const { userData, logout } = useAuth();
@@ -1541,12 +1463,11 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '', type: 'Private Hospital', medicalLicense: '', ownerName: '', email: '', password: '', confirmPassword: '',
-    city: '', address: '', phone: '', whatsapp: '', emergencyContact: '',
+    city: '', address: '', area: '', phone: '', whatsapp: '', emergencyContact: '',
     openingTime: '09:00', closingTime: '21:00',
     opd: '', emergency: '', isFree: false
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [location, setLocation] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
   const [isEmergency, setIsEmergency] = useState(false);
   const [quickSelect, setQuickSelect] = useState<'Mon-Fri' | 'Mon-Sat' | 'All' | null>('Mon-Sat');
@@ -1626,6 +1547,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
     } else if (step === 2) {
       if (!formData.city) newErrors.city = t.signup.errors.required;
       if (!formData.address) newErrors.address = t.signup.errors.required;
+      if (!formData.area) newErrors.area = t.signup.errors.required;
       if (!formData.phone) newErrors.phone = t.signup.errors.required;
       else if (!/^03\d{2}-\d{7}$/.test(formData.phone)) newErrors.phone = t.signup.errors.invalidPhone;
     } else if (step === 3) {
@@ -1659,15 +1581,14 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
 
       // 2. Prepare Hospital Data
       const hospitalData = {
-        uid: user.uid,
-        name: formData.name,
+        hospitalName: formData.name,
         type: formData.type,
         ownerName: formData.ownerName,
         email: formData.email,
         city: formData.city,
         address: formData.address,
+        area: formData.area,
         phone: formData.phone,
-        location: location,
         timings: {
           openingTime: formData.openingTime,
           closingTime: formData.closingTime,
@@ -1723,7 +1644,6 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-20 pb-40">
-      <APIProvider apiKey={MAPS_API_KEY} version="weekly">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-12">
           <div>
@@ -1835,20 +1755,32 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                 <>
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.address} *</label>
-                      <textarea 
-                        name="address"
-                        placeholder="Plot #, Street, etc." 
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.signup.labels.address} *</label>
+                      <input 
+                        type="text" 
+                        placeholder="Complete Street Address" 
                         value={formData.address}
                         onChange={(e) => setFormData({...formData, address: e.target.value})}
-                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium min-h-[80px] ${errors.address ? 'ring-2 ring-red-500' : ''}`} 
+                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.address ? 'ring-2 ring-red-500' : ''}`} 
                       />
                       {errors.address && <p className="text-red-500 text-xs font-bold pl-2">{errors.address}</p>}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.signup.labels.area} *</label>
+                      <input 
+                        type="text" 
+                        placeholder="Town / Area / Sector" 
+                        value={formData.area}
+                        onChange={(e) => setFormData({...formData, area: e.target.value})}
+                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.area ? 'ring-2 ring-red-500' : ''}`} 
+                      />
+                      {errors.area && <p className="text-red-500 text-xs font-bold pl-2">{errors.area}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase">{t.signup.labels.city} *</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.signup.labels.city} *</label>
                         <select 
                           value={formData.city}
                           onChange={(e) => setFormData({...formData, city: e.target.value})}
@@ -1867,7 +1799,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         {errors.city && <p className="text-red-500 text-xs font-bold pl-2">{errors.city}</p>}
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase">{t.signup.labels.phone} *</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.signup.labels.phone} *</label>
                         <input 
                           type="tel" 
                           name="phone"
@@ -1878,16 +1810,6 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         />
                         {errors.phone && <p className="text-red-500 text-xs font-bold pl-2">{errors.phone}</p>}
                       </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <label className="text-sm font-bold text-slate-700">Pin Location on Map *</label>
-                      <LocationPicker 
-                        onLocationSelect={(lat, lng, addr) => {
-                          setLocation({ lat, lng, address: addr });
-                          if (!formData.address) setFormData(prev => ({ ...prev, address: addr }));
-                        }} 
-                      />
                     </div>
                   </div>
                 </>
@@ -2494,7 +2416,6 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
           </div>
         )}
       </div>
-      </APIProvider>
     </div>
   );
 };
