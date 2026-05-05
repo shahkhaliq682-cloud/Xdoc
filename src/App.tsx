@@ -65,7 +65,7 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
@@ -988,36 +988,48 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
       // 2. Prepare Data
       const patientData = {
         uid: user.uid,
-        name: formData.fullName,
         email: formData.email,
-        dob: formData.dob,
-        gender: formData.gender,
-        cnic: formData.cnic,
-        phone: formData.phone,
-        whatsapp: formData.sameAsPhone ? formData.phone : formData.whatsapp,
-        city: formData.city,
-        area: formData.area,
-        bloodGroup: formData.bloodGroup,
-        allergies: formData.allergies,
-        chronicConditions: formData.chronicConditions,
-        language: formData.language,
-        whatsappNotifications: formData.whatsappNotifications,
-        emailNotifications: formData.emailNotifications,
         role: 'patient',
         status: 'Active',
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp(),
+        profile: {
+          name: formData.fullName,
+          dob: formData.dob,
+          gender: formData.gender,
+          cnic: formData.cnic,
+          phone: formData.phone,
+          whatsapp: formData.sameAsPhone ? formData.phone : formData.whatsapp,
+          city: formData.city,
+          area: formData.area,
+          bloodGroup: formData.bloodGroup,
+          allergies: formData.allergies,
+          chronicConditions: formData.chronicConditions,
+          language: formData.language,
+          whatsappNotifications: formData.whatsappNotifications,
+          emailNotifications: formData.emailNotifications,
+        }
       };
 
       // 3. Save to Firestore
       await setDoc(doc(db, 'users', user.uid), patientData);
       
       setIsSubmitted(true);
+      
+      // Success redirect
+      setTimeout(() => {
+        onComplete();
+      }, 3000);
+
     } catch (err: any) {
       console.error(err);
+      let errorMsg = 'Failed to create account. Please try again.';
       if (err.code === 'auth/email-already-in-use') {
         setErrors({ email: 'Email already registered' });
       } else {
-        setErrors({ general: 'Failed to create account. Please try again.' });
+        if (!navigator.onLine || err.message.toLowerCase().includes('network')) {
+          errorMsg = "Internet connection check karein";
+        }
+        setErrors({ general: errorMsg });
       }
     } finally {
       setIsSubmitting(false);
@@ -1562,55 +1574,98 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
     setIsSubmitting(true);
     setErrors({});
     try {
-      // 1. Create Auth Account
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      // 1. Basic validation check (redundant but safe)
+      if (!formData.email || !formData.password || !formData.name) {
+        throw new Error("Kuch fields missing hain");
+      }
+
+      // 2. Create Auth Account
+      let userCredential;
+      try {
+        userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      } catch (authErr: any) {
+        console.error("Auth Error:", authErr);
+        if (authErr.code === 'auth/email-already-in-use') {
+          setErrors({ email: 'Email already registered' });
+          return;
+        }
+        throw authErr;
+      }
+      
       const user = userCredential.user;
 
-      // 2. Prepare Hospital Data
+      // 3. Prepare Hospital Data
       const hospitalData = {
         hospitalName: formData.name,
-        type: formData.type,
         ownerName: formData.ownerName,
         email: formData.email,
+        phone: formData.phone,
         city: formData.city,
         address: formData.address,
         area: formData.area,
-        phone: formData.phone,
-        timings: {
-          openingTime: formData.openingTime,
-          closingTime: formData.closingTime,
-          selectedDays,
-          isEmergency
-        },
+        type: formData.type.toLowerCase().includes('private') ? 'private' : 'government',
         specializations: selectedSpecs,
         facilities: selectedFacilities,
-        staff: {
-          counts: staffCounts,
-          individual: individualStaff
-        },
-        pricing: {
-          opd: formData.opd,
-          emergency: formData.emergency,
-          isFree: formData.isFree,
-          paymentMethods
-        },
-        about: media.about,
-        role: 'hospital_admin',
-        status: 'Under Review',
-        createdAt: new Date().toISOString()
+        openDays: selectedDays,
+        openTime: formData.openingTime,
+        closeTime: formData.closingTime,
+        emergency24_7: isEmergency,
+        opdFee: formData.opd,
+        paymentMethods: paymentMethods,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        approved: false,
+        uid: user.uid
       };
 
-      // 3. Save to Firestore
-      await setDoc(doc(db, 'users', user.uid), hospitalData);
+      // 4. Save to Firestore
+      try {
+        // Save to hospitals collection
+        await setDoc(doc(db, 'hospitals', user.uid), hospitalData);
+        
+        // Save to users collection for auth/role management
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: formData.email,
+          role: 'hospital_admin',
+          createdAt: serverTimestamp()
+        });
+      } catch (dbErr: any) {
+        console.error("Database Error:", dbErr);
+        if (dbErr.code === 'permission-denied') {
+          throw new Error("Database permission error");
+        }
+        throw dbErr;
+      }
       
       setIsSubmitted(true);
+      
+      // Clear form (reset state) - minimal reset since we are redirecting
+      setFormData({
+        name: '', type: 'Private Hospital', medicalLicense: '', ownerName: '', email: '', password: '', confirmPassword: '',
+        city: '', address: '', area: '', phone: '', whatsapp: '', emergencyContact: '',
+        openingTime: '09:00', closingTime: '21:00',
+        opd: '', emergency: '', isFree: false
+      });
+
+      // 5. Success Flow: Redirect after 3s
+      setTimeout(() => {
+        onComplete(); // This redirects based on the parent component's logic
+      }, 3000);
+
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/email-already-in-use') {
-        setErrors({ email: 'Email already registered' });
-      } else {
-        setErrors({ general: 'Failed to register hospital. Please try again.' });
+      console.error("Full Registration Error:", err);
+      let errorMsg = 'Failed to register hospital. Please try again.';
+      
+      if (err.message === "Kuch fields missing hain") {
+        errorMsg = "Kuch fields missing hain";
+      } else if (err.message === "Database permission error") {
+        errorMsg = "Database permission error";
+      } else if (!navigator.onLine || err.message.toLowerCase().includes('network')) {
+        errorMsg = "Internet connection check karein";
       }
+
+      setErrors({ general: errorMsg });
     } finally {
       setIsSubmitting(false);
     }
@@ -2343,22 +2398,15 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   <div className="w-24 h-24 bg-success-green/10 text-success-green rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
                     <CheckCircle2 size={56} />
                   </div>
-                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6">Registration Submitted!</h3>
+                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6 font-primary tracking-tight">Registration submitted!</h3>
                   <div className="max-w-md mx-auto space-y-6">
-                    <p className="text-slate-500 text-lg leading-relaxed">
-                      We will review and approve your hospital within 24-48 hours. You will receive an email confirmation once verified.
+                    <p className="text-slate-500 text-lg leading-relaxed font-medium">
+                      We will approve your hospital within 24-48 hours. You will be redirected shortly...
                     </p>
                     <div className="p-6 bg-white rounded-3xl border-2 border-slate-100 shadow-sm">
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-2">Ticket ID</p>
-                      <p className="text-2xl font-mono font-bold text-primary">#HOS-8829</p>
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-2">Registration Status</p>
+                      <p className="text-2xl font-mono font-bold text-primary">PENDING APPROVAL</p>
                     </div>
-                    <button 
-                      type="button"
-                      onClick={onComplete}
-                      className="w-full py-5 border-2 border-slate-200 rounded-2xl text-slate-500 font-bold hover:bg-slate-100 transition-all"
-                    >
-                      Return to Home
-                    </button>
                   </div>
                 </div>
               )}
@@ -3307,6 +3355,19 @@ export default function App() {
   useEffect(() => {
     setIsDarkMode(viewState === 'admin_dashboard' || viewState === 'super_admin');
   }, [viewState]);
+
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration or internet connection.");
+        }
+      }
+    };
+    testConnection();
+  }, []);
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();

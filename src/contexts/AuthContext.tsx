@@ -5,7 +5,7 @@ import {
   signOut as firebaseSignOut 
 } from 'firebase/auth';
 import { auth, db } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 
 interface AuthContextType {
@@ -38,13 +38,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: user.email,
               displayName: user.displayName || 'User',
               role: 'Patient', // Default role
-              createdAt: new Date().toISOString()
+              createdAt: serverTimestamp() // Use serverTimestamp for consistency
             };
-            await setDoc(doc(db, 'users', user.uid), newUserData);
-            setUserData(newUserData);
+            try {
+              await setDoc(doc(db, 'users', user.uid), newUserData);
+              setUserData({ ...newUserData, createdAt: new Date().toISOString() }); // Local fallback for immediate use
+            } catch (createErr) {
+              console.error("Failed to create user document:", createErr);
+              // Don't throw here, just set minimal user data
+              setUserData(newUserData);
+            }
           }
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+        } catch (error: any) {
+          console.error("Error fetching user data:", error);
+          if (error.code === 'permission-denied') {
+             // If permission denied, we still want the app to load, maybe with a warning
+             setUserData({ uid: user.uid, email: user.email, role: 'Patient', permissionError: true });
+          } else {
+             handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+          }
         }
       } else {
         setUserData(null);
