@@ -959,9 +959,8 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
     } else if (step === 2) {
       if (!formData.phone || formData.phone === '+92 ') newErrors.phone = t.signup.errors.required;
       if (!formData.email) newErrors.email = t.signup.errors.required;
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.signup.errors.invalidEmail;
       if (!formData.password) newErrors.password = t.signup.errors.required;
-      else if (formData.password.length < 8) newErrors.password = t.signup.errors.passwordTooShort;
+      else if (formData.password.length < 6) newErrors.password = t.signup.errors.passwordTooShort;
       if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
     } else if (step === 3) {
       if (!formData.area) newErrors.area = t.signup.errors.required;
@@ -1449,15 +1448,6 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
-const getPasswordStrength = (pw: string) => {
-  if (!pw) return { label: '', color: 'bg-slate-200' };
-  if (pw.length < 6) return { label: 'Weak', color: 'bg-red-500' };
-  const hasNum = /\d/.test(pw);
-  const hasCap = /[A-Z]/.test(pw);
-  if (pw.length >= 8 && hasNum && hasCap) return { label: 'Strong', color: 'bg-green-500' };
-  return { label: 'Medium', color: 'bg-amber-500' };
-};
-
 const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const { t } = useLanguage();
   const [step, setStep] = useState(1);
@@ -1540,16 +1530,13 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
       if (!formData.name) newErrors.name = t.signup.errors.required;
       if (!formData.ownerName) newErrors.ownerName = t.signup.errors.required;
       if (!formData.email) newErrors.email = t.signup.errors.required;
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.signup.errors.invalidEmail;
       if (!formData.password) newErrors.password = t.signup.errors.required;
-      else if (formData.password.length < 8) newErrors.password = t.signup.errors.passwordTooShort;
-      else if (!/\d/.test(formData.password) || !/[A-Z]/.test(formData.password)) newErrors.password = t.signup.errors.passwordComplexity;
+      else if (formData.password.length < 6) newErrors.password = t.signup.errors.passwordTooShort;
     } else if (step === 2) {
       if (!formData.city) newErrors.city = t.signup.errors.required;
       if (!formData.address) newErrors.address = t.signup.errors.required;
       if (!formData.area) newErrors.area = t.signup.errors.required;
       if (!formData.phone) newErrors.phone = t.signup.errors.required;
-      else if (!/^03\d{2}-\d{7}$/.test(formData.phone)) newErrors.phone = t.signup.errors.invalidPhone;
     } else if (step === 3) {
       if (selectedDays.length === 0) newErrors.days = t.signup.errors.atLeastOneDay;
     } else if (step === 4) {
@@ -1640,8 +1627,6 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
     t.signup.sections.review
   ];
 
-  const pwStrength = getPasswordStrength(formData.password);
-
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-20 pb-40">
       <div className="max-w-3xl mx-auto">
@@ -1726,26 +1711,14 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                     {errors.email && <p className="text-red-500 text-xs font-bold pl-2">{errors.email}</p>}
                   </div>
                   <div className="space-y-4">
-                    <div className="relative">
-                      <input 
-                        type="password" 
-                        name="password"
-                        placeholder={t.signup.labels.password + " *"} 
-                        value={formData.password}
-                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.password ? 'ring-2 ring-red-500' : ''}`} 
-                      />
-                      {formData.password && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
-                          <div className="flex gap-1 mb-1">
-                            {[1, 2, 3].map(i => (
-                              <div key={i} className={`h-1 w-4 rounded-full transition-colors ${i === 1 ? pwStrength.color : (i === 2 && (pwStrength.label === 'Medium' || pwStrength.label === 'Strong') ? pwStrength.color : (i === 3 && pwStrength.label === 'Strong' ? pwStrength.color : 'bg-slate-200'))}`} />
-                            ))}
-                          </div>
-                          <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">{pwStrength.label}</span>
-                        </div>
-                      )}
-                    </div>
+                    <input 
+                      type="password" 
+                      name="password"
+                      placeholder={t.signup.labels.password + " *"} 
+                      value={formData.password}
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.password ? 'ring-2 ring-red-500' : ''}`} 
+                    />
                     {errors.password && <p className="text-red-500 text-xs font-bold pl-2">{errors.password}</p>}
                   </div>
                 </>
