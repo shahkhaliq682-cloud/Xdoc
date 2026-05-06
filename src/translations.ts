@@ -133,7 +133,19 @@ export const translations = {
         time: 'Time',
         status: 'Status',
         fee: 'Fee',
-      }
+      },
+      availableHospitals: 'Available Hospitals',
+      bookNow: 'Book Now',
+      openNow: 'Open Now',
+      closed: 'Closed',
+      noHospitals: 'Currently no hospitals are registered. Coming soon!',
+      status: {
+        active: 'Active',
+        inactive: 'Inactive'
+      },
+      editProfile: 'Edit Profile',
+      saveChanges: 'Save Changes',
+      issueToken: 'Issue Token'
     }
   },
   UR: {
@@ -268,7 +280,19 @@ export const translations = {
         time: 'وقت',
         status: 'حالت',
         fee: 'فیس',
-      }
+      },
+      availableHospitals: 'دستیاب ہسپتال',
+      bookNow: 'ابھی بک کریں',
+      openNow: 'ابھی کھلا ہے',
+      closed: 'بند ہے',
+      noHospitals: 'ابھی کوئی ہسپتال رجسٹرڈ نہیں ہے۔ جلد آ رہے ہیں!',
+      status: {
+        active: 'فعال',
+        inactive: 'غیر فعال'
+      },
+      editProfile: 'پروفائل ترمیم کریں',
+      saveChanges: 'تبدیلیاں محفوظ کریں',
+      issueToken: 'ٹوکن جاری کریں'
     }
   }
 };

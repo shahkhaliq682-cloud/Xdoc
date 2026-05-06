@@ -2428,7 +2428,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
 
 // --- Hospital List ---
 
-const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) => void }) => {
+const HospitalListPage = ({ hospitals, onHospitalClick }: { hospitals: any[], onHospitalClick: (h: any) => void }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
     type: 'All',
@@ -2558,60 +2558,67 @@ const HospitalListPage = ({ onHospitalClick }: { onHospitalClick: (h: Hospital) 
             </div>
 
             <div className="grid grid-cols-1 gap-8">
-              {hospitals.map(h => (
-                <motion.div 
-                  layout
-                  key={h.id} 
-                  onClick={() => onHospitalClick(h)}
-                  className="group bg-white rounded-[40px] overflow-hidden shadow-sm border border-slate-100 hover:shadow-2xl hover:border-primary/20 transition-all cursor-pointer flex flex-col md:flex-row"
-                >
-                  <div className="md:w-72 lg:w-80 h-72 md:h-auto relative overflow-hidden">
-                    <img src={h.imageUrl} alt={h.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    <div className="absolute top-6 left-6 bg-white/95 backdrop-blur px-4 py-2 rounded-2xl flex items-center gap-2 shadow-xl border border-slate-100">
-                      <div className="w-2 h-2 bg-health-teal rounded-full breathing-dot" />
-                      <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#005046]">Open Now</span>
+              {hospitals.length === 0 ? (
+                <div className="bg-white p-20 rounded-[40px] text-center border-2 border-dashed border-slate-200">
+                  <HospitalIcon size={64} className="mx-auto text-slate-200 mb-6" />
+                  <p className="text-2xl font-bold text-slate-400 font-urdu">{t.dashboard.noHospitals}</p>
+                </div>
+              ) : (
+                hospitals.map(h => (
+                  <motion.div 
+                    layout
+                    key={h.id} 
+                    onClick={() => onHospitalClick(h)}
+                    className="group bg-white rounded-[40px] overflow-hidden shadow-sm border border-slate-100 hover:shadow-2xl hover:border-primary/20 transition-all cursor-pointer flex flex-col md:flex-row"
+                  >
+                    <div className="md:w-72 lg:w-80 h-72 md:h-auto relative overflow-hidden">
+                      <img src={h.photo || h.imageUrl || "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80"} alt={h.hospitalName || h.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      <div className="absolute top-6 left-6 bg-white/95 backdrop-blur px-4 py-2 rounded-2xl flex items-center gap-2 shadow-xl border border-slate-100">
+                        <div className="w-2 h-2 bg-health-teal rounded-full breathing-dot" />
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#005046]">Open Now</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-10 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-2xl font-bold text-slate-900 leading-tight">{h.name}</h3>
-                          {h.verified && <CheckCircle2 size={24} className="text-primary" fill="currentColor" />}
+                    <div className="p-10 flex-1 flex flex-col">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-2xl font-bold text-slate-900 leading-tight">{h.hospitalName || h.name}</h3>
+                            {h.verified && <CheckCircle2 size={24} className="text-primary" fill="currentColor" />}
+                          </div>
+                          <div className="flex items-center gap-2 text-slate-400">
+                            <MapPin size={16} />
+                            <span className="text-sm font-bold">{h.area || h.address}, {h.city}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-slate-400">
-                          <MapPin size={16} />
-                          <span className="text-sm font-bold">{h.area}, {h.city}</span>
+                        <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 shadow-sm">
+                          <Star size={18} fill="currentColor" />
+                          <span className="font-mono text-lg font-bold">{h.rating || 0}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 shadow-sm">
-                        <Star size={18} fill="currentColor" />
-                        <span className="font-mono text-lg font-bold">{h.rating}</span>
-                      </div>
-                    </div>
 
-                    <div className="flex flex-wrap gap-2 mt-6 mb-8">
-                      <div className="bg-primary/5 text-primary px-4 py-2 rounded-xl flex items-center gap-2 border border-primary/10">
-                        <ShieldCheck size={16} />
-                        <span className="font-mono text-[10px] font-bold uppercase tracking-widest">{h.category} FACILITY</span>
+                      <div className="flex flex-wrap gap-2 mt-6 mb-8">
+                        <div className="bg-primary/5 text-primary px-4 py-2 rounded-xl flex items-center gap-2 border border-primary/10">
+                          <ShieldCheck size={16} />
+                          <span className="font-mono text-[10px] font-bold uppercase tracking-widest">{h.hospitalType || h.category || 'PRIVATE'}</span>
+                        </div>
+                        {(h.specializations || []).slice(0, 3).map((spec: string, i: number) => (
+                          <span key={i} className="bg-slate-50 text-slate-500 px-4 py-2 rounded-xl font-mono text-[10px] font-bold uppercase border border-slate-100">{spec}</span>
+                        ))}
                       </div>
-                      {h.specializations.slice(0, 3).map((spec, i) => (
-                        <span key={i} className="bg-slate-50 text-slate-500 px-4 py-2 rounded-xl font-mono text-[10px] font-bold uppercase border border-slate-100">{spec}</span>
-                      ))}
-                    </div>
 
-                    <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-50">
-                      <div>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Consultation start at</p>
-                        <p className="text-3xl font-bold text-slate-900">Rs. {h.startingFee.toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
+                      <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-50">
+                        <div>
+                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Consultation start at</p>
+                          <p className="text-3xl font-bold text-slate-900">Rs. {(parseInt(h.startingFee) || 1000).toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
+                        </div>
+                        <button className="bg-health-teal text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all">
+                          Book Now
+                        </button>
                       </div>
-                      <button className="bg-health-teal text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all">
-                        Book Now
-                      </button>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -3317,9 +3324,20 @@ export default function App() {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   
   // Patient flow states
-  const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [selectedHospital, setSelectedHospital] = useState<Hospital | any | null>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | any | null>(null);
   const [isBookingFlow, setIsBookingFlow] = useState(false);
+  const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
+
+  useEffect(() => {
+    const { collection, query, where, onSnapshot } = require('firebase/firestore');
+    const q = query(collection(db, 'hospitals'), where('status', '==', 'active'));
+    const unsubscribe = onSnapshot(q, (snapshot: any) => {
+      const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      setFetchedHospitals(list);
+    }, (error: any) => handleFirestoreError(error, OperationType.GET, 'hospitals'));
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (currentUser && userData) {
@@ -3457,7 +3475,7 @@ export default function App() {
         return (
           <div className="bg-[#faf8ff] min-h-screen pb-32">
             <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => setViewState('hero')} />
-            <HospitalListPage onHospitalClick={(h) => setSelectedHospital(h)} />
+            <HospitalListPage hospitals={fetchedHospitals} onHospitalClick={(h) => setSelectedHospital(h)} />
 
             {/* Patient Bottom Navbar */}
             <nav className="fixed bottom-0 left-0 w-full z-[100] bg-white border-t border-slate-100 flex justify-around py-4">

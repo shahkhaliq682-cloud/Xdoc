@@ -2,108 +2,76 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "User profile data",
+      "description": "Patient user profile",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
-        "email": { "type": "string" },
-        "displayName": { "type": "string" },
-        "role": { "type": "string", "enum": ["Patient", "Admin", "SuperAdmin"] },
+        "fullName": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "userRole": { "type": "string", "enum": ["patient", "hospital", "admin"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "email", "role"]
+      "required": ["uid", "fullName", "userRole"]
     },
     "Hospital": {
       "title": "Hospital",
-      "description": "Hospital or Clinic facility data",
+      "description": "Hospital profile",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "type": { "type": "string" },
-        "category": { "type": "string" },
+        "uid": { "type": "string" },
+        "hospitalName": { "type": "string" },
+        "hospitalType": { "type": "string" },
         "city": { "type": "string" },
-        "area": { "type": "string" },
-        "rating": { "type": "number" },
-        "reviewsCount": { "type": "number" },
-        "specializations": { "type": "array", "items": { "type": "string" } },
-        "facilities": { "type": "array", "items": { "type": "string" } },
-        "insurancePanels": { "type": "array", "items": { "type": "string" } },
-        "startingFee": { "type": "number" },
-        "emergencyFee": { "type": "number" },
-        "imageUrl": { "type": "string" },
-        "verified": { "type": "boolean" },
-        "isOpen": { "type": "boolean" },
-        "address": { "type": "string" },
-        "phone": { "type": "string" },
-        "whatsapp": { "type": "string" },
-        "emergencyContact": { "type": "string" },
-        "about": { "type": "string" },
-        "openingTime": { "type": "string" },
-        "closingTime": { "type": "string" },
-        "openDays": { "type": "array", "items": { "type": "string" } },
-        "hasEmergency247": { "type": "boolean" },
-        "isApproved": { "type": "boolean" },
-        "isSuspended": { "type": "boolean" }
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "startingFee": { "type": "string" },
+        "emergency247": { "type": "boolean" }
       },
-      "required": ["id", "name", "city", "area", "verified"]
+      "required": ["uid", "hospitalName", "status"]
     },
     "Doctor": {
       "title": "Doctor",
-      "description": "Doctor profile and availability data",
+      "description": "Doctor profile in hospital",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "hospitalId": { "type": "string" },
         "name": { "type": "string" },
         "specialization": { "type": "string" },
-        "qualifications": { "type": "array", "items": { "type": "string" } },
-        "fee": { "type": "number" },
-        "availableToday": { "type": "boolean" },
-        "nextSlot": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "verified": { "type": "boolean" },
-        "title": { "type": "string" }
+        "status": { "type": "string", "enum": ["present", "absent"] }
       },
-      "required": ["id", "hospitalId", "name", "specialization", "fee"]
+      "required": ["name", "specialization"]
     },
     "Token": {
       "title": "Token",
-      "description": "Token for queue management",
+      "description": "Appointment/Wait token",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
         "hospitalId": { "type": "string" },
-        "number": { "type": "string" },
         "patientName": { "type": "string" },
-        "patientPhone": { "type": "string" },
-        "doctorName": { "type": "string" },
-        "timeSlot": { "type": "string" },
-        "status": { "type": "string" },
-        "isEmergency": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "fee": { "type": "number" },
-        "paymentMethod": { "type": "string" }
+        "tokenNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["Waiting", "In Progress", "Completed", "Cancelled"] }
       },
-      "required": ["id", "hospitalId", "number", "patientName", "status", "createdAt"]
+      "required": ["hospitalId", "patientName", "status"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User profile collection"
+      "description": "Patient profiles"
     },
     "/hospitals/{hospitalId}": {
       "schema": "Hospital",
-      "description": "Hospitals collection"
+      "description": "Hospital registry"
     },
-    "/doctors/{doctorId}": {
+    "/hospitals/{hospitalId}/doctors/{doctorId}": {
       "schema": "Doctor",
-      "description": "Doctors collection"
+      "description": "Doctors list for a hospital"
+    },
+    "/hospitals/{hospitalId}/staff/{staffId}": {
+       "schema": "object",
+       "description": "Staff list for a hospital"
     },
     "/tokens/{tokenId}": {
       "schema": "Token",
-      "description": "Queue tokens collection"
+      "description": "Consultation tokens"
     }
   }
 }

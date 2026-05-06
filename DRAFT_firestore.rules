@@ -6,14 +6,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // --- Helpers ---
+    // 3. Primitives & Helpers
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
-    // --- Validation Blueprints ---
+    // Validation Blueprints
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'fullName', 'userRole']) &&
              data.uid is string && data.fullName is string && data.userRole is string;
@@ -30,23 +30,18 @@ service cloud.firestore {
              data.tokenNumber is string;
     }
 
-    // --- Match Blocks ---
-
     // 1. Users Collection
     match /users/{userId} {
       allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && (isOwner(userId) || existing().userRole == 'hospital');
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().userRole == existing().userRole;
     }
 
     // 2. Hospitals Collection
     match /hospitals/{hospitalId} {
-      // Patients can see active hospitals
       allow get: if true;
-      allow list: if true; 
-      
-      // Admin hospital can manage their profile
+      allow list: if true; // Public listing
       allow create: if isOwner(hospitalId) && isValidHospital(incoming());
       allow update: if isOwner(hospitalId) && isValidHospital(incoming());
 
@@ -65,24 +60,21 @@ service cloud.firestore {
 
     // 3. Tokens Collection
     match /tokens/{tokenId} {
-      // Both hospitals and patients need to see tokens
-      // But only relevant ones. For now, allow list if hospitalId matches or patientId matches.
-      allow read: if isSignedIn(); 
-      allow list: if isSignedIn() && (
-        resource.data.hospitalId == request.auth.uid || 
-        resource.data.patientId == request.auth.uid
+      allow read: if isSignedIn() && (
+        incoming().hospitalId == request.auth.uid || // Hospital side
+        existing().hospitalId == request.auth.uid || 
+        incoming().patientId == request.auth.uid || // Patient side (if we add patientId later)
+        existing().patientId == request.auth.uid
       );
-      
+      allow list: if isSignedIn(); // Filtered by hospitalId on client
       allow create: if isSignedIn() && isValidToken(incoming());
-      
       allow update: if isSignedIn() && (
-        // Hospital update status or other fields
-        isOwner(existing().hospitalId) ||
-        // Patient update status (cancel)
-        isOwner(existing().patientId)
+        // Hospital update status
+        (incoming().hospitalId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) ||
+        // Owner update (cancel)
+        (existing().patientId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
       );
-      
-      allow delete: if isSignedIn() && isOwner(existing().hospitalId);
+      allow delete: if isSignedIn() && (existing().hospitalId == request.auth.uid);
     }
   }
 }

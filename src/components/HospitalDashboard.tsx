@@ -19,10 +19,33 @@ import {
   CheckCircle2,
   Globe,
   TrendingUp,
-  Stethoscope
+  Stethoscope,
+  Trash2,
+  Edit,
+  Save,
+  Phone,
+  MapPin,
+  Building2,
+  Camera,
+  Upload,
+  UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { db, auth } from '../firebase';
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  doc, 
+  updateDoc, 
+  addDoc, 
+  deleteDoc, 
+  serverTimestamp,
+  orderBy
+} from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 import { 
   BarChart, 
   Bar, 
@@ -39,16 +62,76 @@ interface HospitalDashboardProps {
   onSignOut: () => void;
 }
 
-const HospitalDashboard = ({ hospitalData, onSignOut }: HospitalDashboardProps) => {
+const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: HospitalDashboardProps) => {
   const { t, language, setLanguage } = useLanguage();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [hospitalData, setHospitalData] = useState(initialHospitalData);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [tokens, setTokens] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Listen to hospital data
+  useEffect(() => {
+    if (!initialHospitalData?.uid) return;
+    const unsubscribe = onSnapshot(doc(db, 'hospitals', initialHospitalData.uid), (doc) => {
+      if (doc.exists()) {
+        setHospitalData({ uid: doc.id, ...doc.data() });
+      }
+    });
+    return () => unsubscribe();
+  }, [initialHospitalData?.uid]);
+
+  // Listen to doctors
+  useEffect(() => {
+    if (!initialHospitalData?.uid) return;
+    const q = query(collection(db, `hospitals/${initialHospitalData.uid}/doctors`));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setDoctors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, [initialHospitalData?.uid]);
+
+  // Listen to staff
+  useEffect(() => {
+    if (!initialHospitalData?.uid) return;
+    const q = query(collection(db, `hospitals/${initialHospitalData.uid}/staff`));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, [initialHospitalData?.uid]);
+
+  // Listen to tokens
+  useEffect(() => {
+    if (!initialHospitalData?.uid) return;
+    const q = query(
+      collection(db, 'tokens'), 
+      where('hospitalId', '==', initialHospitalData.uid),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => console.error("Tokens stream error:", err));
+    return () => unsubscribe();
+  }, [initialHospitalData?.uid]);
+
+  const toggleStatus = async () => {
+    if (!hospitalData?.uid) return;
+    const newStatus = hospitalData.status === 'active' ? 'inactive' : 'active';
+    try {
+      await updateDoc(doc(db, 'hospitals', hospitalData.uid), { status: newStatus });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `hospitals/${hospitalData.uid}`);
+    }
+  };
 
   const d = t.dashboard;
 
@@ -62,29 +145,288 @@ const HospitalDashboard = ({ hospitalData, onSignOut }: HospitalDashboardProps) 
     { day: 'Sun', patients: 30, revenue: 8500 },
   ];
 
-  const doctors = [
-    { name: 'Dr. Sarah Ahmed', spec: 'Cardiologist', status: 'present', patients: 12, avatar: 'https://i.pravatar.cc/150?u=sarah' },
-    { name: 'Dr. Kamran Khan', spec: 'Pediatrician', status: 'absent', patients: 0, avatar: 'https://i.pravatar.cc/150?u=kamran' },
-    { name: 'Dr. Zainab Aziz', spec: 'Dermatologist', status: 'present', patients: 8, avatar: 'https://i.pravatar.cc/150?u=zainab' },
-    { name: 'Dr. Faisal Malik', spec: 'Neurologist', status: 'leave', patients: 0, avatar: 'https://i.pravatar.cc/150?u=faisal' },
-  ];
+  const renderDoctorsList = () => (
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold text-slate-900">Manage Doctors</h2>
+        <button 
+          onClick={async () => {
+            const name = prompt("Doctor Name:");
+            const specialization = prompt("Specialization:");
+            if (name && specialization) {
+              await addDoc(collection(db, `hospitals/${hospitalData.uid}/doctors`), {
+                name,
+                specialization,
+                status: 'present',
+                createdAt: serverTimestamp()
+              });
+            }
+          }}
+          className="px-6 py-3 bg-primary text-white font-bold rounded-2xl flex items-center gap-2"
+        >
+          <Plus size={20} /> Add Doctor
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {doctors.map(docItem => (
+          <div key={docItem.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative group">
+            <button 
+              onClick={() => deleteDoc(doc(db, `hospitals/${hospitalData.uid}/doctors`, docItem.id))}
+              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+            >
+              <Trash2 size={18} />
+            </button>
+            <div className="flex items-center gap-4 mb-4">
+              <img src={docItem.photo || `https://ui-avatars.com/api/?name=${docItem.name}`} className="w-16 h-16 rounded-2xl object-cover" />
+              <div>
+                <h4 className="font-bold text-slate-900">{docItem.name}</h4>
+                <p className="text-sm text-slate-500">{docItem.specialization}</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button className="flex-1 py-2 text-xs font-bold bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100">Edit Profile</button>
+              <button 
+                onClick={() => updateDoc(doc(db, `hospitals/${hospitalData.uid}/doctors`, docItem.id), { status: docItem.status === 'present' ? 'absent' : 'present' })}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl ${docItem.status === 'present' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}
+              >
+                {docItem.status === 'present' ? 'Present' : 'Absent'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
-  const recentTokens = [
-    { id: 'T-001', patient: 'Aisha Bibi', doctor: 'Dr. Sarah Ahmed', time: '10:15 AM', status: 'Completed', fee: '1500' },
-    { id: 'T-002', patient: 'Muhammad Ali', doctor: 'Dr. Zainab Aziz', time: '10:30 AM', status: 'In Progress', fee: '1200' },
-    { id: 'T-003', patient: 'Fatima Zahra', doctor: 'Dr. Sarah Ahmed', time: '10:45 AM', status: 'Waiting', fee: '1500' },
-    { id: 'T-004', patient: 'Umar Farooq', doctor: 'Dr. Kamran Khan', time: '11:00 AM', status: 'Cancelled', fee: '0' },
-  ];
+  const renderStaffList = () => (
+    <div className="p-8">
+       <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold text-slate-900">Hospital Staff</h2>
+        <button 
+          onClick={async () => {
+            const name = prompt("Staff Name:");
+            const role = prompt("Role (e.g. Nurse, Admin):");
+            if (name && role) {
+              await addDoc(collection(db, `hospitals/${hospitalData.uid}/staff`), {
+                name,
+                role,
+                status: 'active',
+                createdAt: serverTimestamp()
+              });
+            }
+          }}
+          className="px-6 py-3 bg-primary text-white font-bold rounded-2xl flex items-center gap-2"
+        >
+          <UserPlus size={20} /> Add Staff
+        </button>
+      </div>
+      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-50 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+            <tr>
+              <th className="px-8 py-4">Name</th>
+              <th className="px-8 py-4">Role</th>
+              <th className="px-8 py-4">Status</th>
+              <th className="px-8 py-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {staff.map(member => (
+              <tr key={member.id}>
+                <td className="px-8 py-4 font-bold text-slate-900">{member.name}</td>
+                <td className="px-8 py-4 text-slate-500">{member.role}</td>
+                <td className="px-8 py-4">
+                  <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-[10px] font-bold uppercase tracking-widest">{member.status}</span>
+                </td>
+                <td className="px-8 py-4">
+                  <button onClick={() => deleteDoc(doc(db, `hospitals/${hospitalData.uid}/staff`, member.id))} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
-  const navItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: d.nav.dashboard },
-    { id: 'doctors', icon: Stethoscope, label: d.nav.doctors },
-    { id: 'staff', icon: Users, label: d.nav.staff },
-    { id: 'attendance', icon: CalendarCheck2, label: d.nav.attendance },
-    { id: 'tokens', icon: Ticket, label: d.nav.tokens },
-    { id: 'revenue', icon: Wallet, label: d.nav.revenue },
-    { id: 'settings', icon: Settings, label: d.nav.settings },
-  ];
+  const renderTokens = () => (
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold text-slate-900">Token Management</h2>
+        <button 
+          onClick={async () => {
+            const name = prompt("Patient Name:");
+            const docName = doctors.length > 0 ? doctors[0].name : "General Physician";
+            if (name) {
+              const tokenNum = tokens.length + 1;
+              await addDoc(collection(db, 'tokens'), {
+                hospitalId: hospitalData.uid,
+                hospitalName: hospitalData.hospitalName,
+                patientName: name,
+                doctorName: docName,
+                tokenNumber: tokenNum.toString().padStart(3, '0'),
+                status: 'Waiting',
+                fee: '1500',
+                createdAt: serverTimestamp()
+              });
+            }
+          }}
+          className="px-6 py-3 bg-health-teal text-white font-bold rounded-2xl flex items-center gap-2"
+        >
+          <Plus size={20} /> Issue Walk-in Token
+        </button>
+      </div>
+      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-50 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+            <tr>
+              <th className="px-8 py-4">Token #</th>
+              <th className="px-8 py-4">Patient</th>
+              <th className="px-8 py-4">Doctor</th>
+              <th className="px-8 py-4">Status</th>
+              <th className="px-8 py-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {tokens.map(token => (
+              <tr key={token.id}>
+                <td className="px-8 py-4 font-mono font-bold text-slate-900">#{token.tokenNumber}</td>
+                <td className="px-8 py-4 font-bold text-slate-900">{token.patientName}</td>
+                <td className="px-8 py-4 text-slate-500">{token.doctorName}</td>
+                <td className="px-8 py-4">
+                  <select 
+                    value={token.status}
+                    onChange={(e) => updateDoc(doc(db, 'tokens', token.id), { status: e.target.value })}
+                    className="bg-slate-50 border-none rounded-lg text-xs font-bold text-slate-600 focus:ring-primary"
+                  >
+                    <option>Waiting</option>
+                    <option>In Progress</option>
+                    <option>Completed</option>
+                    <option>Cancelled</option>
+                  </select>
+                </td>
+                <td className="px-8 py-4">
+                  <button onClick={() => deleteDoc(doc(db, 'tokens', token.id))} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const [editProfileData, setEditProfileData] = useState(hospitalData);
+  useEffect(() => { setEditProfileData(hospitalData); }, [hospitalData]);
+
+  const renderSettings = () => (
+    <div className="p-8">
+      <h2 className="text-3xl font-bold text-slate-900 mb-8">Hospital Settings</h2>
+      <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm max-w-4xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-6">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Hospital Name</label>
+              <div className="relative">
+                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <input 
+                  type="text" 
+                  value={editProfileData?.hospitalName || ''}
+                  onChange={(e) => setEditProfileData({...editProfileData, hospitalName: e.target.value})}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary font-bold text-slate-700" 
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">OPD Starting Fee (Rs.)</label>
+              <div className="relative">
+                <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <input 
+                   type="number" 
+                   value={editProfileData?.startingFee || '1000'}
+                   onChange={(e) => setEditProfileData({...editProfileData, startingFee: e.target.value})}
+                   className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary font-bold text-slate-700" 
+                />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Opening Timings</label>
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                  <input 
+                    type="time" 
+                    value={editProfileData?.openingTime || '09:00'}
+                    onChange={(e) => setEditProfileData({...editProfileData, openingTime: e.target.value})}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-700" 
+                  />
+                </div>
+                <div className="relative flex-1">
+                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                  <input 
+                    type="time" 
+                    value={editProfileData?.closingTime || '21:00'}
+                    onChange={(e) => setEditProfileData({...editProfileData, closingTime: e.target.value})}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-700" 
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Emergency 24/7</label>
+              <div className="flex gap-4">
+                 <button 
+                  onClick={() => setEditProfileData({...editProfileData, emergency247: true})}
+                  className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all ${editProfileData?.emergency247 ? 'bg-red-50 border-red-500 text-red-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                 >
+                   Yes
+                 </button>
+                 <button 
+                  onClick={() => setEditProfileData({...editProfileData, emergency247: false})}
+                  className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all ${!editProfileData?.emergency247 ? 'bg-slate-50 border-slate-500 text-slate-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                 >
+                   No
+                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-10 pt-10 border-t border-slate-100 flex justify-end">
+          <button 
+            disabled={isSaving}
+            onClick={async () => {
+              setIsSaving(true);
+              try {
+                await updateDoc(doc(db, 'hospitals', hospitalData.uid), editProfileData);
+                alert("Profile updated successfully!");
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            className="px-10 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+          >
+            {isSaving ? 'Saving...' : <><Save size={20} /> Save Changes</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'dashboard': return renderDashboardHome();
+      case 'doctors': return renderDoctorsList();
+      case 'staff': return renderStaffList();
+      case 'tokens': return renderTokens();
+      case 'settings': return renderSettings();
+      default: return renderDashboardHome();
+    }
+  };
 
   return (
     <div className={`min-h-screen bg-[#F8FAFC] flex ${language === 'UR' ? 'flex-row-reverse font-urdu' : 'font-sans'} `} dir={language === 'UR' ? 'rtl' : 'ltr'}>
@@ -114,7 +456,7 @@ const HospitalDashboard = ({ hospitalData, onSignOut }: HospitalDashboardProps) 
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {navItems.map((item) => (
+            {sidebarNavItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
@@ -172,318 +514,13 @@ const HospitalDashboard = ({ hospitalData, onSignOut }: HospitalDashboardProps) 
               <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
             </button>
             <div className="w-10 h-10 rounded-2xl bg-slate-100 border-2 border-white overflow-hidden shadow-sm">
-              <img src="https://ui-avatars.com/api/?name=Admin&background=0F2236&color=fff" alt="Admin" className="w-full h-full object-cover" />
+              <div className="w-full h-full bg-slate-800 flex items-center justify-center text-white font-bold">{hospitalData?.hospitalName?.[0]}</div>
             </div>
           </div>
         </header>
 
         {/* Dashboard View */}
-        <div className="p-8 pb-32">
-          {/* Welcome Banner */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-10 p-8 rounded-[40px] bg-gradient-to-br from-[#0F2236] to-[#1a3a5a] text-white relative overflow-hidden shadow-2xl"
-          >
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <h2 className="text-3xl font-bold mb-2">{d.setup.welcome}</h2>
-                <p className="text-white/60 font-medium max-w-md">Complete your profile to unlock all features and start providing better healthcare services.</p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button className="px-6 py-3.5 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2">
-                  <Plus size={18} /> {d.setup.addDoctor}
-                </button>
-                <button className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl backdrop-blur-md transition-all text-sm flex items-center gap-2">
-                  <Users size={18} /> {d.setup.addStaff}
-                </button>
-                <button className="px-6 py-3.5 bg-health-teal text-white font-bold rounded-2xl shadow-lg shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2">
-                  <Ticket size={18} /> {d.setup.setupTokens}
-                </button>
-              </div>
-            </div>
-            {/* Abstract Decorative Elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl"></div>
-          </motion.div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            {[
-              { label: d.stats.todayTokens, value: '84', icon: Ticket, color: 'text-[#0B5FFF]', bg: 'bg-[#0B5FFF]/10', sub: '+12% from yesterday' },
-              { label: d.stats.patientsWaiting, value: '18', icon: Clock, color: 'text-[#FFB800]', bg: 'bg-[#FFB800]/10', sub: 'Avg wait: 24m' },
-              { label: d.stats.completedToday, value: '62', icon: CheckCircle2, color: 'text-[#00C16A]', bg: 'bg-[#00C16A]/10', sub: '92% completion rate' },
-              { label: d.stats.todayRevenue, value: 'Rs. 42,500', icon: Wallet, color: 'text-[#00C9B1]', bg: 'bg-[#00C9B1]/10', sub: 'Target: Rs. 50k' },
-            ].map((stat, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all group"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className={`w-14 h-14 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300`}>
-                    <stat.icon size={28} />
-                  </div>
-                  <button className="text-slate-300 hover:text-slate-500 transition-colors">
-                    <MoreVertical size={20} />
-                  </button>
-                </div>
-                <h3 className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">{stat.label}</h3>
-                <p className="text-3xl font-bold text-slate-900 mb-2">{stat.value}</p>
-                <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
-                  <TrendingUp size={12} className="text-green-500" />
-                  <span>{stat.sub}</span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Live Queue */}
-            <div className="lg:col-span-8 flex flex-col gap-8">
-              <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
-                <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-health-teal rounded-full"></div>
-                    <h3 className="text-xl font-bold text-slate-900">{d.liveQueue.title}</h3>
-                  </div>
-                  <button className="text-primary text-sm font-bold hover:underline">View All</button>
-                </div>
-                
-                <div className="p-8 flex flex-col md:flex-row gap-8">
-                  {/* Serving Card */}
-                  <div className="flex-1 p-8 rounded-[32px] bg-primary text-white shadow-2xl shadow-primary/30 relative overflow-hidden group">
-                    <div className="relative z-10">
-                      <div className="flex justify-between items-start mb-6">
-                        <span className="px-4 py-1.5 bg-white/20 text-white rounded-full text-xs font-bold backdrop-blur-md uppercase tracking-wider">{d.liveQueue.serving}</span>
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md text-white animate-pulse">
-                          <Plus size={20} />
-                        </div>
-                      </div>
-                      <div className="mb-8">
-                        <h4 className="text-6xl font-black mb-2 font-mono tracking-tighter transition-transform group-hover:scale-105 duration-500">T-001</h4>
-                        <div className="flex flex-col">
-                          <span className="text-xl font-bold">Muhammad Hussain</span>
-                          <span className="text-white/60 text-sm font-medium">Dr. Sarah Ahmed (Cardiology)</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <button className="flex-1 py-4 bg-health-teal text-white font-bold rounded-2xl shadow-lg shadow-health-teal/20 transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-2">
-                          {d.liveQueue.callNext} <ChevronRight size={18} />
-                        </button>
-                      </div>
-                    </div>
-                    {/* Background Graphic */}
-                    <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
-                  </div>
-
-                  {/* Next List */}
-                  <div className="flex-1 space-y-4">
-                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest pl-2 mb-4">{d.liveQueue.nextTokens}</h4>
-                    {['Muhammad Ali', 'Fatima Zahra', 'Zeeshan Ahmed'].map((name, i) => (
-                      <div key={i} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-transparent hover:border-slate-200 transition-all group">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-white text-slate-900 rounded-xl flex items-center justify-center font-bold font-mono shadow-sm border border-slate-100 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
-                            T-00{i+2}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-900">{name}</span>
-                            <span className="text-xs text-slate-400 font-medium">Waiting: {15 + i*8}m</span>
-                          </div>
-                        </div>
-                        <button className="p-2 text-slate-300 hover:text-primary transition-colors">
-                          <ChevronRight size={20} />
-                        </button>
-                      </div>
-                    ))}
-                    <button className="w-full py-4 border-2 border-dashed border-slate-200 text-slate-400 rounded-2xl font-bold hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2">
-                      <Plus size={20} /> {d.liveQueue.issueNew}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Weekly Chart */}
-              <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-primary rounded-full"></div>
-                    <h3 className="text-xl font-bold text-slate-900">Hospital Performance</h3>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-primary text-white text-[10px] font-bold rounded-lg shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">Patients</button>
-                    <button className="px-4 py-2 bg-slate-50 text-slate-400 text-[10px] font-bold rounded-lg transition-all uppercase tracking-widest hover:bg-slate-100">Revenue</button>
-                  </div>
-                </div>
-                <div className="h-[280px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sampleChartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                      <XAxis 
-                        dataKey="day" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: '#94A3B8', fontSize: 12, fontWeight: 600 }} 
-                        dy={10}
-                      />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: '#94A3B8', fontSize: 12, fontWeight: 600 }} 
-                      />
-                      <Tooltip 
-                        cursor={{ fill: '#F1F5F9' }}
-                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                      />
-                      <Bar dataKey="patients" fill="#0B5FFF" radius={[10, 10, 0, 0]} barSize={24}>
-                        {sampleChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={index === 5 ? '#0B5FFF' : '#E2E8F0'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="lg:col-span-4 flex flex-col gap-8">
-              {/* Doctors List */}
-              <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm flex flex-col h-full">
-                 <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-[#FFB800] rounded-full"></div>
-                    <h3 className="text-xl font-bold text-slate-900">{d.doctors.title}</h3>
-                  </div>
-                  <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                    <Plus size={20} />
-                  </button>
-                </div>
-                <div className="p-4 flex-1">
-                  <div className="space-y-2">
-                    {doctors.map((doc, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 rounded-3xl hover:bg-slate-50 transition-all group">
-                        <div className="flex items-center gap-4">
-                          <div className="relative">
-                            <img src={doc.avatar} alt={doc.name} className="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-sm" />
-                            <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-white ${
-                              doc.status === 'present' ? 'bg-green-500' : doc.status === 'absent' ? 'bg-red-500' : 'bg-orange-500'
-                            }`}></span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-900 group-hover:text-primary transition-colors">{doc.name}</span>
-                            <span className="text-xs text-slate-400 font-medium">{doc.spec}</span>
-                          </div>
-                        </div>
-                        <div className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest ${
-                          doc.status === 'present' ? 'bg-green-100 text-green-600' : doc.status === 'absent' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
-                        }`}>
-                          {doc.patients} Patients
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="p-8 bg-slate-50 rounded-b-[40px]">
-                  <button className="w-full py-4 text-primary font-bold text-sm bg-white border border-slate-200 rounded-2xl hover:border-primary transition-all shadow-sm">
-                    View Doctor Records
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="grid grid-cols-2 gap-4">
-                 <button className="p-6 bg-[#00C9B1] text-white rounded-[32px] flex flex-col items-center justify-center gap-3 shadow-lg shadow-[#00C9B1]/20 hover:scale-105 transition-all">
-                    <Users size={32} />
-                    <span className="text-xs font-bold uppercase tracking-widest">Add Patient</span>
-                 </button>
-                 <button className="p-6 bg-[#FF5C00] text-white rounded-[32px] flex flex-col items-center justify-center gap-3 shadow-lg shadow-[#FF5C00]/20 hover:scale-105 transition-all">
-                    <UserSquare2 size={32} />
-                    <span className="text-xs font-bold uppercase tracking-widest">Medical Staff</span>
-                 </button>
-                 <button className="p-6 bg-primary text-white rounded-[32px] flex flex-col items-center justify-center gap-3 shadow-lg shadow-primary/20 hover:scale-105 transition-all">
-                    <Bell size={32} />
-                    <span className="text-xs font-bold uppercase tracking-widest">Announce</span>
-                 </button>
-                 <button className="p-6 bg-[#0F2236] text-white rounded-[32px] flex flex-col items-center justify-center gap-3 shadow-lg shadow-slate-900/20 hover:scale-105 transition-all">
-                    <Settings size={32} />
-                    <span className="text-xs font-bold uppercase tracking-widest">Configure</span>
-                 </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Tokens Table */}
-          <div className="mt-10 bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-1.5 h-6 bg-slate-900 rounded-full"></div>
-                <h3 className="text-xl font-bold text-slate-900">{d.recentTokens.title}</h3>
-              </div>
-              <div className="relative">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search token or patient..." 
-                  className="pl-12 pr-6 py-2.5 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-primary text-sm font-medium w-64"
-                />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-slate-50">
-                    <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{d.recentTokens.tokenNum}</th>
-                    <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{d.recentTokens.patient}</th>
-                    <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{d.recentTokens.doctor}</th>
-                    <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{d.recentTokens.time}</th>
-                    <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{d.recentTokens.status}</th>
-                    <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{d.recentTokens.fee}</th>
-                    <th className="px-8 py-5"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {recentTokens.map((token, i) => (
-                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-8 py-5">
-                        <span className="font-mono font-bold text-slate-900">{token.id}</span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className="font-bold text-slate-900">{token.patient}</span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className="font-medium text-slate-600">{token.doctor}</span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className="text-sm font-bold text-slate-400">{token.time}</span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                          token.status === 'Completed' ? 'bg-green-100 text-green-600' :
-                          token.status === 'In Progress' ? 'bg-blue-100 text-blue-600' :
-                          token.status === 'Waiting' ? 'bg-amber-100 text-amber-600' :
-                          'bg-red-100 text-red-600'
-                        }`}>
-                          {token.status}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className="font-bold text-slate-900">Rs. {token.fee}</span>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                         <button className="p-2 text-slate-300 hover:text-slate-500 transition-colors">
-                            <MoreVertical size={18} />
-                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        {renderActiveTab()}
       </main>
     </div>
   );
