@@ -23,12 +23,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
       if (user) {
         // Fetch additional user data from Firestore using server-only fetch to bypass local cache issues
         try {
           const userDoc = await getDocFromServer(doc(db, 'users', user.uid));
+          if (!isMounted) return;
+          
           if (userDoc.exists()) {
             setUserData(userDoc.data());
           } else {
@@ -42,31 +44,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             try {
               await setDoc(doc(db, 'users', user.uid), newUserData);
-              setUserData({ ...newUserData, createdAt: new Date().toISOString() }); // Local fallback for immediate use
+              if (isMounted) setUserData({ ...newUserData, createdAt: new Date().toISOString() }); // Local fallback for immediate use
             } catch (createErr) {
               console.error("Failed to create user document:", createErr);
               // Don't throw here, just set minimal user data
-              setUserData(newUserData);
+              if (isMounted) setUserData(newUserData);
             }
           }
         } catch (error: any) {
           const errorMessage = error.message || String(error);
           console.error("Error fetching user data:", error);
+          if (!isMounted) return;
+
           if (error.code === 'permission-denied' || errorMessage.toLowerCase().includes('permission')) {
              // If permission denied, we still want the app to load, maybe with a warning
-             // This can happen during propagation or if rules are still being updated
              setUserData({ uid: user.uid, email: user.email, role: 'Patient', permissionError: true });
           } else {
              handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
           }
         }
       } else {
-        setUserData(null);
+        if (isMounted) setUserData(null);
       }
-      setLoading(false);
+      
+      if (isMounted) {
+        setCurrentUser(user);
+        setLoading(false);
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const logout = async () => {

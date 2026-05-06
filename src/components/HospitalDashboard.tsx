@@ -88,54 +88,64 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   // Listen to hospital data
   useEffect(() => {
+    let isMounted = true;
     const fetchHospitalData = async () => {
       if (!initialHospitalData?.uid) return;
       try {
         const docRef = doc(db, 'hospitals', initialHospitalData.uid);
-        // Using getDocFromServer to ensure we bypass any broken local cache
         const docSnap = await getDocFromServer(docRef);
-        if (docSnap.exists()) {
+        if (isMounted && docSnap.exists()) {
           setHospitalData({ uid: docSnap.id, ...docSnap.data() });
         }
       } catch (error: any) {
-        handleFirestoreError(error, OperationType.GET, `hospitals/${initialHospitalData.uid}`);
+        if (isMounted) console.error("Error fetching hospital data:", error);
       }
     };
     fetchHospitalData();
+    return () => { isMounted = false; };
   }, [initialHospitalData?.uid]);
 
   // Listen to doctors
   useEffect(() => {
+    let isMounted = true;
     const fetchDoctors = async () => {
       if (!initialHospitalData?.uid) return;
       try {
         const q = query(collection(db, `hospitals/${initialHospitalData.uid}/doctors`));
         const snapshot = await getDocs(q);
-        setDoctors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        if (isMounted) {
+          setDoctors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }
       } catch (error: any) {
-        handleFirestoreError(error, OperationType.LIST, `hospitals/${initialHospitalData.uid}/doctors`);
+        if (isMounted) console.error("Error fetching doctors:", error);
       }
     };
     fetchDoctors();
+    return () => { isMounted = false; };
   }, [initialHospitalData?.uid]);
 
   // Listen to staff
   useEffect(() => {
+    let isMounted = true;
     const fetchStaff = async () => {
       if (!initialHospitalData?.uid) return;
       try {
         const q = query(collection(db, `hospitals/${initialHospitalData.uid}/staff`));
         const snapshot = await getDocs(q);
-        setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        if (isMounted) {
+          setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }
       } catch (error: any) {
-        handleFirestoreError(error, OperationType.LIST, `hospitals/${initialHospitalData.uid}/staff`);
+        if (isMounted) console.error("Error fetching staff:", error);
       }
     };
     fetchStaff();
+    return () => { isMounted = false; };
   }, [initialHospitalData?.uid]);
 
   // Listen to tokens
   useEffect(() => {
+    let isMounted = true;
     const fetchTokens = async () => {
       if (!initialHospitalData?.uid) return;
       try {
@@ -144,12 +154,15 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           where('hospitalId', '==', initialHospitalData.uid)
         );
         const snapshot = await getDocs(q);
-        setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        if (isMounted) {
+          setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }
       } catch (err: any) {
-        handleFirestoreError(err, OperationType.LIST, 'tokens');
+        if (isMounted) console.error("Error fetching tokens:", err);
       }
     };
     fetchTokens();
+    return () => { isMounted = false; };
   }, [initialHospitalData?.uid]);
 
   const toggleStatus = async () => {

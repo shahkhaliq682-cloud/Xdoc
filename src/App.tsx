@@ -3331,6 +3331,8 @@ export default function App() {
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const testFirestore = async () => {
       try {
         console.log("FIRESTORE TEST - Start");
@@ -3339,44 +3341,62 @@ export default function App() {
           lastTested: serverTimestamp(),
           message: "Hello world"
         });
+        if (!isMounted) return;
         console.log("FIRESTORE TEST - Write success");
         const snap = await getDoc(testRef);
-        console.log("FIRESTORE TEST - Read success:", snap.data());
+        if (isMounted) console.log("FIRESTORE TEST - Read success:", snap?.data());
       } catch (e: any) {
         console.error("FIRESTORE TEST - Error:", e);
       }
     };
+    
     testFirestore();
 
     const fetchHospitals = async (retries = 3) => {
       try {
         const q = query(collection(db, 'hospitals'), limit(50));
         const snapshot = await getDocs(q);
+        if (!isMounted) return;
         const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
         setFetchedHospitals(list);
       } catch (error: any) {
-        if (retries > 0 && error.code === 'permission-denied') {
+        if (retries > 0 && error?.code === 'permission-denied') {
           console.log(`Permission denied. Retrying fetch (${retries} left)...`);
-          setTimeout(() => fetchHospitals(retries - 1), 2000);
+          const timeoutId = setTimeout(() => fetchHospitals(retries - 1), 2000);
+          return () => clearTimeout(timeoutId);
         } else {
-          handleFirestoreError(error, OperationType.LIST, 'hospitals');
+          try {
+            handleFirestoreError(error, OperationType.LIST, 'hospitals');
+          } catch (err) {
+            console.error("Firestore error handled:", err);
+          }
         }
       }
     };
+    
     fetchHospitals();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
     if (currentUser && userData) {
-      if (userData.role === 'Admin') {
+      if (userData?.role === 'Admin' || userData?.role === 'hospital_admin') {
         setViewState('admin_dashboard');
-      } else if (userData.role === 'SuperAdmin') {
+      } else if (userData?.role === 'SuperAdmin' || userData?.role === 'super_admin') {
         setViewState('super_admin');
       } else {
         setViewState('patient_home');
       }
+    } else if (!currentUser) {
+      // Redirect to hero if logged out, but only if they were in a protected view
+      if (['admin_dashboard', 'super_admin', 'patient_home'].includes(viewState)) {
+        setViewState('hero');
+      }
     }
-  }, [currentUser, userData]);
+  }, [currentUser, userData, viewState]);
 
   useEffect(() => {
     setIsDarkMode(viewState === 'admin_dashboard' || viewState === 'super_admin');
@@ -3507,7 +3527,7 @@ export default function App() {
           </div>
         );
       default:
-        return <HeroSection onSignUp={() => setViewState('auth_choice')} onLogin={() => setViewState('auth_choice')} />;
+        return <NotFound onBack={() => setViewState('hero')} />;
     }
   };
 
@@ -3548,4 +3568,30 @@ export default function App() {
   );
 }
 
-// ... Rest of the components (ConfirmationPage, HospitalListPage, etc.) would be integrated or refactored into this structure.
+const NotFound = ({ onBack }: { onBack: () => void }) => {
+  const { t } = useLanguage();
+  return (
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md"
+      >
+        <div className="w-24 h-24 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-300 mx-auto mb-8">
+          <ShieldAlert size={48} />
+        </div>
+        <h1 className="text-4xl font-bold text-slate-900 mb-4">404 - Page Not Found</h1>
+        <p className="text-slate-500 font-medium mb-10 leading-relaxed">
+          The page you are looking for does not exist or has been moved.
+        </p>
+        <button 
+          onClick={onBack}
+          className="px-10 py-4 bg-primary text-white rounded-2xl font-bold shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 mx-auto"
+        >
+          <ArrowLeft size={20} />
+          Go Back Home
+        </button>
+      </motion.div>
+    </div>
+  );
+};

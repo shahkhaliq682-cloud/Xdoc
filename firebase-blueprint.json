@@ -2,76 +2,75 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "Patient user profile",
+      "description": "System user account with role-based access",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
-        "displayName": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["Patient", "Hospital", "Admin"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "role": { "type": "string", "enum": ["patient", "hospital_admin", "super_admin"] },
+        "createdAt": { "type": "object" },
+        "profile": { "type": "object" }
       },
-      "required": ["uid", "role"]
+      "required": ["uid", "email", "role"]
     },
     "Hospital": {
       "title": "Hospital",
-      "description": "Hospital profile",
+      "description": "Hospital profile data",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
         "hospitalName": { "type": "string" },
-        "hospitalType": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
         "city": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "inactive"] },
-        "startingFee": { "type": "string" },
-        "emergency247": { "type": "boolean" }
+        "address": { "type": "string" },
+        "area": { "type": "string" },
+        "type": { "type": "string" },
+        "specializations": { "type": "array" },
+        "facilities": { "type": "array" },
+        "openDays": { "type": "array" },
+        "status": { "type": "string" },
+        "uid": { "type": "string" }
       },
-      "required": ["uid", "hospitalName", "status"]
-    },
-    "Doctor": {
-      "title": "Doctor",
-      "description": "Doctor profile in hospital",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "specialization": { "type": "string" },
-        "status": { "type": "string", "enum": ["present", "absent"] }
-      },
-      "required": ["name", "specialization"]
+      "required": ["hospitalName", "uid"]
     },
     "Token": {
       "title": "Token",
-      "description": "Appointment/Wait token",
+      "description": "Medical appointment/queue token",
       "type": "object",
       "properties": {
         "hospitalId": { "type": "string" },
+        "hospitalName": { "type": "string" },
         "patientName": { "type": "string" },
+        "doctorName": { "type": "string" },
         "tokenNumber": { "type": "string" },
-        "status": { "type": "string", "enum": ["Waiting", "In Progress", "Completed", "Cancelled"] }
+        "status": { "type": "string" },
+        "fee": { "type": "string" },
+        "createdAt": { "type": "object" }
       },
-      "required": ["hospitalId", "patientName", "status"]
+      "required": ["hospitalId", "tokenNumber"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "Patient profiles"
-    },
-    "/hospitals/{hospitalId}": {
+    "hospitals": {
       "schema": "Hospital",
-      "description": "Hospital registry"
+      "description": "Collection of all registered hospitals"
     },
-    "/hospitals/{hospitalId}/doctors/{doctorId}": {
-      "schema": "Doctor",
-      "description": "Doctors list for a hospital"
+    "users": {
+      "schema": "User",
+      "description": "User profiles and roles"
     },
-    "/hospitals/{hospitalId}/staff/{staffId}": {
-       "schema": "object",
-       "description": "Staff list for a hospital"
-    },
-    "/tokens/{tokenId}": {
+    "tokens": {
       "schema": "Token",
-      "description": "Consultation tokens"
+      "description": "Queue tokens for all hospitals"
+    },
+    "hospitals/{hospitalId}/doctors": {
+      "schema": "object",
+      "description": "Subcollection of doctors in a hospital"
+    },
+    "hospitals/{hospitalId}/staff": {
+      "schema": "object",
+      "description": "Subcollection of staff in a hospital"
     }
   }
 }
