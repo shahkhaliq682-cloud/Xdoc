@@ -1329,24 +1329,6 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   {step === 5 && (
                     <div className="space-y-8">
                       <div className="space-y-4">
-                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.languagePref}</label>
-                        <div className="flex gap-4">
-                          {['Urdu', 'English'].map(l => (
-                            <button
-                              key={l}
-                              type="button"
-                              onClick={() => setFormData({...formData, language: l})}
-                              className={`flex-1 py-5 rounded-3xl font-bold text-lg transition-all border-2 ${
-                                formData.language === l ? 'bg-primary/5 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-slate-50 border-transparent text-slate-400 hover:border-slate-200'
-                              }`}
-                            >
-                              {l === 'Urdu' ? 'اردو' : 'English'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-4 pt-8 border-t border-slate-100">
                         <label className="text-sm font-bold text-slate-700">{t.signup.labels.notifications}</label>
                         <div className="space-y-4">
                           <div className={`flex items-center justify-between p-6 rounded-[32px] border-2 transition-all ${formData.whatsappNotifications ? 'bg-[#00C9B1]/5 border-[#00C9B1] shadow-md shadow-[#00C9B1]/5' : 'bg-slate-50 border-transparent'}`}>
