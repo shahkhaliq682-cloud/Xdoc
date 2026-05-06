@@ -48,7 +48,10 @@ import {
   addDoc, 
   deleteDoc, 
   serverTimestamp,
-  orderBy
+  orderBy,
+  getDocs,
+  getDocFromServer,
+  getDoc
 } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 import { 
@@ -85,23 +88,35 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   // Listen to hospital data
   useEffect(() => {
-    if (!initialHospitalData?.uid) return;
-    const unsubscribe = onSnapshot(doc(db, 'hospitals', initialHospitalData.uid), (doc) => {
-      if (doc.exists()) {
-        setHospitalData({ uid: doc.id, ...doc.data() });
+    const fetchHospitalData = async () => {
+      if (!initialHospitalData?.uid) return;
+      try {
+        const docRef = doc(db, 'hospitals', initialHospitalData.uid);
+        // Using getDocFromServer to ensure we bypass any broken local cache
+        const docSnap = await getDocFromServer(docRef);
+        if (docSnap.exists()) {
+          setHospitalData({ uid: docSnap.id, ...docSnap.data() });
+        }
+      } catch (error: any) {
+        handleFirestoreError(error, OperationType.GET, `hospitals/${initialHospitalData.uid}`);
       }
-    }, (error) => handleFirestoreError(error, OperationType.GET, `hospitals/${initialHospitalData.uid}`));
-    return () => unsubscribe();
+    };
+    fetchHospitalData();
   }, [initialHospitalData?.uid]);
 
   // Listen to doctors
   useEffect(() => {
-    if (!initialHospitalData?.uid) return;
-    const q = query(collection(db, `hospitals/${initialHospitalData.uid}/doctors`));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setDoctors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, `hospitals/${initialHospitalData.uid}/doctors`));
-    return () => unsubscribe();
+    const fetchDoctors = async () => {
+      if (!initialHospitalData?.uid) return;
+      try {
+        const q = query(collection(db, `hospitals/${initialHospitalData.uid}/doctors`));
+        const snapshot = await getDocs(q);
+        setDoctors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (error: any) {
+        handleFirestoreError(error, OperationType.LIST, `hospitals/${initialHospitalData.uid}/doctors`);
+      }
+    };
+    fetchDoctors();
   }, [initialHospitalData?.uid]);
 
   // Listen to staff
@@ -116,15 +131,20 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   // Listen to tokens
   useEffect(() => {
-    if (!initialHospitalData?.uid) return;
-    const q = query(
-      collection(db, 'tokens'), 
-      where('hospitalId', '==', initialHospitalData.uid)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'tokens'));
-    return () => unsubscribe();
+    const fetchTokens = async () => {
+      if (!initialHospitalData?.uid) return;
+      try {
+        const q = query(
+          collection(db, 'tokens'), 
+          where('hospitalId', '==', initialHospitalData.uid)
+        );
+        const snapshot = await getDocs(q);
+        setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err: any) {
+        handleFirestoreError(err, OperationType.LIST, 'tokens');
+      }
+    };
+    fetchTokens();
   }, [initialHospitalData?.uid]);
 
   const toggleStatus = async () => {
