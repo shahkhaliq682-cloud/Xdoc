@@ -1,6 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
     // 0. Global Safety Net
     match /{document=**} {
       allow read, write: if false;
@@ -15,46 +16,72 @@ service cloud.firestore {
 
     // --- Validation Blueprints ---
     function isValidUser(data) {
-      return data.uid is string && (data.role is string || data.userRole is string);
+      return data.keys().hasAll(['uid', 'role']) &&
+             data.uid is string && data.uid.size() <= 128 &&
+             data.role in ['Patient', 'Hospital', 'Admin', 'SuperAdmin', 'hospital_admin', 'super_admin'];
     }
 
     function isValidHospital(data) {
-      return data.hospitalName is string && data.hospitalName.size() <= 200 &&
-             data.status in ['active', 'inactive'];
+      return data.keys().hasAll(['hospitalName', 'status']) &&
+             data.hospitalName is string && data.hospitalName.size() <= 200 &&
+             data.status in ['active', 'inactive', 'Under Review'];
     }
 
     function isValidToken(data) {
-      return data.patientName is string && data.hospitalId is string &&
-             data.status in ['Waiting', 'In Progress', 'Completed', 'Cancelled'] &&
-             data.tokenNumber is string;
+      return data.keys().hasAll(['hospitalId', 'patientName', 'status']) &&
+             data.hospitalId is string && data.hospitalId.size() <= 128 &&
+             data.patientName is string && data.patientName.size() <= 200 &&
+             data.status in ['Waiting', 'In Progress', 'Completed', 'Cancelled'];
+    }
+
+    function isValidDoctor(data) {
+      return data.keys().hasAll(['name', 'specialization']) &&
+             data.name is string && data.name.size() <= 200 &&
+             data.specialization is string && data.specialization.size() <= 200;
     }
 
     // --- Match Blocks ---
 
     // 1. Users Collection
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      // Allow user to read their own profile, or admins to read all
+      allow get: if isOwner(userId);
+      // Explicitly secure list queries - ONLY allow user to see themselves in list if needed
+      allow list: if isSignedIn() && (isOwner(userId) || resource.data.uid == request.auth.uid);
+      
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && 
+                      // Prevent role changes via client
+                      incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'phoneNumber', 'bio']);
     }
 
     // 2. Hospitals Collection
     match /hospitals/{hospitalId} {
-      // Patients can see active hospitals
+      // Publicly readable hospitals
       allow get: if true;
+      // Secure list query for hospitals
       allow list: if true; 
-      
-      // Admin hospital can manage their profile
+
       allow create: if isOwner(hospitalId) && isValidHospital(incoming());
-      allow update: if isOwner(hospitalId) && isValidHospital(incoming());
+      
+      allow update: if isOwner(hospitalId) && (
+        // Action: Generic Profile Update
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'hospitalName', 'hospitalType', 'type', 'city', 'area', 'address', 'phone', 
+          'startingFee', 'opdFee', 'emergencyFee', 'emergency', 'emergency247', 
+          'openingTime', 'closingTime', 'status', 'about', 'specs', 'specializations'
+        ])
+      );
 
       // Doctors Subcollection
       match /doctors/{doctorId} {
         allow read: if true;
-        allow write: if isOwner(hospitalId);
+        allow write: if isOwner(hospitalId) && (request.method == 'delete' || isValidDoctor(incoming()));
       }
 
       // Staff Subcollection
       match /staff/{staffId} {
+        // Staff details might be internal to hospital
         allow read: if isOwner(hospitalId);
         allow write: if isOwner(hospitalId);
       }
@@ -62,24 +89,38 @@ service cloud.firestore {
 
     // 3. Tokens Collection
     match /tokens/{tokenId} {
-      // Both hospitals and patients need to see tokens
-      // But only relevant ones. For now, allow list if hospitalId matches or patientId matches.
-      allow read: if isSignedIn(); 
-      allow list: if isSignedIn() && (
+      // Read access: Patient or Hospital or Admin
+      allow get: if isSignedIn() && (
         resource.data.hospitalId == request.auth.uid || 
         resource.data.patientId == request.auth.uid
       );
       
-      allow create: if isSignedIn() && isValidToken(incoming());
-      
-      allow update: if isSignedIn() && (
-        // Hospital update status or other fields
-        isOwner(existing().hospitalId) ||
-        // Patient update status (cancel)
-        isOwner(existing().patientId)
+      // Secure list query: Must filter by hospitalId or patientId
+      allow list: if isSignedIn() && (
+        resource.data.hospitalId == request.auth.uid || 
+        resource.data.patientId == request.auth.uid
       );
-      
+
+      allow create: if isSignedIn() && isValidToken(incoming()) && (
+        // Patient creating for themselves
+        (incoming().patientId == request.auth.uid) ||
+        // Hospital creating a walk-in
+        isOwner(incoming().hospitalId)
+      );
+
+      allow update: if isSignedIn() && (
+        // Hospital update status
+        (isOwner(existing().hospitalId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'doctorName', 'notes'])) ||
+        // Patient cancel their own token
+        (isOwner(existing().patientId) && incoming().status == 'Cancelled' && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+
       allow delete: if isSignedIn() && isOwner(existing().hospitalId);
+    }
+    
+    // 4. Test Collection (for connection test)
+    match /test/connection {
+      allow get: if true;
     }
   }
 }

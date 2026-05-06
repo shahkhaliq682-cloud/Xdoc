@@ -28,7 +28,12 @@ import {
   Building2,
   Camera,
   Upload,
-  UserPlus
+  UserPlus,
+  History,
+  MoreHorizontal,
+  Activity,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -85,7 +90,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       if (doc.exists()) {
         setHospitalData({ uid: doc.id, ...doc.data() });
       }
-    });
+    }, (error) => handleFirestoreError(error, OperationType.GET, `hospitals/${initialHospitalData.uid}`));
     return () => unsubscribe();
   }, [initialHospitalData?.uid]);
 
@@ -95,7 +100,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     const q = query(collection(db, `hospitals/${initialHospitalData.uid}/doctors`));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setDoctors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `hospitals/${initialHospitalData.uid}/doctors`));
     return () => unsubscribe();
   }, [initialHospitalData?.uid]);
 
@@ -105,7 +110,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     const q = query(collection(db, `hospitals/${initialHospitalData.uid}/staff`));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `hospitals/${initialHospitalData.uid}/staff`));
     return () => unsubscribe();
   }, [initialHospitalData?.uid]);
 
@@ -119,7 +124,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => console.error("Tokens stream error:", err));
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'tokens'));
     return () => unsubscribe();
   }, [initialHospitalData?.uid]);
 
@@ -134,6 +139,109 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   };
 
   const d = t.dashboard;
+
+  const sidebarNavItems = [
+    { id: 'dashboard', icon: LayoutDashboard, label: d.nav.dashboard },
+    { id: 'doctors', icon: Stethoscope, label: d.nav.doctors },
+    { id: 'staff', icon: Users, label: d.nav.staff },
+    { id: 'tokens', icon: Ticket, label: d.nav.tokens },
+    { id: 'settings', icon: Settings, label: d.nav.settings }
+  ];
+
+  const renderDashboardHome = () => (
+    <div className="p-8 space-y-12">
+      {/* Stats row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: d.stats.todayTokens, val: tokens.length, icon: Ticket, color: 'text-primary' },
+          { label: d.stats.patientsWaiting, val: tokens.filter(t => t.status === 'Waiting').length, icon: Clock, color: 'text-amber-500' },
+          { label: d.stats.completedToday, val: tokens.filter(t => t.status === 'Completed').length, icon: CheckCircle2, color: 'text-health-teal' },
+          { label: d.stats.todayRevenue, val: `Rs. ${tokens.filter(t => t.status === 'Completed').reduce((acc, t) => acc + (parseInt(t.fee) || 0), 0).toLocaleString()}`, icon: Wallet, color: 'text-emerald-600' }
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square group hover:shadow-xl transition-all">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${stat.color.replace('text', 'bg')}/10 ${stat.color} group-hover:scale-110 transition-transform`}>
+              <stat.icon size={28} />
+            </div>
+            <div>
+              <p className="text-4xl font-bold text-slate-900 tracking-tighter">{stat.val}</p>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">{stat.label}</h3>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+         {/* Live Clinic Queue */}
+         <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden">
+            <div className="flex justify-between items-center mb-10">
+               <h3 className="text-2xl font-bold text-slate-900">{d.liveQueue.title}</h3>
+               <div className="px-4 py-2 bg-health-teal/10 text-health-teal rounded-full text-[10px] font-bold uppercase tracking-widest border border-health-teal/20">Live Sync</div>
+            </div>
+            {tokens.length === 0 ? (
+               <div className="py-20 text-center space-y-6">
+                  <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto text-slate-200">
+                    <History size={40} />
+                  </div>
+                  <p className="text-slate-400 font-bold">{d.setup.welcome}</p>
+               </div>
+            ) : (
+               <div className="space-y-6">
+                  <div className="p-8 bg-slate-900 rounded-[32px] text-white">
+                     <p className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] mb-4">{d.liveQueue.serving}</p>
+                     <div className="flex items-center justify-between">
+                        <div>
+                           <h4 className="text-4xl font-bold mb-1">{tokens.find(t => t.status === 'In Progress')?.patientName || 'No one serving'}</h4>
+                           <p className="text-slate-400 font-medium">#{tokens.find(t => t.status === 'In Progress')?.tokenNumber || '--'}</p>
+                        </div>
+                        <div className="w-20 h-20 bg-primary/20 rounded-2xl flex items-center justify-center text-primary">
+                           <Activity size={40} />
+                        </div>
+                     </div>
+                  </div>
+                  <div className="space-y-4">
+                     <h5 className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-widest underline decoration-primary underline-offset-4 decoration-2">{d.liveQueue.nextTokens}</h5>
+                     {tokens.filter(tok => tok.status === 'Waiting').slice(0, 3).map((token, i) => (
+                        <div key={i} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                           <div className="flex items-center gap-4">
+                              <span className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center font-mono font-bold text-xs text-slate-400">#{token.tokenNumber}</span>
+                              <span className="font-bold text-slate-700">{token.patientName}</span>
+                           </div>
+                           <button 
+                             onClick={() => updateDoc(doc(db, 'tokens', token.id), { status: 'In Progress' })}
+                             className="px-4 py-2 bg-primary/5 text-primary text-[10px] font-bold rounded-lg hover:bg-primary hover:text-white transition-all uppercase tracking-widest"
+                           >
+                              {d.liveQueue.callNext}
+                           </button>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            )}
+         </div>
+
+         {/* Chart Placeholder */}
+         <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm">
+            <div className="flex justify-between items-center mb-10">
+               <h3 className="text-2xl font-bold text-slate-900">Weekly Patient Flow</h3>
+               <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-primary transition-colors"><MoreHorizontal size={24} /></button>
+            </div>
+            <div className="h-[300px] w-full flex items-end justify-between gap-2 px-4">
+                {sampleChartData.map((data, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-4">
+                     <div className="w-full bg-primary/5 rounded-t-xl relative group transition-all" style={{ height: `${(data.patients / 70) * 100}%` }}>
+                        <div className="absolute inset-x-0 bottom-0 bg-primary h-full rounded-t-xl origin-bottom transition-all" style={{ transform: `scaleY(0.4)` }} />
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          {data.patients} Patients
+                        </div>
+                     </div>
+                     <span className="font-mono text-[10px] font-bold text-slate-400 uppercase">{data.day}</span>
+                  </div>
+                ))}
+            </div>
+         </div>
+      </div>
+    </div>
+  );
 
   const sampleChartData = [
     { day: 'Mon', patients: 45, revenue: 12000 },

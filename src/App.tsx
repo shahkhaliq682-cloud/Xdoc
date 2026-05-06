@@ -2429,6 +2429,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
 // --- Hospital List ---
 
 const HospitalListPage = ({ hospitals, onHospitalClick }: { hospitals: any[], onHospitalClick: (h: any) => void }) => {
+  const { t } = useLanguage();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
     type: 'All',
@@ -2599,9 +2600,9 @@ const HospitalListPage = ({ hospitals, onHospitalClick }: { hospitals: any[], on
                       <div className="flex flex-wrap gap-2 mt-6 mb-8">
                         <div className="bg-primary/5 text-primary px-4 py-2 rounded-xl flex items-center gap-2 border border-primary/10">
                           <ShieldCheck size={16} />
-                          <span className="font-mono text-[10px] font-bold uppercase tracking-widest">{h.hospitalType || h.category || 'PRIVATE'}</span>
+                          <span className="font-mono text-[10px] font-bold uppercase tracking-widest">{h.type || h.hospitalType || h.category || 'PRIVATE'}</span>
                         </div>
-                        {(h.specializations || []).slice(0, 3).map((spec: string, i: number) => (
+                        {(h.specializations || h.specs || []).slice(0, 3).map((spec: string, i: number) => (
                           <span key={i} className="bg-slate-50 text-slate-500 px-4 py-2 rounded-xl font-mono text-[10px] font-bold uppercase border border-slate-100">{spec}</span>
                         ))}
                       </div>
@@ -2609,7 +2610,7 @@ const HospitalListPage = ({ hospitals, onHospitalClick }: { hospitals: any[], on
                       <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-50">
                         <div>
                           <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Consultation start at</p>
-                          <p className="text-3xl font-bold text-slate-900">Rs. {(parseInt(h.startingFee) || 1000).toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
+                          <p className="text-3xl font-bold text-slate-900">Rs. {(parseInt(h.opdFee || h.startingFee) || 1000).toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
                         </div>
                         <button className="bg-health-teal text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all">
                           Book Now
@@ -3334,7 +3335,7 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
       const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
       setFetchedHospitals(list);
-    }, (error: any) => handleFirestoreError(error, OperationType.GET, 'hospitals'));
+    }, (error: any) => handleFirestoreError(error, OperationType.LIST, 'hospitals'));
     return () => unsubscribe();
   }, []);
 
@@ -3353,19 +3354,6 @@ export default function App() {
   useEffect(() => {
     setIsDarkMode(viewState === 'admin_dashboard' || viewState === 'super_admin');
   }, [viewState]);
-
-  useEffect(() => {
-    const testConnection = async () => {
-      try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if(error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration or internet connection.");
-        }
-      }
-    };
-    testConnection();
-  }, []);
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
