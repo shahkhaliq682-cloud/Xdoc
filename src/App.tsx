@@ -574,7 +574,6 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
            return;
         }
         
-        // Normalize roles for redirection
         let role = userData.role;
         if (role === 'Admin' || role === 'hospital_admin') role = 'hospital_admin';
         else if (role === 'SuperAdmin' || role === 'super_admin') role = 'super_admin';
@@ -585,7 +584,7 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
         setError({ general: 'User profile not found.' });
       }
     } catch (err: any) {
-      console.error(err);
+      handleFirestoreError(err, OperationType.GET, `users/${auth.currentUser?.uid}`);
       if (err.code === 'auth/user-not-found') {
         setError({ email: t.auth.emailNotFound });
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
@@ -617,11 +616,10 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
         else role = 'patient';
         onLoginSuccess(role);
       } else {
-        // New Google user, proceed to signup choice or default to patient
         onSignUpClick('Patient');
       }
-    } catch (error) {
-      console.error("Google login failed", error);
+    } catch (error: any) {
+      handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`);
     }
   };
 
