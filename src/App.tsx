@@ -3331,6 +3331,21 @@ export default function App() {
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
 
   useEffect(() => {
+    const testWrite = async () => {
+      try {
+        console.log("Attempting test write to Firestore...");
+        await setDoc(doc(db, 'debug_connection', 'test_' + Date.now()), { 
+          msg: "Connection Test",
+          timestamp: serverTimestamp(),
+          user: auth.currentUser?.uid || 'anonymous'
+        });
+        console.log("TEST WRITE SUCCESSFUL!");
+      } catch (e: any) {
+        console.error("TEST WRITE FAILED:", e);
+      }
+    };
+    testWrite();
+
     const fetchHospitals = async () => {
       console.log("Fetching hospitals from DB:", db.app.options.projectId);
       try {
