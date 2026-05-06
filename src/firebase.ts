@@ -6,8 +6,9 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
+// Use initializeFirestore with memory cache to bypass persistence-related assertion errors (ID: ca9)
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache()
-}, firebaseConfig.firestoreDatabaseId);
+});
 
 export default app;

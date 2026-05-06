@@ -65,7 +65,7 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import HospitalDashboard from './components/HospitalDashboard';
@@ -3331,12 +3331,19 @@ export default function App() {
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
 
   useEffect(() => {
-    const q = collection(db, 'hospitals');
-    const unsubscribe = onSnapshot(q, (snapshot: any) => {
-      const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-      setFetchedHospitals(list);
-    }, (error: any) => handleFirestoreError(error, OperationType.LIST, 'hospitals'));
-    return () => unsubscribe();
+    const fetchHospitals = async () => {
+      console.log("Fetching hospitals from DB:", db.app.options.projectId);
+      try {
+        const q = collection(db, 'hospitals');
+        const snapshot = await getDocs(q);
+        const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+        setFetchedHospitals(list);
+      } catch (error: any) {
+        console.error("Hospital fetch error details:", error);
+        handleFirestoreError(error, OperationType.LIST, 'hospitals');
+      }
+    };
+    fetchHospitals();
   }, []);
 
   useEffect(() => {

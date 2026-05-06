@@ -1,23 +1,15 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /hospitals/{hospitalId} {
+    // Explicitly allow all paths for debugging
+    match /hospitals/{docId} {
       allow read, write: if true;
-      match /{allSubcollections=**} {
-        allow read, write: if true;
-      }
     }
-    match /users/{userId} {
+    match /users/{docId} {
       allow read, write: if true;
-      match /{allSubcollections=**} {
-        allow read, write: if true;
-      }
     }
-    match /tokens/{tokenId} {
+    match /tokens/{docId} {
       allow read, write: if true;
-      match /{allSubcollections=**} {
-        allow read, write: if true;
-      }
     }
     match /{document=**} {
       allow read, write: if true;
