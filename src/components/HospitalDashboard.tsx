@@ -119,8 +119,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     if (!initialHospitalData?.uid) return;
     const q = query(
       collection(db, 'tokens'), 
-      where('hospitalId', '==', initialHospitalData.uid),
-      orderBy('createdAt', 'desc')
+      where('hospitalId', '==', initialHospitalData.uid)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));

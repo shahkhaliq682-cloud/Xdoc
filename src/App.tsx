@@ -3331,7 +3331,7 @@ export default function App() {
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
 
   useEffect(() => {
-    const q = query(collection(db, 'hospitals'), where('status', '==', 'active'));
+    const q = collection(db, 'hospitals');
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
       const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
       setFetchedHospitals(list);
