@@ -65,7 +65,7 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import HospitalDashboard from './components/HospitalDashboard';
@@ -3330,7 +3330,6 @@ export default function App() {
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
 
   useEffect(() => {
-    const { collection, query, where, onSnapshot } = require('firebase/firestore');
     const q = query(collection(db, 'hospitals'), where('status', '==', 'active'));
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
       const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));

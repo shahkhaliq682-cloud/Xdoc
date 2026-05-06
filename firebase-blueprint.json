@@ -6,12 +6,12 @@
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
-        "fullName": { "type": "string" },
-        "phoneNumber": { "type": "string" },
-        "userRole": { "type": "string", "enum": ["patient", "hospital", "admin"] },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["Patient", "Hospital", "Admin"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "fullName", "userRole"]
+      "required": ["uid", "role"]
     },
     "Hospital": {
       "title": "Hospital",

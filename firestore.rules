@@ -15,8 +15,7 @@ service cloud.firestore {
 
     // --- Validation Blueprints ---
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'fullName', 'userRole']) &&
-             data.uid is string && data.fullName is string && data.userRole is string;
+      return data.uid is string && (data.role is string || data.userRole is string);
     }
 
     function isValidHospital(data) {
@@ -34,10 +33,8 @@ service cloud.firestore {
 
     // 1. Users Collection
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().userRole == existing().userRole;
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
     }
 
     // 2. Hospitals Collection
