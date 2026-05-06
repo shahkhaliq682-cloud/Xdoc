@@ -68,6 +68,7 @@ import { auth, db } from './firebase';
 import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import HospitalDashboard from './components/HospitalDashboard';
 
 // --- Header Component ---
 
@@ -1592,9 +1593,9 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
         emergency24_7: isEmergency,
         opdFee: formData.opd,
         paymentMethods: paymentMethods,
-        status: "pending",
+        status: "active",
         createdAt: serverTimestamp(),
-        approved: false,
+        approved: true,
         uid: user.uid
       };
 
@@ -1628,10 +1629,10 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
         opd: '', emergency: '', isFree: false
       });
 
-      // 5. Success Flow: Redirect after 3s
+      // 5. Success Flow: Redirect after 2s
       setTimeout(() => {
         onComplete(); // This redirects based on the parent component's logic
-      }, 3000);
+      }, 2000);
 
     } catch (err: any) {
       console.error("Full Registration Error:", err);
@@ -2378,14 +2379,14 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   <div className="w-24 h-24 bg-success-green/10 text-success-green rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
                     <CheckCircle2 size={56} />
                   </div>
-                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6 font-primary tracking-tight">Registration submitted!</h3>
+                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6 font-primary tracking-tight">Welcome to Xdoc!</h3>
                   <div className="max-w-md mx-auto space-y-6">
                     <p className="text-slate-500 text-lg leading-relaxed font-medium">
-                      We will approve your hospital within 24-48 hours. You will be redirected shortly...
+                      Aapka hospital register ho gaya. Dashboard khul raha hai...
                     </p>
                     <div className="p-6 bg-white rounded-3xl border-2 border-slate-100 shadow-sm">
                       <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-2">Registration Status</p>
-                      <p className="text-2xl font-mono font-bold text-primary">PENDING APPROVAL</p>
+                      <p className="text-2xl font-mono font-bold text-primary italic uppercase">Active Now</p>
                     </div>
                   </div>
                 </div>
@@ -3416,27 +3417,13 @@ export default function App() {
         return <PatientRegistration onComplete={() => setViewState('patient_home')} />;
       case 'admin_dashboard':
         return (
-          <div className="flex bg-bg-dark text-white min-h-screen">
-            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setViewState('hero')} />
-            <main className={`flex-1 transition-all duration-500 pl-72 pb-20`}>
-              <Header 
-                darkMode={true} 
-                hospitalName="St. Mary's General" 
-                showMenu={false} 
-                onLogoClick={() => setViewState('hero')}
-              />
-              <div className="max-w-7xl mx-auto px-8 py-12">
-                {activeTab === 'dashboard' && <DashboardOverview />}
-                {activeTab === 'staff' && <StaffScreen />}
-                {['doctors', 'attendance', 'tokens', 'revenue', 'export', 'notifications', 'settings'].includes(activeTab) && (
-                  <div className="py-20 text-center text-slate-500 text-4xl font-bold uppercase tracking-widest opacity-20">
-                    {activeTab} <br/>
-                    <span className="text-sm font-sans font-medium lowercase tracking-normal">View In Development</span>
-                  </div>
-                )}
-              </div>
-            </main>
-          </div>
+          <HospitalDashboard 
+            hospitalData={userData} 
+            onSignOut={() => {
+              logout();
+              setViewState('hero');
+            }} 
+          />
         );
       case 'super_admin':
         return (

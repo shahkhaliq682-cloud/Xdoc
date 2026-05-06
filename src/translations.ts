@@ -87,6 +87,53 @@ export const translations = {
       tooManyRequests: 'Too many attempts. Please try again later',
       invalidEmail: 'Please enter a valid email',
       underReview: 'Your account is under review. Please wait for approval.',
+    },
+    dashboard: {
+      nav: {
+        dashboard: 'Dashboard',
+        doctors: 'Doctors',
+        staff: 'Staff',
+        attendance: 'Attendance',
+        tokens: 'Tokens',
+        revenue: 'Revenue',
+        settings: 'Settings',
+        signOut: 'Sign Out',
+      },
+      stats: {
+        todayTokens: 'Today\'s Tokens',
+        patientsWaiting: 'Patients Waiting',
+        completedToday: 'Completed Today',
+        todayRevenue: 'Today\'s Revenue',
+      },
+      liveQueue: {
+        title: 'Live Queue',
+        callNext: 'Call Next',
+        issueNew: 'Issue New Token',
+        serving: 'Currently Serving',
+        inProgress: 'In Progress',
+        nextTokens: 'Next Tokens',
+      },
+      doctors: {
+        title: 'Today\'s Doctors',
+        present: 'Present',
+        absent: 'Absent',
+        onLeave: 'On Leave',
+      },
+      setup: {
+        welcome: 'Welcome! Complete your setup to start receiving patients',
+        addDoctor: 'Add Your First Doctor +',
+        addStaff: 'Add Staff Members +',
+        setupTokens: 'Setup Token System +',
+      },
+      recentTokens: {
+        title: 'Recent Tokens',
+        tokenNum: 'Token #',
+        patient: 'Patient',
+        doctor: 'Doctor',
+        time: 'Time',
+        status: 'Status',
+        fee: 'Fee',
+      }
     }
   },
   UR: {
@@ -175,6 +222,54 @@ export const translations = {
       tooManyRequests: 'بہت زیادہ کوششیں۔ تھوڑی دیر بعد ٹرائی کریں',
       invalidEmail: 'درست ای میل لکھیں',
       underReview: 'آپ کا اکاؤنٹ زیرِ غور ہے۔ براہ کرم منظوری کا انتظار کریں۔',
+    },
+    dashboard: {
+      nav: {
+        dashboard: 'ڈیش بورڈ',
+        doctors: 'ڈاکٹرز',
+        staff: 'عملہ',
+        attendance: 'حاضری',
+        tokens: 'ٹوکنز',
+        revenue: 'آمدنی',
+        settings: 'ترتیبات',
+        signOut: 'سائن آؤٹ',
+      },
+      stats: {
+        todayTokens: 'آج کے ٹوکنز',
+        patientsWaiting: 'انتظار میں مریض',
+        completedToday: 'آج مکمل',
+        todayRevenue: 'آج کی آمدنی',
+      },
+      liveQueue: {
+        title: 'لائیو قطار',
+        callNext: 'اگلا بلائیں',
+        issueNew: 'نیا ٹوکن جاری کریں',
+        serving: 'ابھی دیکھ رہے ہیں',
+        inProgress: 'جاری ہے',
+        nextTokens: 'اگلے ٹوکنز',
+      },
+      doctors: {
+        title: 'آج کے ڈاکٹرز',
+        present: 'موجود',
+        absent: 'غیر حاضر',
+        onLeave: 'چھٹی پر',
+      },
+      setup: {
+        welcome: 'خوش آمدید! مریضوں کا استقبال شروع کرنے کے لیے سیٹ اپ مکمل کریں',
+        addDoctor: 'پہلا ڈاکٹر شامل کریں +',
+        addStaff: 'عملہ شامل کریں +',
+        setupTokens: 'ٹوکن سسٹم سیٹ اپ کریں +',
+      },
+      recentTokens: {
+        title: 'حالیہ ٹوکنز',
+        tokenNum: 'ٹوکن #',
+        patient: 'مریض',
+        doctor: 'ڈاکٹر',
+        time: 'وقت',
+        status: 'حالت',
+        fee: 'فیس',
+      }
     }
   }
 };
+
