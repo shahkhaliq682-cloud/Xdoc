@@ -65,7 +65,7 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import HospitalDashboard from './components/HospitalDashboard';
@@ -3331,31 +3331,36 @@ export default function App() {
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
 
   useEffect(() => {
-    const testWrite = async () => {
+    const testFirestore = async () => {
       try {
-        console.log("Attempting test write to Firestore...");
-        await setDoc(doc(db, 'debug_connection', 'test_' + Date.now()), { 
-          msg: "Connection Test",
-          timestamp: serverTimestamp(),
-          user: auth.currentUser?.uid || 'anonymous'
+        console.log("FIRESTORE TEST - Start");
+        const testRef = doc(db, 'debug_tests', 'connection_test');
+        await setDoc(testRef, { 
+          lastTested: serverTimestamp(),
+          message: "Hello world"
         });
-        console.log("TEST WRITE SUCCESSFUL!");
+        console.log("FIRESTORE TEST - Write success");
+        const snap = await getDoc(testRef);
+        console.log("FIRESTORE TEST - Read success:", snap.data());
       } catch (e: any) {
-        console.error("TEST WRITE FAILED:", e);
+        console.error("FIRESTORE TEST - Error:", e);
       }
     };
-    testWrite();
+    testFirestore();
 
-    const fetchHospitals = async () => {
-      console.log("Fetching hospitals from DB:", db.app.options.projectId);
+    const fetchHospitals = async (retries = 3) => {
       try {
-        const q = collection(db, 'hospitals');
+        const q = query(collection(db, 'hospitals'), limit(50));
         const snapshot = await getDocs(q);
         const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
         setFetchedHospitals(list);
       } catch (error: any) {
-        console.error("Hospital fetch error details:", error);
-        handleFirestoreError(error, OperationType.LIST, 'hospitals');
+        if (retries > 0 && error.code === 'permission-denied') {
+          console.log(`Permission denied. Retrying fetch (${retries} left)...`);
+          setTimeout(() => fetchHospitals(retries - 1), 2000);
+        } else {
+          handleFirestoreError(error, OperationType.LIST, 'hospitals');
+        }
       }
     };
     fetchHospitals();

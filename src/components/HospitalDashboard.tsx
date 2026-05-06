@@ -121,12 +121,17 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   // Listen to staff
   useEffect(() => {
-    if (!initialHospitalData?.uid) return;
-    const q = query(collection(db, `hospitals/${initialHospitalData.uid}/staff`));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, `hospitals/${initialHospitalData.uid}/staff`));
-    return () => unsubscribe();
+    const fetchStaff = async () => {
+      if (!initialHospitalData?.uid) return;
+      try {
+        const q = query(collection(db, `hospitals/${initialHospitalData.uid}/staff`));
+        const snapshot = await getDocs(q);
+        setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (error: any) {
+        handleFirestoreError(error, OperationType.LIST, `hospitals/${initialHospitalData.uid}/staff`);
+      }
+    };
+    fetchStaff();
   }, [initialHospitalData?.uid]);
 
   // Listen to tokens
