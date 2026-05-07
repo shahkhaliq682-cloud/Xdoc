@@ -145,7 +145,26 @@ export const translations = {
       },
       editProfile: 'Edit Profile',
       saveChanges: 'Save Changes',
-      issueToken: 'Issue Token'
+      issueToken: 'Issue Token',
+      search: 'Search',
+      patientsData: 'Patients Data',
+      open: 'Open',
+      closedStatus: 'Closed',
+      completed: 'Completed',
+      pending: 'Pending/Waiting',
+      notArrived: 'Not Arrived',
+      totalToday: 'Total Today',
+      addStaff: 'Add Staff',
+      editStaff: 'Edit Staff Details',
+      edit: 'Edit',
+      delete: 'Delete',
+      actions: 'Actions',
+      govtHospital: 'Government Hospital/Clinic',
+      privateHospital: 'Private Hospital/Clinic',
+      patientHistory: 'Patient History',
+      saveData: 'Haan, Save Karo',
+      deleteData: 'Delete Kar Do',
+      dataWarning: 'Your 30 day data is full. Do you want to save this data?'
     }
   },
   UR: {
@@ -292,7 +311,26 @@ export const translations = {
       },
       editProfile: 'پروفائل ترمیم کریں',
       saveChanges: 'تبدیلیاں محفوظ کریں',
-      issueToken: 'ٹوکن جاری کریں'
+      issueToken: 'ٹوکن جاری کریں',
+      search: 'تلاش',
+      patientsData: 'مریضوں کا ڈیٹا',
+      open: 'کھلا',
+      closedStatus: 'بند',
+      completed: 'مکمل',
+      pending: 'زیر التواء',
+      notArrived: 'نہیں آئے',
+      totalToday: 'آج کی تعداد',
+      addStaff: 'عملہ شامل کریں',
+      editStaff: 'عملے کی تفصیلات تبدیل کریں',
+      edit: 'تبدیل کریں',
+      delete: 'ختم کریں',
+      actions: 'اقدامات',
+      govtHospital: 'سرکاری ہسپتال',
+      privateHospital: 'نجی ہسپتال',
+      patientHistory: 'مریض کی تاریخ',
+      saveData: 'ڈیٹا محفوظ کریں',
+      deleteData: 'ڈیٹا حذف کریں',
+      dataWarning: 'آپ کا 30 دن کا ڈیٹا مکمل ہو گیا ہے. کیا آپ یہ ڈیٹا محفوظ کرنا چاہتے ہیں؟'
     }
   }
 };

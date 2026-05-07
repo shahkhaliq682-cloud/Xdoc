@@ -69,6 +69,7 @@ import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer, collection, que
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import HospitalDashboard from './components/HospitalDashboard';
+import PatientDashboard from './components/PatientDashboard';
 
 // --- Header Component ---
 
@@ -3507,24 +3508,15 @@ export default function App() {
           );
         }
         return (
-          <div className="bg-[#faf8ff] min-h-screen pb-32">
-            <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => setViewState('hero')} />
-            <HospitalListPage hospitals={fetchedHospitals} onHospitalClick={(h) => setSelectedHospital(h)} />
-
-            {/* Patient Bottom Navbar */}
-            <nav className="fixed bottom-0 left-0 w-full z-[100] bg-white border-t border-slate-100 flex justify-around py-4">
-               {[
-                 { icon: Home, id: 'h' },
-                 { icon: Search, id: 's' },
-                 { icon: Calendar, id: 'c' },
-                 { icon: User, id: 'p' }
-               ].map(tab => (
-                 <button key={tab.id} className="text-slate-400 hover:text-primary transition-colors">
-                   <tab.icon size={24} />
-                 </button>
-               ))}
-            </nav>
-          </div>
+          <PatientDashboard 
+            userData={userData} 
+            hospitals={fetchedHospitals} 
+            onHospitalClick={(h) => setSelectedHospital(h)}
+            onSignOut={() => {
+              logout();
+              setViewState('hero');
+            }}
+          />
         );
       default:
         return <NotFound onBack={() => setViewState('hero')} />;
