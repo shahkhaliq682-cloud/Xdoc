@@ -1010,25 +1010,31 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
         }
       };
 
-      // 3. Save to Firestore
-      await setDoc(doc(db, 'users', user.uid), patientData);
+      // 3. Save to Firestore using UID as Doc ID
+      try {
+        await setDoc(doc(db, 'users', user.uid), patientData);
+      } catch (dbErr: any) {
+        console.error("Firestore Error:", dbErr);
+        throw new Error(`Database Error: ${dbErr.message || 'Permission denied'}`);
+      }
       
       setIsSubmitted(true);
       
       // Success redirect
       setTimeout(() => {
         onComplete();
-      }, 3000);
+      }, 2000);
 
     } catch (err: any) {
-      console.error(err);
-      let errorMsg = 'Failed to create account. Please try again.';
+      console.error("Registration Error:", err);
+      let errorMsg = err.message || 'Failed to create account. Please try again.';
+      
       if (err.code === 'auth/email-already-in-use') {
-        setErrors({ email: 'Email already registered' });
+        setErrors({ email: 'Email already registered', general: 'Email pehle se register hai.' });
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMsg = "Internet connection check karein (Auth error).";
+        setErrors({ general: errorMsg });
       } else {
-        if (!navigator.onLine || err.message.toLowerCase().includes('network')) {
-          errorMsg = "Internet connection check karein";
-        }
         setErrors({ general: errorMsg });
       }
     } finally {
@@ -1379,12 +1385,25 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
                           className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] hover:shadow-health-teal/40 active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70 disabled:scale-100"
                         >
                           {isSubmitting ? (
-                            <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                            <div className="flex items-center gap-3">
+                              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Account bana raha hai...</span>
+                            </div>
                           ) : (
                             <>Create My Account <ArrowRight size={24} /></>
                           )}
                         </button>
-                        {errors.general && <p className="text-red-500 text-xs font-bold mt-4">{errors.general}</p>}
+                        {errors.general && (
+                          <div className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center gap-2">
+                            <p className="text-red-500 text-xs font-bold">{errors.general}</p>
+                            <button 
+                              onClick={handleSubmit}
+                              className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline"
+                            >
+                              Retry Again
+                            </button>
+                          </div>
+                        )}
                         <p className="text-center mt-6 text-slate-500 font-medium">
                           Already have an account? <span className="text-primary font-bold cursor-pointer hover:underline" onClick={onComplete}>Login here</span>
                         </p>
@@ -1556,7 +1575,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
     setIsSubmitting(true);
     setErrors({});
     try {
-      // 1. Basic validation check (redundant but safe)
+      // 1. Basic validation check
       if (!formData.email || !formData.password || !formData.name) {
         throw new Error("Kuch fields missing hain");
       }
@@ -1568,7 +1587,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
       } catch (authErr: any) {
         console.error("Auth Error:", authErr);
         if (authErr.code === 'auth/email-already-in-use') {
-          setErrors({ email: 'Email already registered' });
+          setErrors({ email: 'Email already registered', general: 'Email pehle se register hai.' });
           return;
         }
         throw authErr;
@@ -1596,11 +1615,11 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
         paymentMethods: paymentMethods,
         status: "active",
         createdAt: serverTimestamp(),
-        approved: true,
+        approved: true, // Auto-approved for instant access
         uid: user.uid
       };
 
-      // 4. Save to Firestore
+      // 4. Save to Firestore using UID as Doc ID
       try {
         // Save to hospitals collection
         await setDoc(doc(db, 'hospitals', user.uid), hospitalData);
@@ -1614,35 +1633,22 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
         });
       } catch (dbErr: any) {
         console.error("Database Error:", dbErr);
-        if (dbErr.code === 'permission-denied') {
-          throw new Error("Database permission error");
-        }
-        throw dbErr;
+        throw new Error(`Database Error: ${dbErr.message || 'Permission denied'}`);
       }
       
       setIsSubmitted(true);
       
-      // Clear form (reset state) - minimal reset since we are redirecting
-      setFormData({
-        name: '', type: 'Private Hospital', medicalLicense: '', ownerName: '', email: '', password: '', confirmPassword: '',
-        city: '', address: '', area: '', phone: '', whatsapp: '', emergencyContact: '',
-        openingTime: '09:00', closingTime: '21:00',
-        opd: '', emergency: '', isFree: false
-      });
-
-      // 5. Success Flow: Redirect after 2s
+      // Success redirect after 2s
       setTimeout(() => {
-        onComplete(); // This redirects based on the parent component's logic
+        onComplete();
       }, 2000);
 
     } catch (err: any) {
       console.error("Full Registration Error:", err);
-      let errorMsg = 'Failed to register hospital. Please try again.';
+      let errorMsg = err.message || 'Failed to register hospital. Please try again.';
       
       if (err.message === "Kuch fields missing hain") {
-        errorMsg = "Kuch fields missing hain";
-      } else if (err.message === "Database permission error") {
-        errorMsg = "Database permission error";
+        errorMsg = "Kuch fields missing hain - Please fill all required fields.";
       } else if (!navigator.onLine || err.message.toLowerCase().includes('network')) {
         errorMsg = "Internet connection check karein";
       }
@@ -2356,9 +2362,6 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   </div>
 
                   <div className="p-8 bg-slate-50 rounded-[40px] border border-slate-200">
-                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                      By submitting for approval, you agree to our <span className="text-primary font-bold cursor-pointer">Terms of Service</span> and <span className="text-primary font-bold cursor-pointer">Privacy Policy</span>. We may contact you for further verification of your medical license.
-                    </p>
                     <button 
                       type="button"
                       disabled={isSubmitting}
@@ -2366,11 +2369,25 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                       className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70 disabled:scale-100"
                     >
                       {isSubmitting ? (
-                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Account bana raha hai...</span>
+                        </div>
                       ) : (
-                        <>Submit for Approval <ArrowRight size={24} /></>
+                        <>Register Hospital <ArrowRight size={24} /></>
                       )}
                     </button>
+                    {errors.general && (
+                      <div className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center gap-2">
+                        <p className="text-red-500 text-xs font-bold">{errors.general}</p>
+                        <button 
+                          onClick={handleSubmit}
+                          className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline"
+                        >
+                          Retry Again
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2380,10 +2397,10 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                   <div className="w-24 h-24 bg-success-green/10 text-success-green rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
                     <CheckCircle2 size={56} />
                   </div>
-                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6 font-primary tracking-tight">Welcome to Xdoc!</h3>
+                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6 font-primary tracking-tight">Hospital Registered!</h3>
                   <div className="max-w-md mx-auto space-y-6">
                     <p className="text-slate-500 text-lg leading-relaxed font-medium">
-                      Aapka hospital register ho gaya. Dashboard khul raha hai...
+                      Hospital registered! Dashboard khul raha hai...
                     </p>
                     <div className="p-6 bg-white rounded-3xl border-2 border-slate-100 shadow-sm">
                       <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-2">Registration Status</p>
