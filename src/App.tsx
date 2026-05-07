@@ -65,7 +65,7 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, setDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
+import { doc, setDoc, addDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import HospitalDashboard from './components/HospitalDashboard';
@@ -2812,7 +2812,7 @@ const HospitalDetailsPage = ({ hospital, onBook }: { hospital: Hospital, onBook:
   );
 };
 
-const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
+const ConfirmationPage = ({ doctor, token }: { doctor: Doctor, token?: any }) => (
   <div className="max-w-lg mx-auto px-6 py-12 pb-32">
     <div className="flex justify-between items-center mb-12 relative">
       <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 z-0" />
@@ -2848,7 +2848,7 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
           <div className="relative bg-white border-[6px] border-emerald-100 rounded-[32px] p-10 shadow-xl">
             <div className="text-7xl font-bold tracking-tighter text-slate-900 flex items-center justify-center gap-1">
               <span className="text-primary/10">T-</span>
-              <span className="font-mono">0047</span>
+              <span className="font-mono">{token?.tokenNumber || '0047'}</span>
             </div>
             <p className="mt-4 font-mono text-slate-400 uppercase tracking-[0.2em] text-[10px] font-bold text-center">Your Queue Position</p>
           </div>
@@ -2865,7 +2865,9 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
             </div>
             <div className="text-right">
               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Date</p>
-              <p className="font-mono font-bold text-slate-900">Oct 24, 2023</p>
+              <p className="font-mono font-bold text-slate-900">
+                {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())}
+              </p>
             </div>
           </div>
           <div className="flex justify-between items-end">
@@ -2874,8 +2876,8 @@ const ConfirmationPage = ({ doctor }: { doctor: Doctor }) => (
               <p className="font-mono font-bold text-slate-900">10:30 AM — 11:00 AM</p>
             </div>
             <div className="text-right">
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Type</p>
-              <p className="font-mono font-bold text-health-teal uppercase tracking-wider">In-Person</p>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Fee</p>
+              <p className="font-mono font-bold text-health-teal uppercase tracking-wider">Rs. {token?.fee || doctor.fee}</p>
             </div>
           </div>
         </div>
@@ -3331,6 +3333,8 @@ export default function App() {
   const [isBookingFlow, setIsBookingFlow] = useState(false);
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
 
+  const [lastCreatedToken, setLastCreatedToken] = useState<any>(null);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -3489,7 +3493,7 @@ export default function App() {
            return (
              <div className="bg-white min-h-screen">
                <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => { setIsBookingFlow(false); setViewState('patient_home'); }} />
-               <ConfirmationPage doctor={selectedDoctor} />
+               <ConfirmationPage doctor={selectedDoctor} token={lastCreatedToken} />
              </div>
            );
         }
@@ -3499,9 +3503,42 @@ export default function App() {
               <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => setSelectedHospital(null)} />
               <HospitalDetailsPage 
                 hospital={selectedHospital} 
-                onBook={(doc) => {
-                  setSelectedDoctor(doc);
-                  setIsBookingFlow(true);
+                onBook={async (docData) => {
+                  if (!userData?.uid) {
+                    alert("Please log in to book an appointment.");
+                    return;
+                  }
+                  try {
+                    setSelectedDoctor(docData);
+                    const tokensRef = collection(db, 'tokens');
+                    const qCount = query(tokensRef, where('hospitalId', '==', selectedHospital.id));
+                    const snapCount = await getDocs(qCount);
+                    const tokenNum = (snapCount.size + 1).toString().padStart(4, '0');
+
+                    const newToken = {
+                      tokenNumber: tokenNum,
+                      hospitalId: selectedHospital.id,
+                      hospitalName: selectedHospital.hospitalName || selectedHospital.name,
+                      hospitalOwnerUid: selectedHospital.uid || selectedHospital.id,
+                      patientUid: userData.uid,
+                      patientName: userData.profile?.name || userData.name,
+                      doctorName: docData.name,
+                      status: 'Waiting',
+                      createdAt: new Date(),
+                      fee: docData.fee?.toString() || '0'
+                    };
+
+                    await addDoc(tokensRef, {
+                      ...newToken,
+                      createdAt: serverTimestamp()
+                    });
+
+                    setLastCreatedToken(newToken);
+                    setIsBookingFlow(true);
+                  } catch (err) {
+                    console.error("Booking error:", err);
+                    alert("Failed to book appointment. Please try again.");
+                  }
                 }} 
               />
             </div>

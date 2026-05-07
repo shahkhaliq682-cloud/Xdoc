@@ -687,6 +687,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
               await addDoc(collection(db, 'tokens'), {
                 hospitalId: hospitalData.uid,
                 hospitalName: hospitalData.hospitalName,
+                hospitalOwnerUid: hospitalData.uid, // Explicitly add owner UID for security rules
                 patientName: name,
                 doctorName: docName,
                 tokenNumber: tokenNum.toString().padStart(3, '0'),

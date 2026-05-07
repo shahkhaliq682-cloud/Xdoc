@@ -1,8 +1,70 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Global Deny
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    // Note: Temporarily removing isVerified() check to fix user login issues if their email isn't verified yet
+    function isVerified() { return isSignedIn(); } // && request.auth.token.email_verified == true;
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // --- Debug Tests (for the test in App.tsx) ---
+    match /debug_tests/{testId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && 
+                      incoming().role in ['patient', 'hospital_admin', 'Admin', 'SuperAdmin', 'super_admin'] &&
+                      incoming().uid == request.auth.uid;
+      allow update: if isOwner(userId);
+    }
+
+    // --- Hospitals ---
+    function isHospitalOwner(hospitalId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/hospitals/$(hospitalId)).data.uid == request.auth.uid ||
+        resource.data.uid == request.auth.uid
+      );
+    }
+
+    match /hospitals/{hospitalId} {
+      allow list: if true; // Public listing for discovery
+      allow get: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (existing().uid == request.auth.uid || existing() == null);
+      
+      // Subcollections
+      match /doctors/{doctorId} {
+        allow read: if true;
+        allow write: if isHospitalOwner(hospitalId);
+      }
+      match /staff/{staffId} {
+        allow read: if isHospitalOwner(hospitalId);
+        allow write: if isHospitalOwner(hospitalId);
+      }
+    }
+
+    // --- Tokens ---
+    match /tokens/{tokenId} {
+      function isTokenPatient() { return resource.data.patientUid == request.auth.uid; }
+      function isTokenHospitalOwner() { return resource.data.hospitalId == request.auth.uid || resource.data.hospitalOwnerUid == request.auth.uid; }
+      
+      allow list: if isSignedIn() && (isTokenPatient() || isTokenHospitalOwner());
+      allow get: if isSignedIn() && (isTokenPatient() || isTokenHospitalOwner());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (isTokenPatient() || isTokenHospitalOwner());
+      allow delete: if isSignedIn() && isTokenHospitalOwner();
     }
   }
 }
