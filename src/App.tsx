@@ -3352,6 +3352,30 @@ export default function App() {
 
   const [lastCreatedToken, setLastCreatedToken] = useState<any>(null);
 
+  // Role Protection & Auto-routing
+  useEffect(() => {
+    if (!userData) return;
+    
+    const role = userData.role;
+    
+    // Auto-redirect from auth pages to dashboards
+    if (['hero', 'login', 'auth_choice', 'hospital_reg', 'patient_reg'].includes(viewState)) {
+      if (role === 'hospital_admin' || role === 'Admin') setViewState('admin_dashboard');
+      else if (role === 'super_admin' || role === 'SuperAdmin') setViewState('super_admin');
+      else if (role === 'patient') setViewState('patient_home');
+      return;
+    }
+
+    // Role-based protection: Prevent accessing wrong dashboards
+    if (viewState === 'admin_dashboard' && role === 'patient') {
+      setViewState('patient_home');
+    } else if (viewState === 'patient_home' && (role === 'hospital_admin' || role === 'Admin')) {
+      setViewState('admin_dashboard');
+    } else if (viewState === 'super_admin' && role !== 'super_admin' && role !== 'SuperAdmin') {
+      setViewState(role === 'hospital_admin' || role === 'Admin' ? 'admin_dashboard' : 'patient_home');
+    }
+  }, [userData, viewState]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -3459,8 +3483,8 @@ export default function App() {
           <>
             <LoginPage 
               onLoginSuccess={(role) => {
-                if (role === 'Admin') setViewState('admin_dashboard');
-                else if (role === 'SuperAdmin') setViewState('super_admin');
+                if (role === 'hospital_admin') setViewState('admin_dashboard');
+                else if (role === 'super_admin') setViewState('super_admin');
                 else setViewState('patient_home');
               }}
               onSignUpClick={(type) => type === 'Hospital' ? setViewState('hospital_reg') : setViewState('patient_reg')}

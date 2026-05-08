@@ -242,7 +242,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const navItems = [
     { id: 'home', icon: LayoutDashboard, label: d.nav.home || 'HOME' },
     { id: 'search', icon: Search, label: d.search || 'SEARCH' },
-    { id: 'data', icon: Activity, label: d.patientsData || 'DATA' },
+    { id: 'data', icon: Activity, label: language === 'UR' ? 'مریض' : 'PATIENTS' },
     { id: 'staff', icon: Users, label: d.nav.staff || 'STAFF' }
   ];
 

@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               uid: user.uid,
               email: user.email,
               displayName: user.displayName || 'User',
-              role: 'Patient', // Default role
+              role: 'patient', // Default role
               createdAt: serverTimestamp() // Use serverTimestamp for consistency
             };
             try {
@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (error.code === 'permission-denied' || errorMessage.toLowerCase().includes('permission')) {
              // If permission denied, we still want the app to load, maybe with a warning
-             setUserData({ uid: user.uid, email: user.email, role: 'Patient', permissionError: true });
+             setUserData({ uid: user.uid, email: user.email, role: 'patient', permissionError: true });
           } else {
              handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
           }
