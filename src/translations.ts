@@ -165,6 +165,34 @@ export const translations = {
       saveData: 'Haan, Save Karo',
       deleteData: 'Delete Kar Do',
       dataWarning: 'Your 30 day data is full. Do you want to save this data?'
+    },
+    patient: {
+      categories: {
+        all: 'All',
+        govt: 'Govt. Hospital',
+        private: 'Private Clinic',
+      },
+      hospitalCard: {
+        free: 'FREE',
+        bookToken: 'Book Token',
+        availableToday: 'Available Today',
+        closedToday: 'Closed Today',
+        openNow: 'Open Now',
+        closedNow: 'Closed Now',
+      },
+      details: {
+        facilities: 'Facilities',
+        doctors: 'Doctors',
+        reviews: 'Reviews',
+        emergency: 'Emergency 24/7',
+        medical: 'Medical',
+        diagnostic: 'Diagnostic',
+        support: 'Support',
+        comfort: 'Comfort',
+        call: 'Call',
+        about: 'About',
+        staff: 'Staff',
+      }
     }
   },
   UR: {
@@ -331,6 +359,34 @@ export const translations = {
       saveData: 'ڈیٹا محفوظ کریں',
       deleteData: 'ڈیٹا حذف کریں',
       dataWarning: 'آپ کا 30 دن کا ڈیٹا مکمل ہو گیا ہے. کیا آپ یہ ڈیٹا محفوظ کرنا چاہتے ہیں؟'
+    },
+    patient: {
+      categories: {
+        all: 'تمام',
+        govt: 'سرکاری ہسپتال',
+        private: 'نجی ہسپتال',
+      },
+      hospitalCard: {
+        free: 'مفت',
+        bookToken: 'ٹوکن بک کریں',
+        availableToday: 'آج دستیاب',
+        closedToday: 'آج بند',
+        openNow: 'ابھی کھلا ہے',
+        closedNow: 'ابھی بند ہے',
+      },
+      details: {
+        facilities: 'سہولیات',
+        doctors: 'ڈاکٹرز',
+        reviews: 'جائزے',
+        emergency: 'ایمرجنسی 24/7',
+        medical: 'طبی',
+        diagnostic: 'تشخیصی',
+        support: 'سپورٹ',
+        comfort: 'سہولت',
+        call: 'کال کریں',
+        about: 'معلومات',
+        staff: 'عملہ',
+      }
     }
   }
 };

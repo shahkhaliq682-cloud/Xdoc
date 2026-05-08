@@ -27,7 +27,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   onHospitalClick,
   onSignOut
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'hospitals' | 'history' | 'profile'>('hospitals');
   const [hospitalType, setHospitalType] = useState<'All' | 'Private' | 'Government'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,15 +57,9 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
       })) as any[];
       setPatientTokens(tokenList);
       setIsLoading(false);
-
-      // Check for 30-day old data
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const hasOldData = tokenList.some(t => {
-        const createdAt = t.createdAt?.toDate ? t.createdAt.toDate() : null;
-        return createdAt && createdAt < thirtyDaysAgo;
-      });
-      if (hasOldData) setShowDataWarning(true);
+    }, (err) => {
+      console.error(err);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -80,10 +74,138 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
       h.area?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       h.city?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const isOpen = h.isOpen !== false; // Default to true if not specified
-
-    return matchesType && matchesSearch && isOpen;
+    return matchesType && matchesSearch;
   });
+
+  const renderHospitalsView = () => (
+    <div className="p-6 space-y-8">
+      {/* Category Tabs */}
+      <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2">
+        {(['All', 'Government', 'Private'] as const).map((type) => (
+          <button
+            key={type}
+            onClick={() => setHospitalType(type)}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
+              hospitalType === type 
+                ? 'bg-white text-primary shadow-sm' 
+                : 'text-slate-500 hover:bg-white/50'
+            }`}
+          >
+            {type === 'All' 
+              ? t.patient.categories.all 
+              : type === 'Government' 
+                ? t.patient.categories.govt 
+                : t.patient.categories.private}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+        <input 
+          type="text" 
+          placeholder={language === 'UR' ? "نام، علاقہ یا شہر سے تلاش کریں..." : "Search by name, area or city..."}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary font-medium"
+        />
+      </div>
+
+      {/* Hospital List */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.dashboard.availableHospitals}</h2>
+          <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">{filteredHospitals.length} Found</span>
+        </div>
+
+        {filteredHospitals.length === 0 ? (
+          <div className="bg-white p-20 rounded-[40px] text-center border-2 border-dashed border-slate-200">
+            <HospitalIcon size={64} className="mx-auto text-slate-200 mb-6" />
+            <p className="text-xl font-bold text-slate-400">{t.dashboard.noHospitals}</p>
+          </div>
+        ) : (
+          filteredHospitals.map((h) => {
+            const isGovt = h.type?.toLowerCase().includes('government');
+            const fee = isGovt ? t.patient.hospitalCard.free : `Rs. ${h.startingFee || 0}`;
+            
+            return (
+              <motion.div 
+                layout
+                key={h.id}
+                onClick={() => onHospitalClick(h)}
+                className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl transition-all cursor-pointer group"
+              >
+                <div className="h-48 relative overflow-hidden">
+                  <img 
+                    src={h.imageUrl || h.photo || `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800&h=400&sig=${h.id}`} 
+                    alt={h.hospitalName} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-slate-100">
+                    <div className="w-2 h-2 bg-health-teal rounded-full breathing-dot" />
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#005046]">
+                      {t.patient.hospitalCard.openNow}
+                    </span>
+                  </div>
+                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur px-2 py-1.5 rounded-xl flex items-center gap-1 shadow-lg border border-slate-100">
+                    <Star size={12} className="text-amber-500" fill="currentColor" />
+                    <span className="font-mono text-xs font-bold text-slate-800">{h.rating || '4.5'}</span>
+                  </div>
+                  
+                  {/* Fee Badge Overlay */}
+                  <div className="absolute bottom-4 left-4">
+                    <div className={`px-4 py-1.5 rounded-full font-bold text-xs shadow-lg backdrop-blur ${isGovt ? 'bg-success-green/90 text-white' : 'bg-primary/90 text-white'}`}>
+                      OPD Fee: {fee}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-bold text-slate-800 leading-tight">{h.hospitalName || h.name}</h3>
+                    <span className={`px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest ${isGovt ? 'bg-success-green/10 text-success-green' : 'bg-primary/10 text-primary'}`}>
+                      {isGovt ? t.patient.categories.govt : t.patient.categories.private}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-400 mb-4">
+                    <MapPin size={14} />
+                    <span className="text-sm font-medium">{h.area}, {h.city}</span>
+                  </div>
+                  
+                  {/* Top Specializations */}
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {(h.specializations || []).slice(0, 3).map((spec: string, idx: number) => (
+                      <span key={idx} className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100">
+                        {spec}
+                      </span>
+                    ))}
+                    {(h.specializations || []).length > 3 && (
+                      <span className="text-[10px] font-bold text-slate-400 px-2.5 py-1">
+                        +{(h.specializations || []).length - 3} More
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} className="text-slate-400" />
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        {h.openingTime} - {h.closingTime}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-primary">
+                      <span className="text-sm font-bold">{t.patient.hospitalCard.bookToken}</span>
+                      <ArrowRight size={16} />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
 
   const handleClearOldData = async (shouldSave: boolean) => {
     if (!userData?.uid) return;
@@ -96,7 +218,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
         const oldTokens = patientTokens.filter(t => {
-          const createdAt = t.createdAt?.toDate();
+          const createdAt = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
           return createdAt && createdAt < thirtyDaysAgo;
         });
 
@@ -138,97 +260,6 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         </button>
       </div>
     </header>
-  );
-
-  const renderHospitalsView = () => (
-    <div className="p-6 space-y-8">
-      {/* Category Tabs */}
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2">
-        {(['All', 'Government', 'Private'] as const).map((type) => (
-          <button
-            key={type}
-            onClick={() => setHospitalType(type)}
-            className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
-              hospitalType === type 
-                ? 'bg-white text-primary shadow-sm' 
-                : 'text-slate-500 hover:bg-white/50'
-            }`}
-          >
-            {type === 'All' ? 'All' : type === 'Government' ? 'Govt. Hospital' : 'Private Clinic'}
-          </button>
-        ))}
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-        <input 
-          type="text" 
-          placeholder="Search by name, area or city..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary font-medium"
-        />
-      </div>
-
-      {/* Hospital List */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Available Facilities</h2>
-          <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">{filteredHospitals.length} Found</span>
-        </div>
-
-        {filteredHospitals.length === 0 ? (
-          <div className="bg-white p-20 rounded-[40px] text-center border-2 border-dashed border-slate-200">
-            <HospitalIcon size={64} className="mx-auto text-slate-200 mb-6" />
-            <p className="text-xl font-bold text-slate-400">No active hospitals found</p>
-          </div>
-        ) : (
-          filteredHospitals.map((h) => (
-            <motion.div 
-              layout
-              key={h.id}
-              onClick={() => onHospitalClick(h)}
-              className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl transition-all cursor-pointer group"
-            >
-              <div className="h-48 relative overflow-hidden">
-                <img 
-                  src={h.photo || h.imageUrl || "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80"} 
-                  alt={h.hospitalName} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-slate-100">
-                  <div className="w-2 h-2 bg-health-teal rounded-full breathing-dot" />
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#005046]">Open Now</span>
-                </div>
-                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur px-2 py-1.5 rounded-xl flex items-center gap-1 shadow-lg border border-slate-100">
-                  <Star size={12} className="text-amber-500" fill="currentColor" />
-                  <span className="font-mono text-xs font-bold text-slate-800">{h.rating || '4.5'}</span>
-                </div>
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-slate-800 mb-1">{h.hospitalName || h.name}</h3>
-                <div className="flex items-center gap-2 text-slate-400 mb-4">
-                  <MapPin size={14} />
-                  <span className="text-sm font-medium">{h.area}, {h.city}</span>
-                </div>
-                <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-primary/5 text-primary px-3 py-1 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider border border-primary/10">
-                      {h.type || 'HOSPITAL'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 text-primary">
-                    <span className="text-sm font-bold">Book Now</span>
-                    <ArrowRight size={16} />
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))
-        )}
-      </div>
-    </div>
   );
 
   const renderHistoryView = () => (

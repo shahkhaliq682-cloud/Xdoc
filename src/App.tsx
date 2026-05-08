@@ -70,6 +70,8 @@ import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import HospitalDashboard from './components/HospitalDashboard';
 import PatientDashboard from './components/PatientDashboard';
+import HospitalDetailPage from './components/HospitalDetailPage';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
 
 // --- Header Component ---
 
@@ -3525,9 +3527,12 @@ export default function App() {
         );
       case 'super_admin':
         return (
-          <div className="bg-bg-dark min-h-screen">
-             <GlobalStatsScreen />
-          </div>
+          <SuperAdminDashboard 
+            onSignOut={() => {
+              logout();
+              setViewState('hero');
+            }} 
+          />
         );
       case 'patient_home':
         if (isBookingFlow && selectedDoctor) {
@@ -3542,8 +3547,9 @@ export default function App() {
           return (
             <div className="bg-white min-h-screen">
               <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => setSelectedHospital(null)} />
-              <HospitalDetailsPage 
+              <HospitalDetailPage 
                 hospital={selectedHospital} 
+                onBack={() => setSelectedHospital(null)}
                 onBook={async (docData) => {
                   if (!userData?.uid) {
                     alert("Please log in to book an appointment.");
@@ -3552,6 +3558,8 @@ export default function App() {
                   try {
                     setSelectedDoctor(docData);
                     const tokensRef = collection(db, 'tokens');
+                    
+                    // Generate a token number based on daily count across the platform for this hospital
                     const qCount = query(tokensRef, where('hospitalId', '==', selectedHospital.id));
                     const snapCount = await getDocs(qCount);
                     const tokenNum = (snapCount.size + 1).toString().padStart(4, '0');
