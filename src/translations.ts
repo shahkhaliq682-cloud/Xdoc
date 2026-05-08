@@ -9,6 +9,7 @@ export const translations = {
       login: 'Login',
       signUp: 'Sign Up',
       signUpFree: 'Sign Up Free',
+      profile: 'Profile',
     },
     hero: {
       title: 'Find Your Doctor — From Home',
@@ -87,6 +88,9 @@ export const translations = {
       tooManyRequests: 'Too many attempts. Please try again later',
       invalidEmail: 'Please enter a valid email',
       underReview: 'Your account is under review. Please wait for approval.',
+      loggingIn: 'Logging in...',
+      networkError: 'Please check your internet connection',
+      emptyFields: 'Please fill in both email and password',
     },
     dashboard: {
       nav: {
@@ -192,6 +196,15 @@ export const translations = {
         call: 'Call',
         about: 'About',
         staff: 'Staff',
+      },
+      logout: {
+        signOut: 'Sign Out',
+        logout: 'Logout',
+        confirmTitle: 'Logout Confirmation',
+        confirmMessage: 'Are you sure you want to logout?',
+        yesLogout: 'Yes, Logout',
+        cancel: 'Cancel',
+        success: 'Logged out successfully!'
       }
     }
   },
@@ -203,6 +216,7 @@ export const translations = {
       login: 'لاگ ان',
       signUp: 'سائن اپ',
       signUpFree: 'مفت سائن اپ کریں',
+      profile: 'پروفائل',
     },
     hero: {
       title: 'اپنا ڈاکٹر ڈھونڈیں — گھر بیٹھے',
@@ -276,11 +290,14 @@ export const translations = {
       noAccount: 'اکاؤنٹ نہیں ہے؟',
       signUpHospital: 'ہسپتال کے طور پر سائن اپ کریں',
       signUpPatient: 'مریض کے طور پر سائن اپ کریں',
-      emailNotFound: 'ای میل رجسٹرڈ نہیں ہے',
-      incorrectPassword: 'پاس ورڈ غلط ہے، دوبارہ کوشش کریں',
-      tooManyRequests: 'بہت زیادہ کوششیں۔ تھوڑی دیر بعد ٹرائی کریں',
-      invalidEmail: 'درست ای میل لکھیں',
-      underReview: 'آپ کا اکاؤنٹ زیرِ غور ہے۔ براہ کرم منظوری کا انتظار کریں۔',
+      emailNotFound: 'Email registered nahi',
+      incorrectPassword: 'Password galat hai',
+      tooManyRequests: 'Bohat zyada koshishein. Baraye meharbani baad mein koshish karein',
+      invalidEmail: 'Durust email darj karein',
+      underReview: 'Aap ka account under review hai.',
+      loggingIn: 'Login ho raha hai...',
+      networkError: 'Internet check karein',
+      emptyFields: 'Email aur password zaroor bharen',
     },
     dashboard: {
       nav: {
@@ -386,6 +403,15 @@ export const translations = {
         call: 'کال کریں',
         about: 'معلومات',
         staff: 'عملہ',
+      },
+      logout: {
+        signOut: 'سائن آؤٹ',
+        logout: 'لاگ آؤٹ',
+        confirmTitle: 'لاگ آؤٹ کی تصدیق',
+        confirmMessage: 'کیا آپ یقیناً لاگ آؤٹ کرنا چاہتے ہیں؟',
+        yesLogout: 'ہاں، لاگ آؤٹ',
+        cancel: 'منسوخ',
+        success: 'آپ کامیابی سے لاگ آؤٹ ہو گئے!'
       }
     }
   }

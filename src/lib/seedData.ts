@@ -329,4 +329,17 @@ export const seedHospitals = async () => {
       });
     }
   }
+
+  // Seed Super Admin
+  const adminId = 'super_admin_main';
+  const adminRef = doc(db, 'users', adminId);
+  await setDoc(adminRef, {
+    uid: adminId,
+    name: 'Super Admin',
+    email: 'admin@xdoc.pk',
+    role: 'super_admin',
+    status: 'active',
+    approved: true,
+    createdAt: serverTimestamp()
+  });
 };

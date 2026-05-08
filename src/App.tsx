@@ -555,20 +555,26 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
     e.preventDefault();
     setError({});
     
-    if (!email) {
-      setError(prev => ({ ...prev, email: t.signup.errors.required }));
-      return;
-    }
-    if (!password) {
-      setError(prev => ({ ...prev, password: t.signup.errors.required }));
+    if (!email || !password) {
+      setError({ general: t.auth.emptyFields });
       return;
     }
 
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      let userCredential;
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } catch (signInErr: any) {
+        // Special case: Auto-create super admin if it's the first login
+        if (signInErr.code === 'auth/user-not-found' && email === 'admin@xdoc.pk' && password === 'Admin@123') {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          throw signInErr;
+        }
+      }
       
+      const user = userCredential.user;
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
@@ -585,20 +591,34 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
 
         onLoginSuccess(role);
       } else {
-        setError({ general: 'User profile not found.' });
+        // Fallback for admin@xdoc.pk if doc doesn't exist but auth succeeded
+        if (email === 'admin@xdoc.pk') {
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            name: 'Super Admin',
+            email: 'admin@xdoc.pk',
+            role: 'super_admin',
+            status: 'active',
+            approved: true,
+            createdAt: serverTimestamp()
+          });
+          onLoginSuccess('super_admin');
+        } else {
+          setError({ general: 'User profile not found.' });
+        }
       }
     } catch (err: any) {
-      handleFirestoreError(err, OperationType.GET, `users/${auth.currentUser?.uid}`);
-      if (err.code === 'auth/user-not-found') {
+      console.error("Login error:", err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email') {
         setError({ email: t.auth.emailNotFound });
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError({ password: t.auth.incorrectPassword });
-      } else if (err.code === 'auth/invalid-email') {
-        setError({ email: t.auth.invalidEmail });
+      } else if (err.code === 'auth/network-request-failed') {
+        setError({ general: t.auth.networkError });
       } else if (err.code === 'auth/too-many-requests') {
         setError({ general: t.auth.tooManyRequests });
       } else {
-        setError({ general: 'Login failed. Please check your credentials.' });
+        setError({ general: err.message || 'Login failed. Please check your credentials.' });
       }
     } finally {
       setLoading(false);
@@ -719,7 +739,10 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
              className="w-full py-5 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1] text-white font-display font-bold text-xl rounded-[24px] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:scale-100"
            >
              {loading ? (
-               <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+               <div className="flex items-center gap-3">
+                 <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                 <span>{t.auth.loggingIn}</span>
+               </div>
              ) : (
                <>{t.auth.loginBtn} <ArrowRight size={22} /></>
              )}
@@ -852,7 +875,10 @@ const ForgotPasswordModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
               className="w-full py-5 bg-primary text-white font-display font-bold text-xl rounded-[24px] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-70 disabled:scale-100"
             >
               {loading ? (
-                <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>{t.auth.loggingIn}</span>
+                </div>
               ) : (
                 <>Send Reset Link <ArrowRight size={22} className="ml-2" /></>
               )}
@@ -3339,6 +3365,7 @@ const GlobalStatsScreen = () => {
 // --- Main App Component ---
 
 export default function App() {
+  const { t } = useLanguage();
   const { currentUser, userData, logout } = useAuth();
   const [viewState, setViewState] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -3353,6 +3380,70 @@ export default function App() {
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
 
   const [lastCreatedToken, setLastCreatedToken] = useState<any>(null);
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isSignOutInProgress, setIsSignOutInProgress] = useState(false);
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+
+  // Inactivity tracking
+  useEffect(() => {
+    if (!userData) return;
+
+    let warningTimer: any;
+    let logoutTimer: any;
+
+    const resetTimers = () => {
+      clearTimeout(warningTimer);
+      clearTimeout(logoutTimer);
+      setShowInactivityWarning(false);
+
+      // Warning at 25 minutes
+      warningTimer = setTimeout(() => {
+        setShowInactivityWarning(true);
+      }, 25 * 60 * 1000);
+
+      // Logout at 30 minutes
+      logoutTimer = setTimeout(() => {
+        handleLogoutAction(true);
+      }, 30 * 60 * 1000);
+    };
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimers));
+
+    resetTimers();
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, resetTimers));
+      clearTimeout(warningTimer);
+      clearTimeout(logoutTimer);
+    };
+  }, [userData]);
+
+  const handleLogoutAction = async (force = false) => {
+    if (force) {
+      await logout();
+      setViewState('hero');
+      setShowLogoutConfirm(false);
+      setShowInactivityWarning(false);
+      return;
+    }
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
+    setIsSignOutInProgress(true);
+    try {
+      await logout();
+      setViewState('hero');
+      alert(t.patient.logout.success);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSignOutInProgress(false);
+      setShowLogoutConfirm(false);
+    }
+  };
 
   // Role Protection & Auto-routing
   useEffect(() => {
@@ -3519,19 +3610,13 @@ export default function App() {
         return (
           <HospitalDashboard 
             hospitalData={userData} 
-            onSignOut={() => {
-              logout();
-              setViewState('hero');
-            }} 
+            onSignOut={() => handleLogoutAction()} 
           />
         );
       case 'super_admin':
         return (
           <SuperAdminDashboard 
-            onSignOut={() => {
-              logout();
-              setViewState('hero');
-            }} 
+            onSignOut={() => handleLogoutAction()} 
           />
         );
       case 'patient_home':
@@ -3598,10 +3683,7 @@ export default function App() {
             userData={userData} 
             hospitals={fetchedHospitals} 
             onHospitalClick={(h) => setSelectedHospital(h)}
-            onSignOut={() => {
-              logout();
-              setViewState('hero');
-            }}
+            onSignOut={() => handleLogoutAction()}
           />
         );
       default:
@@ -3621,6 +3703,66 @@ export default function App() {
         >
           {renderCurrentView()}
         </motion.div>
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutConfirm(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[40px] shadow-2xl p-10 max-w-sm w-full relative z-10 text-center"
+            >
+              <div className="w-20 h-20 bg-emergency-red/10 rounded-full flex items-center justify-center text-emergency-red mx-auto mb-6">
+                <LogOut size={40} />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">{t.patient.logout.confirmTitle}</h2>
+              <p className="text-slate-500 font-medium mb-8">
+                {t.patient.logout.confirmMessage}
+              </p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={confirmLogout}
+                  disabled={isSignOutInProgress}
+                  className="w-full py-4 bg-emergency-red text-white rounded-2xl font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
+                >
+                  {isSignOutInProgress ? '...' : t.patient.logout.yesLogout}
+                </button>
+                <button 
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-colors"
+                >
+                  {t.patient.logout.cancel}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showInactivityWarning && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1000] bg-amber-50 border border-amber-200 p-6 rounded-[32px] shadow-2xl flex items-center gap-4 max-w-md w-[90%]"
+          >
+            <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600 shrink-0">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <p className="text-amber-900 font-bold text-sm">Session Warning</p>
+              <p className="text-amber-700 text-xs font-medium">Aap 5 minute mein automatically logout ho jayenge due to inactivity.</p>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Floating Action Button for Testing Roles */}

@@ -3,7 +3,7 @@ import {
   Search, MapPin, Star, CheckCircle2, ShieldCheck, 
   Clock, Calendar, Home, User, Bell, ChevronRight, 
   Map as MapIcon, Hospital as HospitalIcon, 
-  ArrowRight, History, Info, AlertTriangle, Save, Trash2, LogOut
+  ArrowRight, History, Info, AlertTriangle, Save, Trash2, LogOut, Mail, Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -262,6 +262,67 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     </header>
   );
 
+  const renderProfileView = () => (
+    <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="text-center py-8">
+        <div className="relative inline-block">
+          <div className="w-24 h-24 bg-primary/10 rounded-[32px] flex items-center justify-center text-primary text-3xl font-bold shadow-xl shadow-primary/10 mb-4 mx-auto">
+            {userData?.name?.charAt(0) || 'P'}
+          </div>
+          <div className="absolute bottom-4 right-0 w-8 h-8 bg-white rounded-xl shadow-lg flex items-center justify-center text-primary border border-slate-100">
+             <ShieldCheck size={16} />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-1">{userData?.name || 'Patient'}</h2>
+        <p className="text-slate-400 font-medium text-sm">{userData?.email || 'patient@xdoc.pk'}</p>
+      </div>
+
+      <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm p-8 space-y-6">
+        <div className="flex items-center gap-6">
+          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+            <Info size={20} />
+          </div>
+          <div className="flex-1 border-b border-slate-50 pb-4">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email address</p>
+             <p className="font-bold text-slate-800">{userData?.email || 'N/A'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
+          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+            <Phone size={20} />
+          </div>
+          <div className="flex-1 border-b border-slate-50 pb-4">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Phone Number</p>
+             <p className="font-bold text-slate-800">{userData?.profile?.phone || '0300-1234567'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
+          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+            <MapPin size={20} />
+          </div>
+          <div className="flex-1">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">City / Location</p>
+             <p className="font-bold text-slate-800">{userData?.profile?.city || 'Karachi'}, Pakistan</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <button className="w-full py-4 bg-white border border-slate-100 rounded-2xl font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-3 text-sm">
+          Edit Profile
+        </button>
+        <button 
+          onClick={onSignOut}
+          className="w-full py-4 bg-emergency-red/10 text-emergency-red rounded-2xl font-bold hover:bg-emergency-red hover:text-white transition-all flex items-center justify-center gap-3 text-sm"
+        >
+          <LogOut size={20} /> {t.patient.logout.signOut}
+        </button>
+      </div>
+    </div>
+  );
+
   const renderHistoryView = () => (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between mb-4">
@@ -337,9 +398,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         >
           {activeTab === 'hospitals' && renderHospitalsView()}
           {activeTab === 'history' && renderHistoryView()}
-          {activeTab === 'profile' && (
-            <div className="p-6 text-center text-slate-400 font-bold py-20">Profile Under Development</div>
-          )}
+          {activeTab === 'profile' && renderProfileView()}
         </motion.div>
       </AnimatePresence>
 
@@ -389,9 +448,9 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 w-full z-[100] bg-white/80 backdrop-blur-xl border-t border-slate-100 flex justify-around py-4 pb-8">
         {[
-          { icon: Home, id: 'hospitals', label: 'Home' },
-          { icon: History, id: 'history', label: 'History' },
-          { icon: User, id: 'profile', label: 'Profile' }
+          { icon: Home, id: 'hospitals', label: t.nav.home },
+          { icon: History, id: 'history', label: language === 'UR' ? 'تاریخ' : 'History' },
+          { icon: User, id: 'profile', label: t.nav.profile }
         ].map(tab => (
           <button 
             key={tab.id}

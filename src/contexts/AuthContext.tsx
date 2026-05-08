@@ -80,7 +80,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = async () => {
-    await firebaseSignOut(auth);
+    try {
+      await firebaseSignOut(auth);
+      localStorage.clear();
+      sessionStorage.clear();
+      // Clear cookie if any
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
   };
 
   const value = {

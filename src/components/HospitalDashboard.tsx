@@ -931,7 +931,12 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                    <p className="text-sm font-bold text-slate-900">{hospitalData?.ownerName || 'Admin'}</p>
                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administrator</p>
                 </div>
-                <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white font-bold">A</div>
+                <button 
+                  onClick={onSignOut}
+                  className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-emergency-red transition-all group"
+                >
+                  <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
+                </button>
              </div>
           </div>
         </header>
