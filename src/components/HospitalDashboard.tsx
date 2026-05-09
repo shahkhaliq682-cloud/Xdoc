@@ -108,17 +108,21 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   useEffect(() => {
     if (hospitalData?.uid) {
       const checkOldData = async () => {
+        const q = query(
+          collection(db, 'tokens'),
+          where('hospitalId', '==', hospitalData.uid)
+        );
+        const snap = await getDocs(q);
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
-        const q = query(
-          collection(db, 'tokens'),
-          where('hospitalId', '==', hospitalData.uid),
-          where('createdAt', '<', thirtyDaysAgo),
-          limit(1)
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
+        const hasOldData = snap.docs.some(doc => {
+          const data = doc.data();
+          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || 0);
+          return createdAt < thirtyDaysAgo;
+        });
+
+        if (hasOldData) {
           setShowDataWarning(true);
         }
       };
@@ -192,14 +196,20 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     
     const q = query(
       collection(db, 'tokens'), 
-      where('hospitalId', '==', initialHospitalData.uid),
-      orderBy('createdAt', 'desc')
+      where('hospitalId', '==', initialHospitalData.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (isMounted) {
         const newTokens = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
+        // Sort client-side to avoid index requirement
+        newTokens.sort((a: any, b: any) => {
+          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+          return dateB.getTime() - dateA.getTime();
+        });
+
         // Check for new tokens to highlight
         const lastChange = snapshot.docChanges().find(change => change.type === 'added');
         if (lastChange && !snapshot.metadata.hasPendingWrites) {
@@ -210,7 +220,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
         setTokens(newTokens);
       }
     }, (error) => {
-      if (isMounted) console.error("Error fetching tokens:", error);
+      if (isMounted) handleFirestoreError(error, OperationType.LIST, 'tokens');
     });
 
     return () => { 

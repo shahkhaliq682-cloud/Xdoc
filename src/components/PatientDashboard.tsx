@@ -13,6 +13,7 @@ import {
   updateDoc, deleteDoc, writeBatch 
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 
 interface PatientDashboardProps {
   userData: any;
@@ -46,8 +47,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
     const tokensQuery = query(
       collection(db, 'tokens'),
-      where('patientId', '==', userData.uid),
-      orderBy('createdAt', 'desc')
+      where('patientId', '==', userData.uid)
     );
 
     const unsubscribe = onSnapshot(tokensQuery, (snapshot) => {
@@ -55,10 +55,18 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         id: doc.id,
         ...doc.data()
       })) as any[];
+      
+      // Sort client-side to avoid needing a composite index
+      tokenList.sort((a: any, b: any) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB.getTime() - dateA.getTime();
+      });
+
       setPatientTokens(tokenList);
       setIsLoading(false);
     }, (err) => {
-      console.error(err);
+      handleFirestoreError(err, OperationType.LIST, 'tokens');
       setIsLoading(false);
     });
 

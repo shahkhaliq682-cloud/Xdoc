@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
+import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 import { 
   collection, query, onSnapshot, doc, 
   updateDoc, deleteDoc, getDocs, orderBy, limit, where 
@@ -30,18 +31,25 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
     // Hospitals listener
     const hospUnsub = onSnapshot(collection(db, 'hospitals'), (snapshot) => {
       setHospitals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'hospitals');
     });
 
     // Tokens listener (Live Monitor)
     const tokensQuery = query(collection(db, 'tokens'), orderBy('createdAt', 'desc'), limit(50));
     const tokensUnsub = onSnapshot(tokensQuery, (snapshot) => {
       setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'tokens');
     });
 
     // Patients (Mock stats for now or actually fetch from users collection where role='patient')
     const patientsQuery = query(collection(db, 'users'), where('role', '==', 'patient'));
     const patientsUnsub = onSnapshot(patientsQuery, (snapshot) => {
        setPatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+       setIsLoading(false);
+    }, (err) => {
+       handleFirestoreError(err, OperationType.LIST, 'users');
        setIsLoading(false);
     });
 
