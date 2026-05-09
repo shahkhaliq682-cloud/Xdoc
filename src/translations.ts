@@ -91,6 +91,8 @@ export const translations = {
       loggingIn: 'Logging in...',
       networkError: 'Please check your internet connection',
       emptyFields: 'Please fill in both email and password',
+      emailAlreadyInUse: 'Email is already in use by another account',
+      invalidCredential: 'Incorrect email or password. Please try again',
     },
     dashboard: {
       nav: {
@@ -173,8 +175,9 @@ export const translations = {
     patient: {
       categories: {
         all: 'All',
-        govt: 'Govt. Hospital',
-        private: 'Private Clinic',
+        privateHospital: 'Private Hospital',
+        privateClinic: 'Private Clinic',
+        govtHospital: 'Govt. Hospital',
       },
       hospitalCard: {
         free: 'FREE',
@@ -205,6 +208,32 @@ export const translations = {
         yesLogout: 'Yes, Logout',
         cancel: 'Cancel',
         success: 'Logged out successfully!'
+      },
+      booking: {
+        bookAppointment: 'Book Appointment',
+        selectDate: 'Select Date',
+        selectTime: 'Select Time',
+        confirmBooking: 'Confirm Booking',
+        tokenConfirmed: 'Token Confirmed',
+        yourTokenNumber: 'Your Token Number',
+        waiting: 'Waiting',
+        completed: 'Completed',
+        notArrived: 'Not Arrived',
+        bookingSummary: 'Booking Summary',
+        patientDetails: 'Patient Details',
+        noteForDoctor: 'Note for doctor (optional)',
+        saveToken: 'Save Token',
+        goToHome: 'Go to Home',
+        availableToday: 'Available Today',
+        consultationFee: 'Consultation Fee',
+        experience: 'Experience',
+        years: 'years',
+        morningSlots: 'Morning Slots',
+        afternoonSlots: 'Afternoon Slots',
+        cancelToken: 'Cancel Token',
+        cancelled: 'Cancelled',
+        inProgress: 'In Progress',
+        history: 'Booking History',
       }
     }
   },
@@ -298,6 +327,8 @@ export const translations = {
       loggingIn: 'Login ho raha hai...',
       networkError: 'Internet check karein',
       emptyFields: 'Email aur password zaroor bharen',
+      emailAlreadyInUse: 'Ye email pehle se istemal mein hai',
+      invalidCredential: 'Email ya password galat hai',
     },
     dashboard: {
       nav: {
@@ -380,8 +411,9 @@ export const translations = {
     patient: {
       categories: {
         all: 'تمام',
-        govt: 'سرکاری ہسپتال',
-        private: 'نجی ہسپتال',
+        privateHospital: 'نجی ہسپتال',
+        privateClinic: 'نجی کلینک',
+        govtHospital: 'سرکاری ہسپتال',
       },
       hospitalCard: {
         free: 'مفت',
@@ -412,8 +444,34 @@ export const translations = {
         yesLogout: 'ہاں، لاگ آؤٹ',
         cancel: 'منسوخ',
         success: 'آپ کامیابی سے لاگ آؤٹ ہو گئے!'
+      },
+      booking: {
+        bookAppointment: 'اپوائنٹمنٹ بک کریں',
+        selectDate: 'تاریخ منتخب کریں',
+        selectTime: 'وقت منتخب کریں',
+        confirmBooking: 'بکنگ کنفرم کریں',
+        tokenConfirmed: 'ٹوکن کنفرم ہو گیا',
+        yourTokenNumber: 'آپ کا ٹوکن نمبر',
+        waiting: 'انتظار میں',
+        completed: 'مکمل',
+        notArrived: 'نہیں آئے',
+        bookingSummary: 'بکنگ کی تفصیلات',
+        patientDetails: 'مریض کی تفصیلات',
+        noteForDoctor: 'ڈاکٹر کے لیے نوٹ (اختیاری)',
+        saveToken: 'ٹوکن محفوظ کریں',
+        goToHome: 'ہوم پر جائیں',
+        availableToday: 'آج دستیاب',
+        consultationFee: 'مشاورتی فیس',
+        experience: 'تجربہ',
+        years: 'سال',
+        morningSlots: 'صبح کے اوقات',
+        afternoonSlots: 'دوپہر کے اوقات',
+        cancelToken: 'ٹوکن منسوخ کریں',
+        cancelled: 'منسوخ',
+        inProgress: 'جاری ہے',
+        history: 'بکنگ تاریخ',
       }
     }
   }
-};
+} as const;
 

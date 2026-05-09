@@ -72,6 +72,8 @@ import HospitalDashboard from './components/HospitalDashboard';
 import PatientDashboard from './components/PatientDashboard';
 import HospitalDetailPage from './components/HospitalDetailPage';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
+import BookingFlow from './components/BookingFlow';
+import BookingSuccess from './components/BookingSuccess';
 
 // --- Header Component ---
 
@@ -609,9 +611,9 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email') {
-        setError({ email: t.auth.emailNotFound });
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email' || err.code === 'auth/invalid-credential') {
+        setError({ general: t.auth.invalidCredential });
+      } else if (err.code === 'auth/wrong-password') {
         setError({ password: t.auth.incorrectPassword });
       } else if (err.code === 'auth/network-request-failed') {
         setError({ general: t.auth.networkError });
@@ -1058,7 +1060,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
       let errorMsg = err.message || 'Failed to create account. Please try again.';
       
       if (err.code === 'auth/email-already-in-use') {
-        setErrors({ email: 'Email already registered', general: 'Email pehle se register hai.' });
+        setErrors({ email: t.auth.emailAlreadyInUse, general: t.auth.emailAlreadyInUse });
       } else if (err.code === 'auth/network-request-failed') {
         errorMsg = "Internet connection check karein (Auth error).";
         setErrors({ general: errorMsg });
@@ -1615,7 +1617,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
       } catch (authErr: any) {
         console.error("Auth Error:", authErr);
         if (authErr.code === 'auth/email-already-in-use') {
-          setErrors({ email: 'Email already registered', general: 'Email pehle se register hai.' });
+          setErrors({ email: t.auth.emailAlreadyInUse, general: t.auth.emailAlreadyInUse });
           return;
         }
         throw authErr;
@@ -1632,7 +1634,7 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
         city: formData.city,
         address: formData.address,
         area: formData.area,
-        type: formData.type.toLowerCase().includes('private') ? 'private' : 'government',
+        type: formData.type,
         specializations: selectedSpecs,
         facilities: selectedFacilities,
         openDays: selectedDays,
@@ -1751,9 +1753,9 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
                         className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium"
                       >
                         <option>Private Hospital</option>
-                        <option>Government Hospital</option>
                         <option>Private Clinic</option>
-                        <option>Diagnostic Lab</option>
+                        <option>Government Hospital</option>
+                        <option>Government Clinic</option>
                       </select>
                     </div>
                     <div className="space-y-2">
@@ -3491,33 +3493,26 @@ export default function App() {
     
     testFirestore();
 
-    const fetchHospitals = async (retries = 3) => {
-      try {
-        const q = query(collection(db, 'hospitals'), limit(50));
-        const snapshot = await getDocs(q);
-        if (!isMounted) return;
-        const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-        setFetchedHospitals(list);
-      } catch (error: any) {
-        if (retries > 0 && error?.code === 'permission-denied') {
-          console.log(`Permission denied. Retrying fetch (${retries} left)...`);
-          const timeoutId = setTimeout(() => fetchHospitals(retries - 1), 2000);
-          return () => clearTimeout(timeoutId);
-        } else {
-          try {
-            handleFirestoreError(error, OperationType.LIST, 'hospitals');
-          } catch (err) {
-            console.error("Firestore error handled:", err);
-          }
-        }
-      }
-    };
-    
-    fetchHospitals();
-
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'hospitals'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      setFetchedHospitals(list);
+    }, (error) => {
+      console.error("Hospitals onSnapshot error:", error);
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'hospitals');
+      } catch (err) {
+        console.error("Firestore error handled:", err);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -3620,74 +3615,59 @@ export default function App() {
           />
         );
       case 'patient_home':
-        if (isBookingFlow && selectedDoctor) {
+        if (lastCreatedToken) {
+          return (
+            <BookingSuccess 
+              tokenData={lastCreatedToken}
+              onHome={() => {
+                setLastCreatedToken(null);
+                setSelectedHospital(null);
+                setSelectedDoctor(null);
+                setViewState('patient_home');
+              }}
+            />
+          );
+        }
+        if (selectedDoctor) {
            return (
-             <div className="bg-white min-h-screen">
-               <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => { setIsBookingFlow(false); setViewState('patient_home'); }} />
-               <ConfirmationPage doctor={selectedDoctor} token={lastCreatedToken} />
-             </div>
-           );
+            <BookingFlow 
+              hospital={selectedHospital}
+              doctor={selectedDoctor}
+              onClose={() => setSelectedDoctor(null)}
+              onSuccess={(token) => {
+                setLastCreatedToken(token);
+                setSelectedDoctor(null);
+              }}
+            />
+          );
         }
         if (selectedHospital) {
           return (
-            <div className="bg-white min-h-screen">
-              <Header darkMode={false} hospitalName="Xdoc" onLogoClick={() => setSelectedHospital(null)} />
-              <HospitalDetailPage 
-                hospital={selectedHospital} 
-                onBack={() => setSelectedHospital(null)}
-                onBook={async (docData) => {
-                  if (!userData?.uid) {
-                    alert("Please log in to book an appointment.");
-                    return;
-                  }
-                  try {
-                    setSelectedDoctor(docData);
-                    const tokensRef = collection(db, 'tokens');
-                    
-                    // Generate a token number based on daily count across the platform for this hospital
-                    const qCount = query(tokensRef, where('hospitalId', '==', selectedHospital.id));
-                    const snapCount = await getDocs(qCount);
-                    const tokenNum = (snapCount.size + 1).toString().padStart(4, '0');
-
-                    const newToken = {
-                      tokenNumber: tokenNum,
-                      hospitalId: selectedHospital.id,
-                      hospitalName: selectedHospital.hospitalName || selectedHospital.name,
-                      hospitalOwnerUid: selectedHospital.uid || selectedHospital.id,
-                      patientUid: userData.uid,
-                      patientName: userData.profile?.name || userData.name,
-                      doctorName: docData.name,
-                      status: 'Waiting',
-                      createdAt: new Date(),
-                      fee: docData.fee?.toString() || '0'
-                    };
-
-                    await addDoc(tokensRef, {
-                      ...newToken,
-                      createdAt: serverTimestamp()
-                    });
-
-                    setLastCreatedToken(newToken);
-                    setIsBookingFlow(true);
-                  } catch (err) {
-                    console.error("Booking error:", err);
-                    alert("Failed to book appointment. Please try again.");
-                  }
-                }} 
-              />
-            </div>
+            <HospitalDetailPage 
+              hospital={selectedHospital} 
+              onBack={() => setSelectedHospital(null)}
+              onBook={(docData) => setSelectedDoctor(docData)}
+            />
           );
         }
         return (
           <PatientDashboard 
-            userData={userData} 
-            hospitals={fetchedHospitals} 
+            userData={userData}
+            hospitals={fetchedHospitals}
+            onSignOut={() => handleLogoutAction()} 
             onHospitalClick={(h) => setSelectedHospital(h)}
-            onSignOut={() => handleLogoutAction()}
           />
         );
       default:
-        return <NotFound onBack={() => setViewState('hero')} />;
+        return (
+          <div className="flex items-center justify-center min-h-screen">
+             <div className="text-center">
+                <h2 className="text-4xl font-bold text-slate-900 mb-4">404</h2>
+                <p className="text-slate-500 mb-8">Page Not Found</p>
+                <button onClick={() => setViewState('hero')} className="px-8 py-3 bg-primary text-white rounded-2xl font-bold">Back to Hero</button>
+             </div>
+          </div>
+        );
     }
   };
 

@@ -3,7 +3,7 @@ import {
   Search, MapPin, Star, CheckCircle2, ShieldCheck, 
   Clock, Calendar, Home, User, Bell, ChevronRight, 
   Map as MapIcon, Hospital as HospitalIcon, 
-  ArrowRight, History, Info, AlertTriangle, Save, Trash2, LogOut, Mail, Phone
+  ArrowRight, History, Info, AlertTriangle, Save, Trash2, LogOut, Mail, Phone, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -29,7 +29,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'hospitals' | 'history' | 'profile'>('hospitals');
-  const [hospitalType, setHospitalType] = useState<'All' | 'Private' | 'Government'>('All');
+  const [hospitalType, setHospitalType] = useState<'All' | 'Private Hospital' | 'Private Clinic' | 'Govt. Hospital'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [patientTokens, setPatientTokens] = useState<any[]>([]);
   const [showDataWarning, setShowDataWarning] = useState(false);
@@ -46,7 +46,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
     const tokensQuery = query(
       collection(db, 'tokens'),
-      where('patientUid', '==', userData.uid),
+      where('patientId', '==', userData.uid),
       orderBy('createdAt', 'desc')
     );
 
@@ -65,27 +65,80 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     return () => unsubscribe();
   }, [userData?.uid]);
 
+  const cancelToken = async (token: any) => {
+    if (token.status !== 'waiting' && token.status !== 'Waiting') return;
+    
+    if (!confirm(language === 'UR' ? 'کیا آپ واقعی یہ ٹوکن منسوخ کرنا چاہتے ہیں؟' : 'Are you sure you want to cancel this token?')) return;
+
+    try {
+      const tokenId = token.id;
+      const patientId = userData.uid;
+      const hospitalId = token.hospitalId;
+      
+      const updateData = {
+        status: 'cancelled',
+        updatedAt: serverTimestamp()
+      };
+      
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'tokens', tokenId), updateData);
+      batch.update(doc(db, 'hospitals', hospitalId, 'tokens', tokenId), updateData);
+      batch.update(doc(db, 'users', patientId, 'history', tokenId), updateData);
+      
+      await batch.commit();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const filteredHospitals = hospitals.filter(h => {
     const matchesType = hospitalType === 'All' || 
-      (hospitalType === 'Private' && h.type?.toLowerCase().includes('private')) ||
-      (hospitalType === 'Government' && h.type?.toLowerCase().includes('government'));
+      (hospitalType === 'Private Hospital' && h.type === 'Private Hospital') ||
+      (hospitalType === 'Private Clinic' && h.type === 'Private Clinic') ||
+      (hospitalType === 'Govt. Hospital' && (h.type === 'Government Hospital' || h.type === 'Government Clinic'));
     
-    const matchesSearch = h.hospitalName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      h.area?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      h.city?.toLowerCase().includes(searchQuery.toLowerCase());
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = h.hospitalName?.toLowerCase().includes(searchLower) ||
+      h.area?.toLowerCase().includes(searchLower) ||
+      h.city?.toLowerCase().includes(searchLower) ||
+      (h.specializations || []).some((s: string) => s.toLowerCase().includes(searchLower)) ||
+      (h.doctorsList || []).some((d: any) => d.name?.toLowerCase().includes(searchLower));
 
     return matchesType && matchesSearch;
   });
 
+  const getCount = (type: string) => {
+    if (type === 'All') return hospitals.length;
+    if (type === 'Private Hospital') return hospitals.filter(h => h.type === 'Private Hospital').length;
+    if (type === 'Private Clinic') return hospitals.filter(h => h.type === 'Private Clinic').length;
+    if (type === 'Govt. Hospital') return hospitals.filter(h => h.type === 'Government Hospital' || h.type === 'Government Clinic').length;
+    return 0;
+  };
+
   const renderHospitalsView = () => (
     <div className="p-6 space-y-8">
+      {/* Live Counts */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        {[
+          { label: t.patient.categories.all, count: getCount('All'), color: 'bg-primary' },
+          { label: t.patient.categories.privateHospital, count: getCount('Private Hospital'), color: 'bg-blue-600' },
+          { label: t.patient.categories.privateClinic, count: getCount('Private Clinic'), color: 'bg-purple-600' },
+          { label: t.patient.categories.govtHospital, count: getCount('Govt. Hospital'), color: 'bg-success-green' },
+        ].map((item, idx) => (
+          <div key={idx} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm text-center">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
+            <p className={`text-2xl font-bold ${item.count > 0 ? 'text-slate-900' : 'text-slate-300'}`}>{item.count}</p>
+          </div>
+        ))}
+      </div>
+
       {/* Category Tabs */}
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2">
-        {(['All', 'Government', 'Private'] as const).map((type) => (
+      <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2 overflow-x-auto no-scrollbar">
+        {(['All', 'Private Hospital', 'Private Clinic', 'Govt. Hospital'] as const).map((type) => (
           <button
             key={type}
             onClick={() => setHospitalType(type)}
-            className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
+            className={`flex-none md:flex-1 px-4 py-3 rounded-xl font-bold text-xs md:text-sm transition-all whitespace-nowrap ${
               hospitalType === type 
                 ? 'bg-white text-primary shadow-sm' 
                 : 'text-slate-500 hover:bg-white/50'
@@ -93,9 +146,11 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
           >
             {type === 'All' 
               ? t.patient.categories.all 
-              : type === 'Government' 
-                ? t.patient.categories.govt 
-                : t.patient.categories.private}
+              : type === 'Private Hospital' 
+                ? t.patient.categories.privateHospital
+                : type === 'Private Clinic'
+                  ? t.patient.categories.privateClinic
+                  : t.patient.categories.govtHospital}
           </button>
         ))}
       </div>
@@ -115,8 +170,8 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
       {/* Hospital List */}
       <div className="space-y-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.dashboard.availableHospitals}</h2>
-          <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">{filteredHospitals.length} Found</span>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{language === 'UR' ? "دستیاب ہسپتال" : t.dashboard.availableHospitals}</h2>
+          <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">{filteredHospitals.length} {language === 'UR' ? "ملے" : "Found"}</span>
         </div>
 
         {filteredHospitals.length === 0 ? (
@@ -126,9 +181,49 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
           </div>
         ) : (
           filteredHospitals.map((h) => {
-            const isGovt = h.type?.toLowerCase().includes('government');
-            const fee = isGovt ? t.patient.hospitalCard.free : `Rs. ${h.startingFee || 0}`;
+            const type = h.type || 'Private Hospital';
+            const isGovt = type.toLowerCase().includes('government');
+            const fee = isGovt ? t.patient.hospitalCard.free : h.opdFee ? `Rs. ${h.opdFee}` : `Rs. ${h.startingFee || 800}`;
             
+            let badgeColor = 'bg-primary/10 text-primary';
+            if (type === 'Private Hospital') badgeColor = 'bg-blue-600/10 text-blue-600';
+            if (type === 'Private Clinic') badgeColor = 'bg-purple-600/10 text-purple-600';
+            if (type === 'Government Hospital') badgeColor = 'bg-success-green/10 text-success-green';
+            if (type === 'Government Clinic') badgeColor = 'bg-teal-600/10 text-teal-600';
+
+            const displayTypeName = type === 'Private Hospital' ? t.patient.categories.privateHospital :
+                                  type === 'Private Clinic' ? t.patient.categories.privateClinic :
+                                  type === 'Government Hospital' ? t.patient.categories.govtHospital :
+                                  type === 'Government Clinic' ? (language === 'UR' ? 'سرکاری کلینک' : 'Govt. Clinic') : type;
+            
+            const getOpenStatus = (openTime: string, closeTime: string, selectedDays: string[]) => {
+              if (!openTime || !closeTime) return { isOpen: true, label: t.patient.hospitalCard.openNow, color: 'bg-health-teal', textColor: 'text-[#005046]' };
+              
+              const now = new Date();
+              const day = now.toLocaleDateString('en-US', { weekday: 'short' });
+              
+              // If current day is not in open days
+              if (selectedDays && selectedDays.length > 0 && !selectedDays.includes(day)) {
+                return { isOpen: false, label: language === 'UR' ? 'بند ہے' : 'Closed', color: 'bg-emergency-red', textColor: 'text-white' };
+              }
+
+              const [hOpen, mOpen] = openTime.split(':').map(Number);
+              const [hClose, mClose] = closeTime.split(':').map(Number);
+              
+              const openTimeDate = new Date();
+              openTimeDate.setHours(hOpen, mOpen, 0);
+              
+              const closeTimeDate = new Date();
+              closeTimeDate.setHours(hClose, mClose, 0);
+              
+              const isOpen = now >= openTimeDate && now <= closeTimeDate;
+              return isOpen 
+                ? { isOpen: true, label: t.patient.hospitalCard.openNow, color: 'bg-health-teal', textColor: 'text-[#005046]' }
+                : { isOpen: false, label: language === 'UR' ? 'بند ہے' : 'Closed', color: 'bg-emergency-red', textColor: 'text-white' };
+            };
+
+            const status = getOpenStatus(h.openingTime || h.openTime, h.closingTime || h.closeTime, h.openDays);
+
             return (
               <motion.div 
                 layout
@@ -142,10 +237,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                     alt={h.hospitalName} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-slate-100">
-                    <div className="w-2 h-2 bg-health-teal rounded-full breathing-dot" />
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#005046]">
-                      {t.patient.hospitalCard.openNow}
+                  <div className={`absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-slate-100`}>
+                    <div className={`w-2 h-2 ${status.color} rounded-full ${status.isOpen ? 'breathing-dot' : ''}`} />
+                    <span className={`font-mono text-[10px] font-bold uppercase tracking-widest ${status.isOpen ? status.textColor : 'text-emergency-red'}`}>
+                      {status.label}
                     </span>
                   </div>
                   <div className="absolute top-4 right-4 bg-white/95 backdrop-blur px-2 py-1.5 rounded-xl flex items-center gap-1 shadow-lg border border-slate-100">
@@ -156,15 +251,15 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                   {/* Fee Badge Overlay */}
                   <div className="absolute bottom-4 left-4">
                     <div className={`px-4 py-1.5 rounded-full font-bold text-xs shadow-lg backdrop-blur ${isGovt ? 'bg-success-green/90 text-white' : 'bg-primary/90 text-white'}`}>
-                      OPD Fee: {fee}
+                      {language === 'UR' ? 'مشاورتی فیس' : 'OPD Fee'}: {fee}
                     </div>
                   </div>
                 </div>
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold text-slate-800 leading-tight">{h.hospitalName || h.name}</h3>
-                    <span className={`px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest ${isGovt ? 'bg-success-green/10 text-success-green' : 'bg-primary/10 text-primary'}`}>
-                      {isGovt ? t.patient.categories.govt : t.patient.categories.private}
+                    <h3 className="text-xl font-bold text-slate-800 leading-tight group-hover:text-primary transition-colors">{h.hospitalName || h.name}</h3>
+                    <span className={`px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest ${badgeColor}`}>
+                      {displayTypeName}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-slate-400 mb-4">
@@ -356,21 +451,37 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                   </div>
                 </div>
                 <div className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider ${
-                  token.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
-                  token.status === 'in-progress' ? 'bg-blue-50 text-blue-600' :
-                  token.status === 'cancelled' || token.status === 'not-arrived' ? 'bg-red-50 text-red-600' :
+                  token.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
+                  token.status === 'In Progress' ? 'bg-blue-50 text-blue-600' :
+                  token.status === 'cancelled' || token.status === 'Not Arrived' ? 'bg-red-50 text-red-600' :
                   'bg-amber-50 text-amber-600'
                 }`}>
-                  {token.status}
+                  {token.status === 'waiting' || token.status === 'Waiting' ? t.booking.waiting : 
+                   token.status === 'Completed' ? t.booking.completed :
+                   token.status === 'Not Arrived' ? t.booking.notArrived :
+                   token.status}
                 </div>
               </div>
               
               <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} className="text-slate-400" />
-                  <span className="text-xs font-mono font-bold text-slate-600">
-                    {formatDate(token.createdAt)}
-                  </span>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={14} className="text-slate-400" />
+                    <span className="text-xs font-mono font-bold text-slate-600">
+                      {formatDate(token.createdAt)}
+                    </span>
+                  </div>
+                  {(token.status === 'waiting' || token.status === 'Waiting') && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        cancelToken(token);
+                      }}
+                      className="text-[10px] font-bold text-emergency-red bg-emergency-red/5 px-3 py-1 rounded-lg hover:bg-emergency-red hover:text-white transition-all flex items-center gap-1 border border-emergency-red/10"
+                    >
+                      <X size={10} /> {t.patient.hospitalCard.cancelToken}
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">Token</span>

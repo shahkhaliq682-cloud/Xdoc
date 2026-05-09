@@ -34,7 +34,9 @@ import {
   Activity,
   ShieldCheck,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Play,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -237,6 +239,35 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     }
   };
 
+  const updateTokenStatus = async (tokenId: string, status: string, patientId?: string) => {
+    try {
+      if (!initialHospitalData?.uid) return;
+      
+      const tokenRef = doc(db, 'tokens', tokenId);
+      const hospitalTokenRef = doc(db, 'hospitals', initialHospitalData.uid, 'tokens', tokenId);
+      
+      const updateData = { 
+        status, 
+        updatedAt: serverTimestamp(),
+        // If status is completed/not arrived, mark it as processed
+        processedAt: (status === 'Completed' || status === 'Not Arrived') ? serverTimestamp() : null
+      };
+      
+      // Update tokens collection
+      await updateDoc(tokenRef, updateData).catch(e => console.log("Main tokens update failed:", e));
+      // Update hospital's subcollection
+      await updateDoc(hospitalTokenRef, updateData).catch(e => console.log("Hospital tokens update failed:", e));
+      
+      // Update patient's history in users collection
+      if (patientId) {
+        const patientHistoryRef = doc(db, 'users', patientId, 'history', tokenId);
+        await updateDoc(patientHistoryRef, updateData).catch(e => console.log("Patient history update failed:", e));
+      }
+    } catch (err) {
+      console.error("Error updating token:", err);
+    }
+  };
+
   const d = t.dashboard;
 
   const navItems = [
@@ -391,19 +422,48 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                     
                     <div className="flex items-center gap-4">
                        <span className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border ${
-                         token.status === 'Completed' ? 'bg-health-teal/10 text-health-teal border-health-teal/20' :
-                         token.status === 'Waiting' ? 'bg-amber-100 text-amber-600 border-amber-200' :
-                         token.status === 'In Progress' ? 'bg-primary/10 text-primary border-primary/20' :
-                         'bg-red-100 text-red-600 border-red-200'
+                         token.status === 'Completed' ? 'bg-success-green/10 text-success-green border-success-green/20' :
+                         token.status === 'Waiting' || token.status === 'waiting' ? 'bg-amber-100 text-amber-600 border-amber-200' :
+                         token.status === 'Not Arrived' ? 'bg-red-100 text-red-600 border-red-200' :
+                         token.status === 'In Progress' ? 'bg-blue-100 text-blue-600 border-blue-200' :
+                         token.status === 'cancelled' || token.status === 'Cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200' :
+                         'bg-primary/10 text-primary border-primary/20'
                        }`}>
-                         {token.status === 'Waiting' ? d.pending : 
-                          token.status === 'Completed' ? d.completed : 
-                          token.status === 'In Progress' ? d.liveQueue.inProgress : 
-                          token.status === 'Not Arrived' ? d.notArrived : token.status}
+                         {token.status === 'waiting' || token.status === 'Waiting' ? t.booking.waiting : 
+                          token.status === 'Completed' ? t.booking.completed : 
+                          token.status === 'Not Arrived' ? t.booking.notArrived :
+                          token.status === 'In Progress' ? (language === 'UR' ? 'جاری ہے' : 'In Progress') :
+                          token.status === 'cancelled' || token.status === 'Cancelled' ? (language === 'UR' ? 'منسوخ' : 'Cancelled') :
+                          token.status}
                        </span>
-                       <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:bg-slate-100 transition-colors">
-                          <MoreVertical size={20} />
-                       </button>
+
+                       {(token.status === 'Waiting' || token.status === 'waiting' || token.status === 'In Progress') && (
+                         <div className="flex gap-2">
+                            {(token.status === 'Waiting' || token.status === 'waiting') && (
+                             <button 
+                               onClick={() => updateTokenStatus(token.id, 'In Progress', token.patientId)}
+                               className="p-2.5 bg-blue-600 text-white rounded-xl hover:scale-110 active:scale-95 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center"
+                               title="Start Session"
+                             >
+                               <Play size={18} />
+                             </button>
+                           )}
+                           <button 
+                             onClick={() => updateTokenStatus(token.id, 'Completed', token.patientId)}
+                             className="p-2.5 bg-success-green text-white rounded-xl hover:scale-110 active:scale-95 transition-all shadow-lg shadow-success-green/20 flex items-center justify-center"
+                             title="Mark Done"
+                           >
+                             <CheckCircle2 size={18} />
+                           </button>
+                           <button 
+                             onClick={() => updateTokenStatus(token.id, 'Not Arrived', token.patientId)}
+                             className="p-2.5 bg-emergency-red text-white rounded-xl hover:scale-110 active:scale-95 transition-all shadow-lg shadow-emergency-red/20 flex items-center justify-center"
+                             title="Not Arrived"
+                           >
+                             <X size={18} />
+                           </button>
+                         </div>
+                       )}
                     </div>
                   </motion.div>
                 ))
