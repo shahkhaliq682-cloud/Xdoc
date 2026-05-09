@@ -23,14 +23,13 @@ interface BookingFlowProps {
 const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, onSuccess }) => {
   const { t } = useLanguage();
   const { userData, currentUser } = useAuth();
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
   // Form State
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [patientName, setPatientName] = useState(userData?.name || '');
-  const [patientPhone, setPatientPhone] = useState(userData?.profile?.phone || '');
+  const [patientName, setPatientName] = useState(userData?.name || userData?.displayName || '');
+  const [patientPhone, setPatientPhone] = useState(userData?.phone || userData?.profile?.phone || '');
   const [note, setNote] = useState('');
 
   const morningSlots = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'];
@@ -56,7 +55,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
   const dates = getDates();
 
   const handleBooking = async () => {
-    if (!currentUser || !selectedDate || !selectedSlot) return;
+    if (!currentUser || !selectedDate || !selectedSlot || !patientName || !patientPhone) return;
     setLoading(true);
 
     try {
@@ -115,315 +114,172 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
       onSuccess(result);
     } catch (err) {
       console.error("Booking error:", err);
-      alert("Booking failed. Please try again.");
+      // alert("Booking failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const renderStep1 = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-      <div className="text-center">
-        <div className="w-20 h-20 bg-health-teal/10 rounded-full flex items-center justify-center text-health-teal mx-auto mb-4">
-          <Stethoscope size={40} />
-        </div>
-        <h3 className="text-2xl font-bold text-slate-900">Confirm Doctor</h3>
-        <p className="text-slate-400 font-medium">Step 1 of 5</p>
-      </div>
-
-      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5">
-        <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 font-bold text-xl overflow-hidden">
-          {doctor.photo ? <img src={doctor.photo} className="w-full h-full object-cover" /> : doctor.name?.[0]}
-        </div>
-        <div>
-          <h4 className="text-lg font-bold text-slate-900">Dr. {doctor.name}</h4>
-          <p className="text-xs font-bold text-health-teal uppercase tracking-widest">{doctor.specialization}</p>
-          <div className="flex items-center gap-2 mt-1">
-             <span className="text-xs font-bold text-slate-400">Fee: Rs. {doctor.fee || '0'}</span>
-          </div>
-        </div>
-      </div>
-
-      <button 
-        onClick={() => setStep(2)}
-        className="w-full py-5 bg-health-teal text-white rounded-3xl font-bold text-lg shadow-xl shadow-health-teal/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
-      >
-        Confirm Doctor <ChevronRight size={20} />
-      </button>
-    </div>
-  );
-
-  const renderStep2 = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-      <div className="text-center">
-        <h3 className="text-2xl font-bold text-slate-900">{t.patient.booking.selectDate}</h3>
-        <p className="text-slate-400 font-medium">Step 2 of 5</p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        {dates.map((date, idx) => {
-          const isSelected = selectedDate?.toDateString() === date.toDateString();
-          return (
-            <button
-              key={idx}
-              onClick={() => setSelectedDate(date)}
-              className={`p-4 rounded-3xl border transition-all flex flex-col items-center gap-1 ${
-                isSelected 
-                  ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-105' 
-                  : 'bg-white border-slate-100 text-slate-600 hover:border-primary/30'
-              }`}
-            >
-              <span className={`text-[10px] font-bold uppercase tracking-tighter ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>
-                {date.toLocaleDateString('en-US', { weekday: 'short' })}
-              </span>
-              <span className="text-lg font-bold">{date.getDate()}</span>
-              <span className={`text-[10px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>
-                {date.toLocaleDateString('en-US', { month: 'short' })}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <button 
-        disabled={!selectedDate}
-        onClick={() => setStep(3)}
-        className="w-full py-5 bg-health-teal text-white rounded-3xl font-bold text-lg shadow-xl shadow-health-teal/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-      >
-        Next <ChevronRight size={20} />
-      </button>
-    </div>
-  );
-
-  const renderStep3 = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-      <div className="text-center">
-        <h3 className="text-2xl font-bold text-slate-900">{t.patient.booking.selectTime}</h3>
-        <p className="text-slate-400 font-medium">Step 3 of 5</p>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-             <Clock size={14} /> {t.patient.booking.morningSlots}
-           </p>
-           <div className="grid grid-cols-3 gap-3">
-             {morningSlots.map(slot => (
-               <button
-                 key={slot}
-                 onClick={() => setSelectedSlot(slot)}
-                 className={`py-3 rounded-2xl border font-bold text-sm transition-all ${
-                   selectedSlot === slot 
-                     ? 'bg-primary border-primary text-white shadow-lg' 
-                     : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
-                 }`}
-               >
-                 {slot}
-               </button>
-             ))}
-           </div>
-        </div>
-
-        <div>
-           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-             <Clock size={14} /> {t.patient.booking.afternoonSlots}
-           </p>
-           <div className="grid grid-cols-3 gap-3">
-             {afternoonSlots.map(slot => (
-               <button
-                 key={slot}
-                 onClick={() => setSelectedSlot(slot)}
-                 className={`py-3 rounded-2xl border font-bold text-sm transition-all ${
-                   selectedSlot === slot 
-                     ? 'bg-primary border-primary text-white shadow-lg' 
-                     : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
-                 }`}
-               >
-                 {slot}
-               </button>
-             ))}
-           </div>
-        </div>
-      </div>
-
-      <button 
-        disabled={!selectedSlot}
-        onClick={() => setStep(4)}
-        className="w-full py-5 bg-health-teal text-white rounded-3xl font-bold text-lg shadow-xl shadow-health-teal/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-      >
-        Next <ChevronRight size={20} />
-      </button>
-    </div>
-  );
-
-  const renderStep4 = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-      <div className="text-center">
-        <h3 className="text-2xl font-bold text-slate-900">{t.patient.booking.patientDetails}</h3>
-        <p className="text-slate-400 font-medium">Step 4 of 5</p>
-      </div>
-
-      <div className="space-y-5">
-        <div className="space-y-2">
-           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-           <div className="relative">
-             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-             <input
-               value={patientName}
-               onChange={(e) => setPatientName(e.target.value)}
-               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-               placeholder="Enter full name"
-             />
-           </div>
-        </div>
-
-        <div className="space-y-2">
-           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
-           <div className="relative">
-             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-             <input
-               value={patientPhone}
-               onChange={(e) => setPatientPhone(e.target.value)}
-               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-               placeholder="0300-1234567"
-             />
-           </div>
-        </div>
-
-        <div className="space-y-2">
-           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.patient.booking.noteForDoctor}</label>
-           <div className="relative">
-             <MessageSquare className="absolute left-4 top-4 text-slate-400" size={20} />
-             <textarea
-               value={note}
-               onChange={(e) => setNote(e.target.value)}
-               rows={3}
-               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-               placeholder="Mention symtoms or reason..."
-             />
-           </div>
-        </div>
-      </div>
-
-      <button 
-        disabled={!patientName || !patientPhone}
-        onClick={() => setStep(5)}
-        className="w-full py-5 bg-health-teal text-white rounded-3xl font-bold text-lg shadow-xl shadow-health-teal/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-      >
-        Next <ChevronRight size={20} />
-      </button>
-    </div>
-  );
-
-  const renderStep5 = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-      <div className="text-center">
-        <h3 className="text-2xl font-bold text-slate-900">{t.patient.booking.bookingSummary}</h3>
-        <p className="text-slate-400 font-medium">Step 5 of 5</p>
-      </div>
-
-      <div className="bg-slate-50 rounded-[40px] p-8 space-y-6">
-        <div className="flex items-center gap-4">
-           <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-             <MapPin size={24} />
-           </div>
-           <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Hospital</p>
-              <p className="font-bold text-slate-800">{hospital.hospitalName}</p>
-           </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-           <div className="w-12 h-12 bg-health-teal/10 rounded-2xl flex items-center justify-center text-health-teal">
-             <Stethoscope size={24} />
-           </div>
-           <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Doctor</p>
-              <p className="font-bold text-slate-800">Dr. {doctor.name}</p>
-           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500">
-              <Calendar size={20} />
-            </div>
-            <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Date</p>
-                <p className="font-bold text-slate-800">{selectedDate?.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
-              <Clock size={20} />
-            </div>
-            <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Time</p>
-                <p className="font-bold text-slate-800">{selectedSlot}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-6 border-t border-slate-200">
-          <div className="flex items-center justify-between text-lg">
-             <span className="font-bold text-slate-400">Consultation Fee</span>
-             <span className="font-bold text-slate-900">Rs. {doctor.fee || '0'}</span>
-          </div>
-        </div>
-      </div>
-
-      <button 
-        disabled={loading}
-        onClick={handleBooking}
-        className="w-full py-5 bg-gradient-to-r from-health-teal to-[#00C9B1] text-white rounded-3xl font-bold text-xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-      >
-        {loading ? (
-          <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-        ) : (
-          <>{t.patient.booking.confirmBooking} <ArrowRight size={20} /></>
-        )}
-      </button>
-    </div>
-  );
-
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
       <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white w-full max-w-lg rounded-[48px] shadow-2xl overflow-hidden relative"
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 50, opacity: 0 }}
+        className="bg-white w-full max-w-xl rounded-[40px] shadow-2xl overflow-hidden relative"
       >
-        {/* Progress Bar */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-slate-50">
-           <motion.div 
-             className="h-full bg-health-teal"
-             initial={{ width: '0%' }}
-             animate={{ width: `${(step / 5) * 100}%` }}
-           />
-        </div>
-
-        <div className="p-8 pb-12">
-           <div className="flex items-center justify-between mb-8">
+        <div className="p-6 md:p-8">
+           <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-health-teal/10 rounded-2xl flex items-center justify-center text-health-teal font-bold text-lg">
+                   {doctor.name[0]}
+                </div>
+                <div>
+                   <h3 className="text-xl font-bold text-slate-900">Dr. {doctor.name}</h3>
+                   <p className="text-xs font-bold text-health-teal uppercase tracking-widest">{doctor.specialization}</p>
+                </div>
+              </div>
               <button 
-                onClick={step > 1 ? () => setStep(step - 1) : onClose}
+                onClick={onClose}
                 className="w-10 h-10 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400"
               >
-                {step > 1 ? < ChevronRight className="rotate-180" size={24} /> : <X size={24} />}
+                <X size={24} />
               </button>
-              <div className="text-center font-bold text-slate-400 uppercase tracking-widest text-xs">
-                {hospital.hospitalName}
-              </div>
-              <div className="w-10" />
            </div>
 
-           <AnimatePresence mode="wait">
-             {step === 1 && renderStep1()}
-             {step === 2 && renderStep2()}
-             {step === 3 && renderStep3()}
-             {step === 4 && renderStep4()}
-             {step === 5 && renderStep5()}
-           </AnimatePresence>
+           <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1 pr-2 custom-scrollbar">
+             {/* Date Selection */}
+             <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">{t.patient.booking.selectDate}</p>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                  {[...dates].map((date, idx) => {
+                    const isSelected = selectedDate?.toDateString() === date.toDateString();
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedDate(date)}
+                        className={`min-w-[70px] p-3 rounded-2xl border transition-all flex flex-col items-center gap-1 shrink-0 ${
+                          isSelected 
+                            ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105' 
+                            : 'bg-white border-slate-100 text-slate-600 hover:border-primary/30'
+                        }`}
+                      >
+                        <span className={`text-[9px] font-bold uppercase tracking-tighter ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>
+                          {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                        </span>
+                        <span className="text-lg font-bold">{date.getDate()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+             </div>
+
+             {/* Time Selection */}
+             <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">{t.patient.booking.selectTime}</p>
+                
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {morningSlots.map(slot => (
+                      <button
+                        key={slot}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`px-4 py-2.5 rounded-xl border font-bold text-xs transition-all ${
+                          selectedSlot === slot 
+                            ? 'bg-primary border-primary text-white shadow-md' 
+                            : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    ))}
+                    {afternoonSlots.map(slot => (
+                      <button
+                        key={slot}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`px-4 py-2.5 rounded-xl border font-bold text-xs transition-all ${
+                          selectedSlot === slot 
+                            ? 'bg-primary border-primary text-white shadow-md' 
+                            : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+             </div>
+
+             {/* Patient Details */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Patient Name</label>
+                   <div className="relative">
+                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                     <input
+                       value={patientName}
+                       onChange={(e) => setPatientName(e.target.value)}
+                       className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                       placeholder="Full name"
+                     />
+                   </div>
+                </div>
+
+                <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                   <div className="relative">
+                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                     <input
+                       value={patientPhone}
+                       onChange={(e) => setPatientPhone(e.target.value)}
+                       className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                       placeholder="0300-1234567"
+                     />
+                   </div>
+                </div>
+             </div>
+
+             <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.patient.booking.noteForDoctor}</label>
+                <div className="relative">
+                  <MessageSquare className="absolute left-4 top-4 text-slate-400" size={18} />
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={2}
+                    className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                    placeholder="Briefly mention symptom..."
+                  />
+                </div>
+             </div>
+           </div>
+
+           <div className="mt-8 pt-6 border-t border-slate-100">
+             <div className="flex items-center justify-between mb-6">
+                <div className="text-lg">
+                   <span className="font-bold text-slate-400">Fee: </span>
+                   <span className="font-bold text-slate-900">Rs. {doctor.fee}</span>
+                </div>
+                {selectedDate && selectedSlot && (
+                  <div className="text-right">
+                     <p className="text-[10px] font-bold text-health-teal uppercase tracking-widest">Appointment</p>
+                     <p className="text-xs font-bold text-slate-600">{selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })} • {selectedSlot}</p>
+                  </div>
+                )}
+             </div>
+
+             <button 
+                disabled={loading || !selectedDate || !selectedSlot || !patientName || !patientPhone}
+                onClick={handleBooking}
+                className="w-full py-4 bg-health-teal text-white rounded-2xl font-bold text-lg shadow-xl shadow-health-teal/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:hover:scale-100"
+              >
+                {loading ? (
+                  <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>{t.patient.booking.confirmBooking} <ArrowRight size={20} /></>
+                )}
+              </button>
+           </div>
         </div>
       </motion.div>
     </div>

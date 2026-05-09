@@ -137,7 +137,11 @@ const HospitalDetailPage: React.FC<HospitalDetailPageProps> = ({ hospital, onBac
               <Clock size={24} />
             </div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">TIMINGS</p>
-            <p className="text-sm font-bold text-slate-800">{hospital.openingTime} - {hospital.closingTime}</p>
+            <p className="text-sm font-bold text-slate-800">
+              {hospital.openingTime && hospital.closingTime 
+                ? `${hospital.openingTime} - ${hospital.closingTime}` 
+                : 'Contact hospital'}
+            </p>
           </div>
           <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 text-center">
             <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 mx-auto mb-3">
@@ -248,7 +252,7 @@ const HospitalDetailPage: React.FC<HospitalDetailPageProps> = ({ hospital, onBac
                         onClick={() => onBook(doctor)}
                         className="px-8 py-3.5 bg-health-teal text-white rounded-2xl font-bold text-sm shadow-lg shadow-health-teal/20 hover:scale-[1.02] active:scale-95 transition-all"
                       >
-                        {t.patient.booking.bookAppointment}
+                        {t.patient.booking.bookToken}
                       </button>
                    </div>
                 </div>
