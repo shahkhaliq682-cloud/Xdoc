@@ -31,7 +31,6 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome }) =>
         </div>
 
         <div className="bg-white rounded-[64px] shadow-2xl shadow-slate-200/50 p-10 relative overflow-hidden mb-12 border border-slate-100">
-           {/* Decorative elements */}
            <div className="absolute top-0 right-0 w-32 h-32 bg-health-teal/5 rounded-full -mr-16 -mt-16" />
            <div className="absolute bottom-0 left-0 w-40 h-40 bg-primary/5 rounded-full -ml-20 -mb-20" />
 
@@ -88,9 +87,15 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome }) =>
                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
                    <User size={24} />
                  </div>
-                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Your Name</p>
-                    <p className="font-bold text-slate-800">{tokenData.patientName}</p>
+                 <div className="flex-1 flex items-center justify-between">
+                    <div>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{t.patient.booking.fullName}</p>
+                       <p className="font-bold text-slate-800">{tokenData.patientName}</p>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-[10px] font-bold text-health-teal uppercase tracking-widest mb-0.5">{t.patient.booking.consultationFee}</p>
+                       <p className="text-2xl font-bold text-health-teal">Rs. {tokenData.fee}</p>
+                    </div>
                  </div>
               </div>
            </div>

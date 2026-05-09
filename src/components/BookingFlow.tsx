@@ -39,15 +39,11 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
   const getDates = () => {
     const dates = [];
     const today = new Date();
-    const openDays = hospital.openDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 7; i++) {
         const d = new Date();
         d.setDate(today.getDate() + i);
-        const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
-        if (openDays.includes(dayName)) {
-            dates.push(d);
-        }
+        dates.push(d);
     }
     return dates;
   };
@@ -59,7 +55,12 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
     setLoading(true);
 
     try {
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      // Use local date string YYYY-MM-DD to avoid UTC shift issues for appointment days
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
       const hospitalId = hospital.id;
 
       // Transaction to safely increment token number
@@ -79,7 +80,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
         const bookingData = {
           tokenNumber,
           hospitalId: hospital.id,
-          hospitalName: hospital.hospitalName,
+          hospitalName: hospital.hospitalName || hospital.name,
           doctorId: doctor.id,
           doctorName: doctor.name,
           doctorSpecialization: doctor.specialization,
@@ -92,21 +93,22 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
           status: 'waiting',
           note,
           createdAt: serverTimestamp(),
-          hospitalArea: hospital.area,
-          hospitalCity: hospital.city
+          hospitalArea: hospital.area || '',
+          hospitalCity: hospital.city || ''
         };
 
         // Create main token record
         const tokenRef = doc(collection(db, 'tokens'));
         transaction.set(tokenRef, bookingData);
 
-        // Add to hospital tokens sub-collection
+        // Also add to hospital and user as requested
+        // Note: The user asked for 3 places: /tokens, /hospitals/tokens, /users/bookings
+        
         const hospitalTokenRef = doc(db, 'hospitals', hospitalId, 'tokens', tokenRef.id);
         transaction.set(hospitalTokenRef, bookingData);
 
-        // Add to patient history
-        const patientHistoryRef = doc(db, 'users', currentUser.uid, 'history', tokenRef.id);
-        transaction.set(patientHistoryRef, bookingData);
+        const patientBookingRef = doc(db, 'users', currentUser.uid, 'bookings', tokenRef.id);
+        transaction.set(patientBookingRef, bookingData);
 
         return { ...bookingData, id: tokenRef.id };
       });
@@ -114,11 +116,12 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
       onSuccess(result);
     } catch (err) {
       console.error("Booking error:", err);
-      // alert("Booking failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  const isFormValid = selectedDate && selectedSlot && patientName && patientPhone;
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
@@ -132,7 +135,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-health-teal/10 rounded-2xl flex items-center justify-center text-health-teal font-bold text-lg">
-                   {doctor.name[0]}
+                   {doctor.name?.[0]}
                 </div>
                 <div>
                    <h3 className="text-xl font-bold text-slate-900">Dr. {doctor.name}</h3>
@@ -151,23 +154,33 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
              {/* Date Selection */}
              <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">{t.patient.booking.selectDate}</p>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-                  {[...dates].map((date, idx) => {
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                  {dates.map((date, idx) => {
                     const isSelected = selectedDate?.toDateString() === date.toDateString();
+                    const isToday = new Date().toDateString() === date.toDateString();
+                    const isTomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toDateString() === date.toDateString();
+                    
+                    let label = date.toLocaleDateString('en-US', { weekday: 'short' });
+                    if (isToday) label = 'Today';
+                    if (isTomorrow) label = 'Tomorrow';
+
                     return (
                       <button
                         key={idx}
                         onClick={() => setSelectedDate(date)}
-                        className={`min-w-[70px] p-3 rounded-2xl border transition-all flex flex-col items-center gap-1 shrink-0 ${
+                        className={`p-2 rounded-2xl border transition-all flex flex-col items-center gap-0.5 shrink-0 ${
                           isSelected 
-                            ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105' 
-                            : 'bg-white border-slate-100 text-slate-600 hover:border-primary/30'
+                            ? 'bg-health-teal border-health-teal text-white shadow-lg shadow-health-teal/20 scale-105' 
+                            : 'bg-white border-slate-100 text-slate-600 hover:border-health-teal/30'
                         }`}
                       >
-                        <span className={`text-[9px] font-bold uppercase tracking-tighter ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>
-                          {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                        <span className={`text-[8px] font-bold uppercase tracking-tighter ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>
+                          {label}
                         </span>
-                        <span className="text-lg font-bold">{date.getDate()}</span>
+                        <span className="text-base font-bold leading-none">{date.getDate()}</span>
+                        <span className={`text-[8px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>
+                          {date.toLocaleDateString('en-US', { month: 'short' })}
+                        </span>
                       </button>
                     );
                   })}
@@ -180,26 +193,13 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
                 
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-2">
-                    {morningSlots.map(slot => (
+                    {[...morningSlots, ...afternoonSlots].map(slot => (
                       <button
                         key={slot}
                         onClick={() => setSelectedSlot(slot)}
                         className={`px-4 py-2.5 rounded-xl border font-bold text-xs transition-all ${
                           selectedSlot === slot 
-                            ? 'bg-primary border-primary text-white shadow-md' 
-                            : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    ))}
-                    {afternoonSlots.map(slot => (
-                      <button
-                        key={slot}
-                        onClick={() => setSelectedSlot(slot)}
-                        className={`px-4 py-2.5 rounded-xl border font-bold text-xs transition-all ${
-                          selectedSlot === slot 
-                            ? 'bg-primary border-primary text-white shadow-md' 
+                            ? 'bg-health-teal border-health-teal text-white shadow-md' 
                             : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
@@ -213,26 +213,26 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
              {/* Patient Details */}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Patient Name</label>
+                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.patient.booking.fullName}</label>
                    <div className="relative">
                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                      <input
                        value={patientName}
                        onChange={(e) => setPatientName(e.target.value)}
-                       className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                       className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-health-teal/20 transition-all text-sm"
                        placeholder="Full name"
                      />
                    </div>
                 </div>
 
                 <div className="space-y-2">
-                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.patient.booking.phoneNumber}</label>
                    <div className="relative">
                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                      <input
                        value={patientPhone}
                        onChange={(e) => setPatientPhone(e.target.value)}
-                       className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                       className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-health-teal/20 transition-all text-sm"
                        placeholder="0300-1234567"
                      />
                    </div>
@@ -247,7 +247,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     rows={2}
-                    className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                    className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-health-teal/20 transition-all text-sm"
                     placeholder="Briefly mention symptom..."
                   />
                 </div>
@@ -269,9 +269,13 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
              </div>
 
              <button 
-                disabled={loading || !selectedDate || !selectedSlot || !patientName || !patientPhone}
+                disabled={loading || !isFormValid}
                 onClick={handleBooking}
-                className="w-full py-4 bg-health-teal text-white rounded-2xl font-bold text-lg shadow-xl shadow-health-teal/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:hover:scale-100"
+                className={`w-full py-4 text-white rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center gap-3 ${
+                  isFormValid 
+                    ? 'bg-health-teal shadow-health-teal/20 hover:scale-[1.01] active:scale-[0.99]' 
+                    : 'bg-slate-300 shadow-none cursor-not-allowed opacity-60'
+                }`}
               >
                 {loading ? (
                   <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
@@ -284,6 +288,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
       </motion.div>
     </div>
   );
+
 };
 
 export default BookingFlow;
