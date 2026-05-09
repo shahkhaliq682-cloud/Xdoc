@@ -27,22 +27,35 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const message = error instanceof Error ? error.message : String(error);
+  
+  const authInfo = {
+    userId: auth.currentUser?.uid || null,
+    email: auth.currentUser?.email || null,
+    emailVerified: auth.currentUser?.emailVerified || null,
+    isAnonymous: auth.currentUser?.isAnonymous || null,
+    tenantId: auth.currentUser?.tenantId || null,
+    providerInfo: auth.currentUser?.providerData?.map(provider => ({
+      providerId: provider.providerId,
+      email: provider.email,
+    })) || []
+  };
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
+    error: message,
+    authInfo,
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+
+  try {
+    const json = JSON.stringify(errInfo);
+    console.error('Firestore Error:', json);
+    throw new Error(json);
+  } catch (e) {
+    // Fallback in case of circular reference during stringification
+    const fallbackMsg = `Firestore Error [${operationType}] on [${path}]: ${message}`;
+    console.error(fallbackMsg, authInfo);
+    throw new Error(fallbackMsg);
+  }
 }

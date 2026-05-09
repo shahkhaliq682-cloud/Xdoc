@@ -1060,6 +1060,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
       let errorMsg = err.message || 'Failed to create account. Please try again.';
       
       if (err.code === 'auth/email-already-in-use') {
+        errorMsg = t.auth.emailAlreadyInUse;
         setErrors({ email: t.auth.emailAlreadyInUse, general: t.auth.emailAlreadyInUse });
       } else if (err.code === 'auth/network-request-failed') {
         errorMsg = "Internet connection check karein (Auth error).";
@@ -1677,7 +1678,9 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
       console.error("Full Registration Error:", err);
       let errorMsg = err.message || 'Failed to register hospital. Please try again.';
       
-      if (err.message === "Kuch fields missing hain") {
+      if (err.code === 'auth/email-already-in-use') {
+        errorMsg = t.auth.emailAlreadyInUse;
+      } else if (err.message === "Kuch fields missing hain") {
         errorMsg = "Kuch fields missing hain - Please fill all required fields.";
       } else if (!navigator.onLine || err.message.toLowerCase().includes('network')) {
         errorMsg = "Internet connection check karein";
