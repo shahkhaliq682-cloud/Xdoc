@@ -69,6 +69,8 @@ import {
   Cell
 } from 'recharts';
 
+import ReceptionMode from './ReceptionMode';
+
 interface HospitalDashboardProps {
   hospitalData: any;
   onSignOut: () => void;
@@ -88,6 +90,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const [showDataWarning, setShowDataWarning] = useState(false);
   const [newTokenId, setNewTokenId] = useState<string | null>(null);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [showReceptionMode, setShowReceptionMode] = useState(false);
 
   // Filter today's tokens
   const today = new Date();
@@ -303,6 +306,27 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
     return (
       <div className="p-8 space-y-10">
+        {/* Reception Mode Button */}
+        <button 
+          onClick={() => setShowReceptionMode(true)}
+          className="w-full bg-slate-950 text-white p-8 rounded-[48px] flex items-center justify-between group hover:scale-[1.01] transition-all shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center text-primary group-hover:rotate-12 transition-transform">
+              <Activity size={32} />
+            </div>
+            <div className="text-left">
+              <h3 className="text-2xl font-black tracking-tight">{t.patient.booking.receptionMode}</h3>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">{t.patient.booking.simpleTokenScreen}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 bg-white/10 px-6 py-3 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all relative z-10">
+            <span className="font-extrabold text-xs uppercase tracking-widest">{t.patient.booking.openReceptionMode}</span>
+            <ChevronRight size={16} strokeWidth={3} />
+          </div>
+        </button>
+
         {/* New Token Alert */}
         <AnimatePresence>
           {newTokenId && (
@@ -1099,6 +1123,19 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
              </button>
            ))}
         </nav>
+
+        {/* Reception Mode Overlay */}
+        <AnimatePresence>
+          {showReceptionMode && (
+            <ReceptionMode 
+              hospitalData={hospitalData}
+              tokens={tokens}
+              onClose={() => setShowReceptionMode(false)}
+              updateTokenStatus={updateTokenStatus}
+              doctors={doctors}
+            />
+          )}
+        </AnimatePresence>
 
         {/* 30 Day Data Warning Popup */}
         <AnimatePresence>
