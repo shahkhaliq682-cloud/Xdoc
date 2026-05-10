@@ -151,12 +151,48 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   // Filter out test/demo hospitals
   const realHospitals = hospitals.filter(h => {
     const name = (h.hospitalName || h.name || '').toLowerCase();
-    return !name.includes('test') && !name.includes('demo') && !name.includes('care with');
+    const isTest = name.includes('test') || name.includes('demo') || name.includes('care with');
+    const isActive = h.status === 'active' || h.approved === true || h.isApproved === true || h.status === 'open';
+    return !isTest && isActive;
   });
 
-  const getActiveHospitals = () => {
-    const activeIds = new Set(allTodayTokens.map(t => t.hospitalId));
-    return realHospitals.filter(h => h.status === 'open' && activeIds.has(h.id));
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMin = now.getMinutes();
+  const currentTimeVal = currentHour * 60 + currentMin;
+
+  const parseTime = (timeStr: string) => {
+    if (!timeStr) return null;
+    const parts = timeStr.trim().split(' ');
+    if (parts.length < 2) return null;
+    const [time, modifier] = parts;
+    const timeParts = time.split(':');
+    let hours = Number(timeParts[0]);
+    let minutes = timeParts.length > 1 ? Number(timeParts[1]) : 0;
+    
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  const getStats = () => {
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+    return {
+      totalHospitals: realHospitals.filter(h => h.type?.toLowerCase().includes('hospital')).length,
+      totalClinics: realHospitals.filter(h => h.type?.toLowerCase().includes('clinic')).length,
+      activeToday: realHospitals.filter(h => {
+        const openDays = h.openDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        return openDays.includes(today);
+      }).length,
+      openNow: realHospitals.filter(h => {
+        const openDays = h.openDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        if (!openDays.includes(today)) return false;
+        const open = parseTime(h.openingTime);
+        const close = parseTime(h.closingTime);
+        if (open === null || close === null) return false;
+        return currentTimeVal >= open && currentTimeVal <= close;
+      }).length
+    };
   };
 
   const filteredHospitals = realHospitals.filter(h => {
@@ -175,15 +211,6 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     return matchesType && matchesSearch;
   });
 
-  const getStats = () => {
-    return {
-      totalHospitals: realHospitals.filter(h => h.type?.includes('Hospital')).length,
-      totalClinics: realHospitals.filter(h => h.type?.includes('Clinic')).length,
-      activeToday: getActiveHospitals().length,
-      openNow: realHospitals.filter(h => h.status === 'open').length
-    };
-  };
-
   const renderHospitalsView = () => {
     const stats = getStats();
     return (
@@ -191,23 +218,23 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         {/* Row 1 - Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {[
-            { label: t.patient.booking.totalHospitals, count: stats.totalHospitals, color: 'text-primary', icon: HospitalIcon },
-            { label: t.patient.booking.totalClinics, count: stats.totalClinics, color: 'text-blue-600', icon: MapIcon },
-            { label: t.patient.booking.activeToday, count: stats.activeToday, color: 'text-health-teal', icon: CheckCircle2 },
-            { label: t.patient.booking.openNow, count: stats.openNow, color: 'text-emerald-500', icon: Clock },
+            { label: t.patient.booking.totalHospitals, count: stats.totalHospitals, color: 'text-blue-500', icon: Building2, bg: 'bg-blue-50' },
+            { label: t.patient.booking.totalClinics, count: stats.totalClinics, color: 'text-emerald-500', icon: HospitalIcon, bg: 'bg-emerald-50' },
+            { label: t.patient.booking.activeToday, count: stats.activeToday, color: 'text-amber-500', icon: Activity, bg: 'bg-amber-50' },
+            { label: t.patient.booking.openNow, count: stats.openNow, color: 'text-purple-500', icon: Clock, bg: 'bg-purple-50' },
           ].map((item, idx) => (
             <div key={idx} className="bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm flex flex-col items-center text-center group hover:shadow-md transition-all">
-              <div className={`w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center ${item.color} mb-3 group-hover:scale-110 transition-transform`}>
-                <item.icon size={20} />
+              <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center ${item.color} mb-3 group-hover:scale-110 transition-transform`}>
+                <item.icon size={24} />
               </div>
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
-              <p className="text-2xl font-black text-slate-900">{item.count}</p>
+              <p className="text-2xl font-black text-slate-900 leading-none">{item.count}</p>
             </div>
           ))}
         </div>
 
         {/* Row 2 - Filtering Tabs */}
-        <div className="flex bg-white p-2 rounded-[24px] gap-1 border border-slate-100 overflow-x-auto no-scrollbar shadow-sm">
+        <div className="flex bg-slate-50 p-1.5 rounded-[28px] gap-1 border border-slate-100 overflow-x-auto no-scrollbar shadow-inner">
           {([
             { id: 'All', label: t.patient.booking.all },
             { id: 'Private Hospital', label: t.patient.booking.privateHospital },
@@ -218,10 +245,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
             <button
               key={tab.id}
               onClick={() => setHospitalType(tab.id as any)}
-              className={`flex-none px-5 py-3 rounded-2xl font-extrabold text-xs transition-all whitespace-nowrap ${
+              className={`flex-none px-6 py-3.5 rounded-[22px] font-extrabold text-xs transition-all whitespace-nowrap ${
                 hospitalType === tab.id 
-                  ? 'bg-health-teal text-white shadow-lg shadow-health-teal/20' 
-                  : 'text-slate-400 hover:bg-slate-50'
+                  ? 'bg-white text-health-teal shadow-sm border border-slate-100' 
+                  : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               {tab.label}
@@ -536,82 +563,154 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     </div>
   );
 
-  const renderHistoryView = () => (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Visit History</h2>
-        <History className="text-primary" />
-      </div>
+  const [historyFilter, setHistoryFilter] = useState<'All' | 'Upcoming' | 'Completed' | 'Not Arrived'>('All');
 
-      {patientTokens.length === 0 ? (
-        <div className="bg-white p-20 rounded-[40px] text-center border-2 border-dashed border-slate-200">
-          <Calendar size={64} className="mx-auto text-slate-200 mb-6" />
-          <p className="text-xl font-bold text-slate-400">No visits found yet</p>
-          <button 
-            onClick={() => setActiveTab('hospitals')}
-            className="mt-6 px-8 py-3 bg-primary text-white rounded-2xl font-bold hover:scale-105 transition-all"
-          >
-            Book First Appointment
-          </button>
+  const getFilteredTokens = () => {
+    let filtered = [...patientTokens];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (historyFilter === 'Upcoming') {
+      filtered = filtered.filter(token => token.appointmentDate >= todayStr && token.status === 'waiting');
+    } else if (historyFilter === 'Completed') {
+      filtered = filtered.filter(token => token.status === 'completed');
+    } else if (historyFilter === 'Not Arrived') {
+      filtered = filtered.filter(token => token.status === 'not-arrived');
+    }
+    return filtered;
+  };
+
+  const renderHistoryView = () => {
+    const filtered = getFilteredTokens();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    return (
+      <div className="p-6 space-y-6 pb-24">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            {language === 'UR' ? 'بکنگ تاریخ' : 'Booking History'}
+          </h2>
+          <div className="w-10 h-10 bg-health-teal/10 rounded-2xl flex items-center justify-center text-health-teal">
+            <History size={20} />
+          </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {patientTokens.map((token) => (
-            <div key={token.id} className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm relative overflow-hidden group">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                    <HospitalIcon size={24} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 leading-tight">{token.hospitalName}</h4>
-                    <p className="text-xs text-slate-400 font-medium">{token.doctorName}</p>
-                  </div>
-                </div>
-                <div className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider ${
-                  token.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
-                  token.status === 'In Progress' ? 'bg-blue-50 text-blue-600' :
-                  token.status === 'cancelled' || token.status === 'Not Arrived' ? 'bg-red-50 text-red-600' :
-                  'bg-amber-50 text-amber-600'
-                }`}>
-                  {token.status === 'waiting' || token.status === 'Waiting' ? t.patient.booking.waiting : 
-                   token.status === 'Completed' ? t.patient.booking.completed :
-                   token.status === 'Not Arrived' ? t.patient.booking.notArrived :
-                   token.status}
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className="text-slate-400" />
-                    <span className="text-xs font-mono font-bold text-slate-600">
-                      {formatDate(token.createdAt)}
-                    </span>
-                  </div>
-                  {(token.status === 'waiting' || token.status === 'Waiting') && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        cancelToken(token);
-                      }}
-                      className="text-[10px] font-bold text-emergency-red bg-emergency-red/5 px-3 py-1 rounded-lg hover:bg-emergency-red hover:text-white transition-all flex items-center gap-1 border border-emergency-red/10"
-                    >
-                      <X size={10} /> {t.patient.hospitalCard.cancelToken}
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">Token</span>
-                  <span className="text-sm font-mono font-bold text-slate-900">#{token.tokenNumber}</span>
-                </div>
-              </div>
-            </div>
+
+        {/* Filters */}
+        <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
+          {(['All', 'Upcoming', 'Completed', 'Not Arrived'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setHistoryFilter(f)}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border-2 ${
+                historyFilter === f 
+                  ? 'bg-health-teal border-health-teal text-white shadow-lg shadow-health-teal/20' 
+                  : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+              }`}
+            >
+              {f === 'All' ? (language === 'UR' ? 'تمام' : 'All') :
+               f === 'Upcoming' ? (language === 'UR' ? 'آنے والے' : 'Upcoming') :
+               f === 'Completed' ? (language === 'UR' ? 'مکمل' : 'Completed') :
+               (language === 'UR' ? 'نہیں آئے' : 'Not Arrived')}
+            </button>
           ))}
         </div>
-      )}
-    </div>
-  );
+
+        {filtered.length === 0 ? (
+          <div className="bg-white p-20 rounded-[40px] text-center border-2 border-dashed border-slate-100">
+            <Calendar size={64} className="mx-auto text-slate-100 mb-6" />
+            <p className="text-xl font-bold text-slate-300">No bookings found</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map((token) => {
+              const isUpcoming = token.appointmentDate >= todayStr && token.status === 'waiting';
+              const isPast = token.status === 'completed' || token.status === 'not-arrived' || token.status === 'cancelled';
+              
+              return (
+                <div 
+                  key={token.id} 
+                  className={`p-6 rounded-[32px] border transition-all relative overflow-hidden ${
+                    isPast ? 'bg-slate-50/50 border-slate-100' : 'bg-white border-slate-100 shadow-sm'
+                  }`}
+                >
+                  {isUpcoming && (
+                    <div className="absolute top-0 right-0 px-4 py-1.5 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-bl-2xl">
+                      Upcoming
+                    </div>
+                  )}
+
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
+                        <HospitalIcon size={24} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 leading-tight">{token.hospitalName}</h4>
+                        <p className="text-xs font-bold text-health-teal uppercase tracking-widest mt-0.5">
+                          {token.doctorName.startsWith('Dr.') ? token.doctorName : `Dr. ${token.doctorName}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Token</p>
+                       <p className="text-xl font-black text-slate-900" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                         {token.tokenNumber}
+                       </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                        <Calendar size={14} />
+                      </div>
+                      <span className="text-xs font-bold text-slate-600">{token.appointmentDate}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                        <Clock size={14} />
+                      </div>
+                      <span className="text-xs font-bold text-slate-600">{token.appointmentTime}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-5 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                       <span className="text-sm font-black text-slate-800">Rs. {token.consultationFee || token.fee}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        token.status === 'completed' ? 'bg-emerald-100 text-emerald-600' :
+                        token.status === 'in-progress' ? 'bg-blue-100 text-blue-600' :
+                        token.status === 'cancelled' || token.status === 'not-arrived' ? 'bg-red-100 text-red-600' :
+                        'bg-amber-100 text-amber-600'
+                      }`}>
+                        {token.status === 'waiting' ? (language === 'UR' ? 'انتظار میں' : 'Waiting') : 
+                         token.status === 'completed' ? (language === 'UR' ? 'مکمل' : 'Completed') :
+                         token.status === 'not-arrived' ? (language === 'UR' ? 'نہیں آئے' : 'Not Arrived') :
+                         token.status === 'cancelled' ? (language === 'UR' ? 'منسوخ' : 'Cancelled') :
+                         token.status === 'in-progress' ? (language === 'UR' ? 'جاری ہے' : 'In Progress') :
+                         token.status}
+                      </div>
+
+                      {token.status === 'waiting' && (
+                        <button 
+                          onClick={() => cancelToken(token)}
+                          className="text-[10px] font-black text-red-500 hover:underline"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-[#faf8ff] min-h-screen pb-32">

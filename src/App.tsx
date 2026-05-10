@@ -3485,7 +3485,7 @@ export default function App() {
     try {
       await logout();
       setViewState('hero');
-      alert(t.patient.logout.success);
+      console.log(t.patient.logout.success);
     } catch (err) {
       console.error(err);
     } finally {
@@ -3785,8 +3785,8 @@ export default function App() {
               <AlertTriangle size={24} />
             </div>
             <div>
-              <p className="text-amber-900 font-bold text-sm">Session Warning</p>
-              <p className="text-amber-700 text-xs font-medium">Aap 5 minute mein automatically logout ho jayenge due to inactivity.</p>
+              <p className="text-amber-900 font-bold text-sm">{t.patient.booking.sessionWarning}</p>
+              <p className="text-amber-700 text-xs font-medium">{t.patient.booking.inactivityLogout}</p>
             </div>
           </motion.div>
         )}

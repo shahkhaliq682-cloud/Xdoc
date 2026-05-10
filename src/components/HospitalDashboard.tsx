@@ -202,33 +202,40 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     return () => { isMounted = false; };
   }, [initialHospitalData?.uid]);
 
+  const [lastNotificationTime, setLastNotificationTime] = useState(Date.now());
+
   // Listen to tokens
   useEffect(() => {
     let isMounted = true;
     if (!initialHospitalData?.uid) return;
     
+    // Listen for today's tokens specifically for real-time dashboard
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
     const q = query(
       collection(db, 'tokens'), 
-      where('hospitalId', '==', initialHospitalData.uid)
+      where('hospitalId', '==', initialHospitalData.uid),
+      where('appointmentDate', '==', todayStr)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (isMounted) {
         const newTokens = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        // Sort client-side to avoid index requirement
-        newTokens.sort((a: any, b: any) => {
-          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
-          return dateB.getTime() - dateA.getTime();
+        // Check for new tokens to highlight and notify
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'added' && !snapshot.metadata.hasPendingWrites) {
+            const data = change.doc.data();
+            // Only notify for fresh additions, not initial load
+            if (Date.now() - lastNotificationTime > 2000) {
+              setNewTokenId(change.doc.id);
+              // Simple sound or vibration could go here in a real mobile app
+              setTimeout(() => setNewTokenId(null), 8000);
+            }
+          }
         });
-
-        // Check for new tokens to highlight
-        const lastChange = snapshot.docChanges().find(change => change.type === 'added');
-        if (lastChange && !snapshot.metadata.hasPendingWrites) {
-          setNewTokenId(lastChange.doc.id);
-          setTimeout(() => setNewTokenId(null), 5000);
-        }
 
         setTokens(newTokens);
       }
@@ -242,50 +249,29 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     };
   }, [initialHospitalData?.uid]);
 
-  const toggleStatus = async () => {
-    if (!hospitalData?.uid) return;
-    const newStatus = hospitalData.status === 'Open' ? 'Closed' : 'Open';
-    try {
-      await updateDoc(doc(db, 'hospitals', hospitalData.uid), { status: newStatus });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `hospitals/${hospitalData.uid}`);
-    }
-  };
-
-  const handleClearOldData = async (shouldSave: boolean) => {
-    if (!shouldSave) {
-      // In a real app we'd delete documents older than 30 days
-      // For now we just close the popup
-      setShowDataWarning(false);
-    } else {
-      setShowDataWarning(false);
-    }
-  };
-
   const updateTokenStatus = async (tokenId: string, status: string, patientId?: string) => {
     try {
       if (!initialHospitalData?.uid) return;
       
-      const tokenRef = doc(db, 'tokens', tokenId);
-      const hospitalTokenRef = doc(db, 'hospitals', initialHospitalData.uid, 'tokens', tokenId);
-      
       const updateData = { 
-        status, 
+        status: status.toLowerCase(), 
         updatedAt: serverTimestamp(),
-        // If status is completed/not arrived, mark it as processed
-        processedAt: (status === 'Completed' || status === 'Not Arrived') ? serverTimestamp() : null
       };
       
+      const batch = writeBatch(db);
+      
       // Update tokens collection
-      await updateDoc(tokenRef, updateData).catch(e => console.log("Main tokens update failed:", e));
+      batch.update(doc(db, 'tokens', tokenId), updateData);
+      
       // Update hospital's subcollection
-      await updateDoc(hospitalTokenRef, updateData).catch(e => console.log("Hospital tokens update failed:", e));
+      batch.update(doc(db, 'hospitals', initialHospitalData.uid, 'tokens', tokenId), updateData);
       
       // Update patient's history in users collection
       if (patientId) {
-        const patientHistoryRef = doc(db, 'users', patientId, 'history', tokenId);
-        await updateDoc(patientHistoryRef, updateData).catch(e => console.log("Patient history update failed:", e));
+        batch.update(doc(db, 'users', patientId, 'bookings', tokenId), updateData);
       }
+      
+      await batch.commit();
     } catch (err) {
       console.error("Error updating token:", err);
     }
@@ -294,172 +280,230 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const d = t.dashboard;
 
   const navItems = [
-    { id: 'home', icon: LayoutDashboard, label: d.nav.home || 'HOME' },
-    { id: 'search', icon: Search, label: d.search || 'SEARCH' },
-    { id: 'data', icon: Activity, label: language === 'UR' ? 'مریض' : 'PATIENTS' },
-    { id: 'staff', icon: Users, label: d.nav.staff || 'STAFF' },
+    { id: 'home', icon: LayoutDashboard, label: t.dashboard.nav.dashboard || 'DASHBOARD' },
+    { id: 'search', icon: Search, label: t.dashboard.search || 'SEARCH' },
+    { id: 'data', icon: Activity, label: t.patient.booking.patients || 'PATIENTS' },
+    { id: 'staff', icon: Users, label: t.dashboard.nav.staff || 'STAFF' },
     { id: 'profile', icon: UserSquare2, label: t.patient.booking.editProfile }
   ];
 
   const renderDashboardHome = () => {
-    const doctorsPresent = doctors.filter(d => d.status === 'Active' || d.status === 'Present').length;
-    const staffPresent = staff.filter(s => s.status === 'Active' || s.status === 'Present').length;
-
-    // Get busiest doctor
-    const doctorCounts = todayTokens.reduce((acc: any, t) => {
-      acc[t.doctorName] = (acc[t.doctorName] || 0) + 1;
-      return acc;
-    }, {});
-    const busiestDocName = Object.entries(doctorCounts).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] || 'N/A';
+    const today = new Date().toISOString().split('T')[0];
+    const todaysTokens = tokens.filter(t => t.appointmentDate === today);
+    
+    const inProgressTokens = todaysTokens.filter(t => t.status === 'in-progress');
+    const waitingTokens = todaysTokens.filter(t => t.status === 'waiting');
+    
+    // Stats calculation
+    const completedToday = todaysTokens.filter(t => t.status === 'completed').length;
+    const waitingNow = waitingTokens.length;
+    const revenueToday = todaysTokens
+      .filter(t => t.status === 'completed')
+      .reduce((sum, t) => sum + (Number(t.consultationFee || t.fee) || 0), 0);
 
     return (
-      <div className="p-6 space-y-10 pb-32">
-        {/* Top Stats Row */}
+      <div className="p-8 space-y-10">
+        {/* New Token Alert */}
+        <AnimatePresence>
+          {newTokenId && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="bg-health-teal text-white p-4 rounded-3xl flex items-center justify-between shadow-lg shadow-health-teal/20"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                  <Bell size={20} />
+                </div>
+                <div>
+                   <p className="font-black text-sm uppercase tracking-widest">{t.patient.booking.newTokenReceived || 'NEW TOKEN RECEIVED!'}</p>
+                   <p className="text-xs font-bold opacity-90">{t.patient.booking.checkLiveQueue || 'Please check the live queue below'}</p>
+                </div>
+              </div>
+              <button onClick={() => setNewTokenId(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Global Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: t.patient.booking.tokensToday, count: stats.tokensToday, color: 'from-blue-500 to-blue-600', icon: Ticket },
-            { label: t.patient.booking.waiting, count: stats.waiting, color: 'from-amber-400 to-amber-500', icon: Clock },
-            { label: t.patient.booking.completed, count: stats.completed, color: 'from-emerald-500 to-emerald-600', icon: CheckCircle2 },
-            { label: t.patient.booking.revenueToday, count: `Rs. ${stats.revenueToday}`, color: 'from-primary to-primary-dark', icon: Wallet },
-          ].map((item, idx) => (
-            <div key={idx} className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm relative overflow-hidden group">
-              <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${item.color} opacity-[0.03] rounded-bl-[64px]`} />
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} text-white flex items-center justify-center mb-6 shadow-lg shadow-blue-500/10`}>
-                <item.icon size={24} />
-              </div>
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-1">{item.label}</p>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{item.count}</h3>
+            { label: d.tokensToday, val: todaysTokens.length, color: 'text-primary', icon: Ticket, sub: 'Issued' },
+            { label: d.waitingNow, val: waitingNow, color: 'text-amber-500', icon: Clock, sub: 'In Queue' },
+            { label: d.completedToday, val: completedToday, color: 'text-emerald-500', icon: CheckCircle2, sub: 'Done' },
+            { label: d.revenueToday, val: `Rs. ${revenueToday}`, color: 'text-health-teal', icon: Wallet, sub: 'Collected' },
+          ].map((stat, idx) => (
+            <div key={idx} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden group">
+               <div className="flex items-center justify-between mb-4">
+                 <div className={`w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
+                    <stat.icon size={24} />
+                 </div>
+                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{stat.sub}</span>
+               </div>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">{stat.label}</p>
+               <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{stat.val}</h3>
             </div>
           ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left - Recent Tokens */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.dashboard.recentTokens.title}</h3>
-              <button 
-                onClick={() => setActiveTab('data')}
-                className="text-xs font-bold text-primary hover:underline"
-              >View All</button>
-            </div>
-            
-            <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-4 space-y-3">
-                {todayTokens.length === 0 ? (
-                  <div className="py-20 text-center text-slate-300 font-bold italic">No tokens issued today</div>
-                ) : (
-                  todayTokens.slice(0, 8).map((token) => (
-                    <div key={token.id} className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl border border-slate-100 hover:bg-white transition-all group">
-                      <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-white rounded-2xl flex flex-col items-center justify-center border border-slate-100 shadow-sm">
-                           <span className="text-[8px] font-black text-slate-400 uppercase leading-none">Token</span>
-                           <span className="text-lg font-black text-slate-900">{token.tokenNumber}</span>
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-slate-800 text-base">{token.patientName}</h4>
-                          <div className="flex items-center gap-3 text-slate-400 mt-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider">{token.doctorName}</span>
-                            <div className="w-1 h-1 bg-slate-300 rounded-full" />
-                            <span className="text-[10px] font-bold">{token.createdAt?.toDate?.() ? token.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
+           {/* LIVE QUEUE - 2/3 Width */}
+           <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center justify-between px-2">
+                 <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-health-teal rounded-full animate-ping" />
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
+                      {t.patient.booking.liveQueue || 'LIVE TOKEN QUEUE'}
+                    </h3>
+                 </div>
+                 <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{todaysTokens.length} TOTAL</span>
+                 </div>
+              </div>
+
+              <div className="bg-white rounded-[48px] border border-slate-100 shadow-sm overflow-hidden p-4 space-y-4">
+                 {/* Current Serving */}
+                 {inProgressTokens.length > 0 && (
+                   <div className="space-y-4">
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-4">{t.patient.booking.inProgress}</p>
+                      {inProgressTokens.map(token => (
+                         <div key={token.id} className="p-8 bg-blue-50/50 rounded-[40px] border-2 border-blue-100 flex items-center justify-between shadow-xl shadow-blue-500/5">
+                            <div className="flex items-center gap-6">
+                               <div className="w-20 h-20 bg-white rounded-[32px] flex flex-col items-center justify-center border-2 border-blue-200 shadow-sm">
+                                  <span className="text-[10px] font-black text-blue-400 uppercase leading-none">Token</span>
+                                  <span className="text-3xl font-black text-blue-600" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{token.tokenNumber}</span>
+                               </div>
+                               <div>
+                                  <h4 className="text-xl font-black text-slate-900 leading-tight">{token.patientName}</h4>
+                                  <p className="text-sm font-bold text-blue-500 uppercase tracking-widest mt-1">Dr. {token.doctorName}</p>
+                                  <p className="text-[10px] font-bold text-slate-400 mt-2 flex items-center gap-2">
+                                     <Clock size={12} /> {token.appointmentDate} • {token.appointmentTime}
+                                  </p>
+                               </div>
+                            </div>
+                            <div className="flex gap-3">
+                               <button 
+                                 onClick={() => updateTokenStatus(token.id, 'completed', token.patientId)}
+                                 className="px-8 py-4 bg-emerald-500 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
+                               >
+                                 {t.patient.booking.markDone}
+                               </button>
+                               <button 
+                                 onClick={() => updateTokenStatus(token.id, 'not-arrived', token.patientId)}
+                                 className="px-6 py-4 bg-slate-200 text-slate-600 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                               >
+                                 {t.patient.booking.absent}
+                               </button>
+                            </div>
+                         </div>
+                      ))}
+                   </div>
+                 )}
+
+                 {/* Waiting Queue */}
+                 <div className="space-y-4">
+                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest ml-4">{t.patient.booking.waitingList}</p>
+                    {waitingTokens.length === 0 ? (
+                      <div className="py-20 text-center text-slate-300 font-bold italic tracking-widest opacity-50">NO ONE IS WAITING</div>
+                    ) : (
+                      waitingTokens.map(token => (
+                         <div 
+                           key={token.id} 
+                           className={`p-6 bg-slate-50/50 rounded-[32px] border border-slate-100 flex items-center justify-between hover:bg-white transition-all group ${newTokenId === token.id ? 'border-primary ring-4 ring-primary/10 animate-pulse' : ''}`}
+                         >
+                            <div className="flex items-center gap-6">
+                               <div className="w-16 h-16 bg-white rounded-2xl flex flex-col items-center justify-center border border-slate-100 shadow-sm transition-transform group-hover:scale-105">
+                                  <span className="text-[8px] font-bold text-slate-400 uppercase leading-none">Token</span>
+                                  <span className="text-xl font-black text-slate-900" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{token.tokenNumber}</span>
+                               </div>
+                               <div>
+                                  <h4 className="font-bold text-slate-800 text-lg">{token.patientName}</h4>
+                                  <div className="flex items-center gap-3 text-slate-400 mt-1">
+                                    <span className="text-xs font-bold text-health-teal uppercase tracking-widest">DR. {token.doctorName}</span>
+                                    <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                                    <span className="text-xs font-bold">{token.appointmentTime}</span>
+                                  </div>
+                               </div>
+                            </div>
+
+                            <button 
+                              onClick={() => updateTokenStatus(token.id, 'in-progress', token.patientId)}
+                              className="px-6 py-4 bg-white border-2 border-primary text-primary rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white shadow-xl shadow-primary/5 transition-all flex items-center gap-2"
+                            >
+                              <Play size={16} fill="currentColor" /> {t.patient.booking.startNow}
+                            </button>
+                         </div>
+                      ))
+                    )}
+                 </div>
+              </div>
+           </div>
+
+           {/* Today's Stats & Summary - 1/3 Width */}
+           <div className="space-y-8">
+              <div className="space-y-4">
+                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{t.patient.booking.performance}</h3>
+                 <div className="bg-slate-950 rounded-[48px] p-10 text-white shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full -mr-24 -mt-24 blur-3xl opacity-50" />
+                    
+                    <div className="space-y-8 relative">
+                       <div>
+                          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.4em] mb-2">{t.patient.booking.revenue}</p>
+                          <h2 className="text-5xl font-black tracking-tighter">Rs. {revenueToday}</h2>
+                       </div>
+                       
+                       <div className="space-y-6 pt-8 border-t border-white/10">
+                          <div className="flex items-center justify-between">
+                             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.patient.booking.completed}</span>
+                             <span className="text-xl font-black text-health-teal">{completedToday}</span>
                           </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm border ${
-                           token.status === 'Completed' ? 'bg-emerald-500 text-white border-emerald-600' :
-                           token.status === 'Waiting' || token.status === 'waiting' ? 'bg-amber-400 text-white border-amber-500' :
-                           token.status === 'Not Arrived' ? 'bg-red-500 text-white border-red-600' :
-                           token.status === 'In Progress' ? 'bg-blue-500 text-white border-blue-600' :
-                           'bg-slate-100 text-slate-500 border-slate-200'
-                        }`}>
-                           {token.status === 'waiting' || token.status === 'Waiting' ? t.patient.booking.waiting : 
-                            token.status === 'Completed' ? t.patient.booking.completed : 
-                            token.status === 'Not Arrived' ? t.patient.booking.notArrived :
-                            token.status === 'In Progress' ? 'In Progress' : token.status}
-                        </span>
-
-                        {(token.status === 'Waiting' || token.status === 'waiting' || token.status === 'In Progress') && (
-                          <div className="flex gap-2">
-                             <button 
-                               onClick={() => updateTokenStatus(token.id, 'Completed', token.patientId)}
-                               className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all"
-                             >
-                               {t.patient.booking.markDone}
-                             </button>
-                             <button 
-                               onClick={() => updateTokenStatus(token.id, 'Not Arrived', token.patientId)}
-                               className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-red-600 hover:text-white transition-all"
-                             >
-                               {t.patient.booking.notArrived}
-                             </button>
+                          <div className="flex items-center justify-between">
+                             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.patient.booking.notArrived}</span>
+                             <span className="text-xl font-black text-red-500">{todaysTokens.filter(t => t.status === 'not-arrived').length}</span>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+                          <div className="flex items-center justify-between">
+                             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.patient.booking.cancelled}</span>
+                             <span className="text-xl font-black text-slate-600">{todaysTokens.filter(t => t.status === 'cancelled').length}</span>
+                          </div>
+                       </div>
 
-          <div className="space-y-8">
-            {/* Quick Stats */}
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Quick Stats</h3>
-              <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm p-8 space-y-6">
-                {[
-                  { label: t.patient.booking.doctors, registered: doctors.length, present: doctorsPresent, icon: Stethoscope, color: 'text-blue-600' },
-                  { label: t.patient.booking.staff, registered: staff.length, present: staffPresent, icon: Users, color: 'text-purple-600' },
-                ].map((item, idx) => (
-                  <div key={idx} className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center ${item.color}`}>
-                          <item.icon size={20} />
-                        </div>
-                        <span className="font-bold text-slate-800">{item.label}</span>
-                      </div>
-                      <div className="text-right">
-                         <p className="text-sm font-black text-slate-900">{item.present} <span className="text-slate-300">/ {item.registered}</span></p>
-                         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">{t.patient.booking.present}</p>
-                      </div>
+                       <div className="pt-8 border-t border-white/10 flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-primary">
+                             <TrendingUp size={24} />
+                          </div>
+                          <div>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hospital Efficiency</p>
+                             <p className="text-sm font-bold text-white">Top Rated Service</p>
+                          </div>
+                       </div>
                     </div>
-                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                       <div 
-                         className={`h-full ${item.color.replace('text', 'bg')} transition-all duration-1000`} 
-                         style={{ width: `${item.registered > 0 ? (item.present / item.registered) * 100 : 0}%` }} 
-                       />
-                    </div>
-                  </div>
-                ))}
+                 </div>
               </div>
-            </div>
 
-            {/* Today's Summary */}
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{t.patient.booking.summary}</h3>
-              <div className="bg-slate-900 rounded-[40px] p-8 text-white space-y-6 shadow-2xl shadow-slate-900/20">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">{t.patient.booking.tokensToday}</span>
-                  <span className="text-2xl font-black">{stats.tokensToday}</span>
-                </div>
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">{t.patient.booking.revenueToday}</span>
-                  <span className="text-2xl font-black text-health-teal">Rs. {stats.revenueToday}</span>
-                </div>
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">{t.patient.booking.busiestDoctor}</span>
-                  <span className="text-sm font-bold text-right">{busiestDocName}</span>
-                </div>
-                <div className="flex items-center justify-between cursor-help" title="Peak hours around 11:00 AM - 2:00 PM">
-                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">{t.patient.booking.peakHours}</span>
-                  <span className="text-sm font-bold">11AM - 2PM</span>
-                </div>
+              {/* Doctor Availability */}
+              <div className="space-y-4">
+                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{language === 'UR' ? 'ڈاکٹرز کی حالت' : 'DOCTOR AVAILABILITY'}</h3>
+                 <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm p-6 space-y-4">
+                    {doctors.slice(0, 4).map((doc, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                         <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary font-bold shadow-sm">
+                               {doc.name?.[0]}
+                            </div>
+                            <div>
+                               <p className="text-sm font-bold text-slate-800">Dr. {doc.name}</p>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{doc.specialization}</p>
+                            </div>
+                         </div>
+                         <div className={`w-2 h-2 rounded-full ${doc.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                      </div>
+                    ))}
+                 </div>
               </div>
-            </div>
-          </div>
+           </div>
         </div>
       </div>
     );

@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   CheckCircle2, Calendar, Clock, Stethoscope, 
-  MapPin, User, ArrowRight, Download, Home
+  MapPin, User, ArrowRight, Download, Home,
+  Hospital as HospitalIcon, Wallet, Phone
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -9,110 +10,103 @@ import { useLanguage } from '../contexts/LanguageContext';
 interface BookingSuccessProps {
   tokenData: any;
   onHome: () => void;
+  onViewBookings: () => void;
 }
 
-const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome }) => {
+const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onViewBookings }) => {
   const { t } = useLanguage();
 
   return (
-    <div className="fixed inset-0 z-[120] bg-slate-50 flex flex-col items-center justify-center p-6 overflow-y-auto">
-      <div className="w-full max-w-lg">
-        <div className="text-center mb-12">
+    <div className="fixed inset-0 z-[120] bg-white flex flex-col items-center p-6 overflow-y-auto custom-scrollbar">
+      <div className="w-full max-w-lg pt-12 pb-20">
+        {/* Step 1: Animated Checkmark */}
+        <div className="text-center mb-8">
            <motion.div 
-             initial={{ scale: 0, rotate: -200 }}
+             initial={{ scale: 0, rotate: -20 }}
              animate={{ scale: 1, rotate: 0 }}
-             transition={{ type: "spring", damping: 12, stiffness: 200 }}
-             className="w-32 h-32 bg-emerald-500 rounded-[48px] shadow-2xl shadow-emerald-500/30 flex items-center justify-center text-white mx-auto mb-8"
+             transition={{ type: "spring", damping: 10, stiffness: 100 }}
+             className="w-24 h-24 bg-green-500 rounded-full shadow-2xl shadow-green-500/30 flex items-center justify-center text-white mx-auto mb-6"
            >
-              <CheckCircle2 size={64} />
+              <CheckCircle2 size={52} strokeWidth={3} />
            </motion.div>
-           <h2 className="text-4xl font-bold text-slate-900 mb-2">{t.patient.booking.tokenConfirmed}</h2>
-           <p className="text-slate-400 font-bold text-lg uppercase tracking-widest leading-none">Alhamdulillah!</p>
+           <h2 className="text-3xl font-black text-slate-900 mb-2">
+             {t.patient.booking.tokenConfirmedHeading}
+           </h2>
         </div>
 
-        <div className="bg-white rounded-[64px] shadow-2xl shadow-slate-200/50 p-10 relative overflow-hidden mb-12 border border-slate-100">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-health-teal/5 rounded-full -mr-16 -mt-16" />
-           <div className="absolute bottom-0 left-0 w-40 h-40 bg-primary/5 rounded-full -ml-20 -mb-20" />
-
-           <div className="text-center mb-10">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-4">{t.patient.booking.yourTokenNumber}</p>
-              <div className="text-7xl font-bold bg-gradient-to-r from-health-teal to-primary bg-clip-text text-transparent drop-shadow-sm">
-                {tokenData.tokenNumber}
-              </div>
-           </div>
-
-           <div className="space-y-6 pt-10 border-t-2 border-dashed border-slate-100">
-              <div className="flex items-center gap-5">
-                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-                   <MapPin size={24} />
-                 </div>
-                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Hospital</p>
-                    <p className="font-bold text-slate-800">{tokenData.hospitalName}</p>
-                 </div>
-              </div>
-
-              <div className="flex items-center gap-5">
-                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-                   <Stethoscope size={24} />
-                 </div>
-                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Doctor</p>
-                    <p className="font-bold text-slate-800">{tokenData.doctorName.startsWith('Dr.') ? tokenData.doctorName : `Dr. ${tokenData.doctorName}`}</p>
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-5">
-                   <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-                     <Calendar size={24} />
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Date</p>
-                      <p className="font-bold text-slate-800">{tokenData.appointmentDate}</p>
-                   </div>
-                </div>
-                <div className="flex items-center gap-5">
-                   <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-                     <Clock size={24} />
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Time</p>
-                      <p className="font-bold text-slate-800">{tokenData.appointmentTime}</p>
-                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-5 pt-6 border-t border-slate-50">
-                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-                   <User size={24} />
-                 </div>
-                 <div className="flex-1 flex items-center justify-between">
-                    <div>
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{t.patient.booking.fullName}</p>
-                       <p className="font-bold text-slate-800">{tokenData.patientName}</p>
-                    </div>
-                    <div className="text-right">
-                       <p className="text-[10px] font-bold text-health-teal uppercase tracking-widest mb-0.5">{t.patient.booking.consultationFee}</p>
-                       <p className="text-2xl font-bold text-health-teal">Rs. {tokenData.fee}</p>
-                    </div>
-                 </div>
-              </div>
+        {/* Step 2: Huge Token Number */}
+        <div className="bg-white rounded-[40px] border-4 border-slate-50 p-8 text-center mb-8 shadow-sm">
+           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mb-4">
+             {t.patient.booking.yourTokenNumber}
+           </p>
+           <div className="py-6 px-10 bg-health-teal/5 rounded-[32px] inline-block border-2 border-dashed border-health-teal/20">
+             <span className="text-7xl font-black text-health-teal tracking-tighter" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+               {tokenData.tokenNumber}
+             </span>
            </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* Step 3: Details */}
+        <div className="bg-slate-50 rounded-[40px] p-8 space-y-6 mb-8">
+            <div className="flex items-center gap-4">
+              <HospitalIcon size={20} className="text-health-teal shrink-0" />
+              <span className="font-bold text-slate-700">{tokenData.hospitalName}</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <Stethoscope size={20} className="text-health-teal shrink-0" />
+              <span className="font-bold text-slate-700">Dr. {tokenData.doctorName}</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Calendar size={20} className="text-health-teal shrink-0" />
+              <span className="font-bold text-slate-700">{tokenData.appointmentDate}</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Clock size={20} className="text-health-teal shrink-0" />
+              <span className="font-bold text-slate-700">{tokenData.appointmentTime}</span>
+            </div>
+
+            <div className="flex items-center gap-4 border-t border-slate-200 pt-6">
+              <Wallet size={20} className="text-health-teal shrink-0" />
+              <span className="font-bold text-slate-900">Rs. {tokenData.consultationFee}</span>
+            </div>
+
+            <div className="flex items-center justify-between items-center gap-4 border-t border-slate-200 pt-6">
+              <div className="flex items-center gap-4">
+                <Phone size={20} className="text-health-teal shrink-0" />
+                <span className="font-bold text-slate-600">{tokenData.patientPhone}</span>
+              </div>
+              <div className="px-4 py-1.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-widest">
+                {t.patient.booking.waiting}
+              </div>
+            </div>
+        </div>
+
+        {/* Step 4: Important Note */}
+        <div className="bg-health-teal/5 rounded-3xl p-6 mb-12 flex gap-4 border border-health-teal/10">
+          <div className="w-10 h-10 bg-health-teal rounded-full flex items-center justify-center text-white shrink-0">
+             <span className="font-black">!</span>
+          </div>
+          <p className="text-sm font-bold text-health-teal leading-relaxed">
+            "{t.patient.booking.hospitalPahunchein}"
+          </p>
+        </div>
+
+        {/* Step 5: Action Buttons */}
+        <div className="space-y-4">
            <button 
-             className="w-full py-5 bg-white border-2 border-slate-100 rounded-3xl font-bold text-slate-600 flex items-center justify-center gap-3 hover:bg-slate-50 transition-all"
-             onClick={() => window.print()}
+             onClick={onViewBookings}
+             className="w-full py-5 bg-health-teal text-white font-black rounded-3xl shadow-2xl shadow-health-teal/20 hover:scale-[1.02] active:scale-98 transition-all flex items-center justify-center gap-3"
            >
-             <Download size={24} /> {t.patient.booking.saveToken}
+             {t.patient.booking.meriBookings} <ArrowRight size={20} />
            </button>
            <button 
-             className="w-full py-5 bg-slate-900 border-2 border-slate-900 rounded-3xl font-bold text-white flex items-center justify-center gap-3 shadow-2xl shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all"
              onClick={onHome}
+             className="w-full py-5 bg-white border-2 border-slate-100 text-slate-400 font-black rounded-3xl hover:bg-slate-50 transition-all"
            >
-             <Home size={24} /> {t.patient.booking.goToHome}
+             {t.patient.booking.wapasJayen}
            </button>
         </div>
       </div>
