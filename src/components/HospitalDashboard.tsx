@@ -439,9 +439,9 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                          token.status === 'cancelled' || token.status === 'Cancelled' ? 'bg-slate-100 text-slate-500 border-slate-200' :
                          'bg-primary/10 text-primary border-primary/20'
                        }`}>
-                         {token.status === 'waiting' || token.status === 'Waiting' ? t.booking.waiting : 
-                          token.status === 'Completed' ? t.booking.completed : 
-                          token.status === 'Not Arrived' ? t.booking.notArrived :
+                         {token.status === 'waiting' || token.status === 'Waiting' ? t.patient.booking.waiting : 
+                          token.status === 'Completed' ? t.patient.booking.completed : 
+                          token.status === 'Not Arrived' ? t.patient.booking.notArrived :
                           token.status === 'In Progress' ? (language === 'UR' ? 'جاری ہے' : 'In Progress') :
                           token.status === 'cancelled' || token.status === 'Cancelled' ? (language === 'UR' ? 'منسوخ' : 'Cancelled') :
                           token.status}

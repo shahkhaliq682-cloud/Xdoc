@@ -568,9 +568,37 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       try {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (signInErr: any) {
-        // Special case: Auto-create super admin if it's the first login
-        if (signInErr.code === 'auth/user-not-found' && email === 'admin@xdoc.pk' && password === 'Admin@123') {
-          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Special case: Auto-create demo accounts if they don't exist
+        // Handles both legacy (user-not-found) and modern (invalid-credential) error codes
+        const isDemoAdmin = email === 'admin@xdoc.pk' && password === 'Admin@123';
+        const isDemoPatient = email === 'patient@xdoc.pk' && password === 'Patient@123';
+
+        if ((signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') && 
+            (isDemoAdmin || isDemoPatient)) {
+          try {
+            userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            
+            // Create the Firestore document if it's a new demo user
+            if (isDemoPatient) {
+              await setDoc(doc(db, 'users', userCredential.user.uid), {
+                uid: userCredential.user.uid,
+                name: 'Demo Patient',
+                email: 'patient@xdoc.pk',
+                role: 'patient',
+                status: 'Active',
+                createdAt: serverTimestamp(),
+                profile: {
+                  name: 'Demo Patient',
+                  phone: '03001234567',
+                  city: 'Karachi',
+                  area: 'Gulshan-e-Iqbal'
+                }
+              });
+            }
+          } catch (createErr: any) {
+            // If creation fails (e.g. email exists but password was wrong), throw the original sign-in error
+            throw signInErr;
+          }
         } else {
           throw signInErr;
         }
@@ -593,7 +621,7 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
 
         onLoginSuccess(role);
       } else {
-        // Fallback for admin@xdoc.pk if doc doesn't exist but auth succeeded
+        // Fallback for demo users if doc doesn't exist but auth succeeded
         if (email === 'admin@xdoc.pk') {
           await setDoc(doc(db, 'users', user.uid), {
             uid: user.uid,
@@ -605,6 +633,22 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
             createdAt: serverTimestamp()
           });
           onLoginSuccess('super_admin');
+        } else if (email === 'patient@xdoc.pk') {
+          const patientData = {
+            uid: user.uid,
+            email: 'patient@xdoc.pk',
+            role: 'patient',
+            status: 'Active',
+            createdAt: serverTimestamp(),
+            profile: {
+              name: 'Demo Patient',
+              phone: '03001234567',
+              city: 'Karachi',
+              area: 'Gulshan-e-Iqbal'
+            }
+          };
+          await setDoc(doc(db, 'users', user.uid), patientData);
+          onLoginSuccess('patient');
         } else {
           setError({ general: 'User profile not found.' });
         }

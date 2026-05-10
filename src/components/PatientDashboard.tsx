@@ -464,9 +464,9 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                   token.status === 'cancelled' || token.status === 'Not Arrived' ? 'bg-red-50 text-red-600' :
                   'bg-amber-50 text-amber-600'
                 }`}>
-                  {token.status === 'waiting' || token.status === 'Waiting' ? t.booking.waiting : 
-                   token.status === 'Completed' ? t.booking.completed :
-                   token.status === 'Not Arrived' ? t.booking.notArrived :
+                  {token.status === 'waiting' || token.status === 'Waiting' ? t.patient.booking.waiting : 
+                   token.status === 'Completed' ? t.patient.booking.completed :
+                   token.status === 'Not Arrived' ? t.patient.booking.notArrived :
                    token.status}
                 </div>
               </div>
