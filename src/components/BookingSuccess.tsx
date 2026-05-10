@@ -58,7 +58,7 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome }) =>
                  </div>
                  <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Doctor</p>
-                    <p className="font-bold text-slate-800">Dr. {tokenData.doctorName}</p>
+                    <p className="font-bold text-slate-800">{tokenData.doctorName.startsWith('Dr.') ? tokenData.doctorName : `Dr. ${tokenData.doctorName}`}</p>
                  </div>
               </div>
 

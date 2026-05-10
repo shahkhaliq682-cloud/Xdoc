@@ -3,7 +3,7 @@ import {
   Search, MapPin, Star, CheckCircle2, ShieldCheck, 
   Clock, Calendar, Home, User, Bell, ChevronRight, 
   Map as MapIcon, Hospital as HospitalIcon, 
-  ArrowRight, History, Info, AlertTriangle, Save, Trash2, LogOut, Mail, Phone, X
+  ArrowRight, History, Info, AlertTriangle, Save, Trash2, LogOut, Mail, Phone, X, UserSquare2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -33,8 +33,41 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [hospitalType, setHospitalType] = useState<'All' | 'Private Hospital' | 'Private Clinic' | 'Govt. Hospital'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [patientTokens, setPatientTokens] = useState<any[]>([]);
+  const [allTodayTokens, setAllTodayTokens] = useState<any[]>([]);
   const [showDataWarning, setShowDataWarning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editProfileForm, setEditProfileForm] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (userData && !editProfileForm) {
+      setEditProfileForm({
+        name: userData.name || '',
+        phone: userData.profile?.phone || '',
+        city: userData.profile?.city || 'Karachi'
+      });
+    }
+  }, [userData]);
+
+  const handleUpdateProfile = async () => {
+    if (!userData?.uid) return;
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, 'users', userData.uid), {
+        name: editProfileForm.name,
+        'profile.phone': editProfileForm.phone,
+        'profile.city': editProfileForm.city
+      });
+      setIsEditingProfile(false);
+      alert("Profile updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update profile.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
@@ -43,7 +76,23 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   };
 
   useEffect(() => {
-    if (!userData?.uid) return;
+    // Fetch all today's tokens to calculate "Active Today" stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    const allTokensQuery = query(
+      collection(db, 'tokens'),
+      where('appointmentDate', '==', todayStr)
+    );
+
+    const unsubscribeAll = onSnapshot(allTokensQuery, (snapshot) => {
+      setAllTodayTokens(snapshot.docs.map(doc => doc.data()));
+    });
+
+    if (!userData?.uid) {
+      return () => unsubscribeAll();
+    }
 
     const tokensQuery = query(
       collection(db, 'tokens'),
@@ -99,69 +148,86 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     }
   };
 
-  const filteredHospitals = hospitals.filter(h => {
+  // Filter out test/demo hospitals
+  const realHospitals = hospitals.filter(h => {
+    const name = (h.hospitalName || h.name || '').toLowerCase();
+    return !name.includes('test') && !name.includes('demo') && !name.includes('care with');
+  });
+
+  const getActiveHospitals = () => {
+    const activeIds = new Set(allTodayTokens.map(t => t.hospitalId));
+    return realHospitals.filter(h => h.status === 'open' && activeIds.has(h.id));
+  };
+
+  const filteredHospitals = realHospitals.filter(h => {
     const matchesType = hospitalType === 'All' || 
       (hospitalType === 'Private Hospital' && h.type === 'Private Hospital') ||
       (hospitalType === 'Private Clinic' && h.type === 'Private Clinic') ||
-      (hospitalType === 'Govt. Hospital' && (h.type === 'Government Hospital' || h.type === 'Government Clinic'));
+      (hospitalType === 'Govt. Hospital' && h.type === 'Government Hospital') ||
+      (hospitalType === 'Govt. Clinic' && h.type === 'Government Clinic');
     
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = h.hospitalName?.toLowerCase().includes(searchLower) ||
-      h.area?.toLowerCase().includes(searchLower) ||
-      h.city?.toLowerCase().includes(searchLower) ||
-      (h.specializations || []).some((s: string) => s.toLowerCase().includes(searchLower)) ||
-      (h.doctorsList || []).some((d: any) => d.name?.toLowerCase().includes(searchLower));
+    const matchesSearch = (h.hospitalName || h.name)?.toLowerCase().includes(searchLower) ||
+      (h.area || '').toLowerCase().includes(searchLower) ||
+      (h.city || '').toLowerCase().includes(searchLower) ||
+      (h.specializations || []).some((s: string) => s.toLowerCase().includes(searchLower));
 
     return matchesType && matchesSearch;
   });
 
-  const getCount = (type: string) => {
-    if (type === 'All') return hospitals.length;
-    if (type === 'Private Hospital') return hospitals.filter(h => h.type === 'Private Hospital').length;
-    if (type === 'Private Clinic') return hospitals.filter(h => h.type === 'Private Clinic').length;
-    if (type === 'Govt. Hospital') return hospitals.filter(h => h.type === 'Government Hospital' || h.type === 'Government Clinic').length;
-    return 0;
+  const getStats = () => {
+    return {
+      totalHospitals: realHospitals.filter(h => h.type?.includes('Hospital')).length,
+      totalClinics: realHospitals.filter(h => h.type?.includes('Clinic')).length,
+      activeToday: getActiveHospitals().length,
+      openNow: realHospitals.filter(h => h.status === 'open').length
+    };
   };
 
-  const renderHospitalsView = () => (
-    <div className="p-6 space-y-8">
-      {/* Live Counts */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-        {[
-          { label: t.patient.categories.all, count: getCount('All'), color: 'bg-primary' },
-          { label: t.patient.categories.privateHospital, count: getCount('Private Hospital'), color: 'bg-blue-600' },
-          { label: t.patient.categories.privateClinic, count: getCount('Private Clinic'), color: 'bg-purple-600' },
-          { label: t.patient.categories.govtHospital, count: getCount('Govt. Hospital'), color: 'bg-success-green' },
-        ].map((item, idx) => (
-          <div key={idx} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm text-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
-            <p className={`text-2xl font-bold ${item.count > 0 ? 'text-slate-900' : 'text-slate-300'}`}>{item.count}</p>
-          </div>
-        ))}
-      </div>
+  const renderHospitalsView = () => {
+    const stats = getStats();
+    return (
+      <div className="p-6 space-y-8">
+        {/* Row 1 - Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          {[
+            { label: t.patient.booking.totalHospitals, count: stats.totalHospitals, color: 'text-primary', icon: HospitalIcon },
+            { label: t.patient.booking.totalClinics, count: stats.totalClinics, color: 'text-blue-600', icon: MapIcon },
+            { label: t.patient.booking.activeToday, count: stats.activeToday, color: 'text-health-teal', icon: CheckCircle2 },
+            { label: t.patient.booking.openNow, count: stats.openNow, color: 'text-emerald-500', icon: Clock },
+          ].map((item, idx) => (
+            <div key={idx} className="bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm flex flex-col items-center text-center group hover:shadow-md transition-all">
+              <div className={`w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center ${item.color} mb-3 group-hover:scale-110 transition-transform`}>
+                <item.icon size={20} />
+              </div>
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
+              <p className="text-2xl font-black text-slate-900">{item.count}</p>
+            </div>
+          ))}
+        </div>
 
-      {/* Category Tabs */}
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2 overflow-x-auto no-scrollbar">
-        {(['All', 'Private Hospital', 'Private Clinic', 'Govt. Hospital'] as const).map((type) => (
-          <button
-            key={type}
-            onClick={() => setHospitalType(type)}
-            className={`flex-none md:flex-1 px-4 py-3 rounded-xl font-bold text-xs md:text-sm transition-all whitespace-nowrap ${
-              hospitalType === type 
-                ? 'bg-white text-primary shadow-sm' 
-                : 'text-slate-500 hover:bg-white/50'
-            }`}
-          >
-            {type === 'All' 
-              ? t.patient.categories.all 
-              : type === 'Private Hospital' 
-                ? t.patient.categories.privateHospital
-                : type === 'Private Clinic'
-                  ? t.patient.categories.privateClinic
-                  : t.patient.categories.govtHospital}
-          </button>
-        ))}
-      </div>
+        {/* Row 2 - Filtering Tabs */}
+        <div className="flex bg-white p-2 rounded-[24px] gap-1 border border-slate-100 overflow-x-auto no-scrollbar shadow-sm">
+          {([
+            { id: 'All', label: t.patient.booking.all },
+            { id: 'Private Hospital', label: t.patient.booking.privateHospital },
+            { id: 'Private Clinic', label: t.patient.booking.privateClinic },
+            { id: 'Govt. Hospital', label: t.patient.booking.govtHospital },
+            { id: 'Govt. Clinic', label: t.patient.booking.govtClinic }
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setHospitalType(tab.id as any)}
+              className={`flex-none px-5 py-3 rounded-2xl font-extrabold text-xs transition-all whitespace-nowrap ${
+                hospitalType === tab.id 
+                  ? 'bg-health-teal text-white shadow-lg shadow-health-teal/20' 
+                  : 'text-slate-400 hover:bg-slate-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
       {/* Search */}
       <div className="relative">
@@ -204,33 +270,11 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                                   type === 'Government Hospital' ? t.patient.categories.govtHospital :
                                   type === 'Government Clinic' ? (language === 'UR' ? 'سرکاری کلینک' : 'Govt. Clinic') : type;
             
-            const getOpenStatus = (openTime: string, closeTime: string, selectedDays: string[]) => {
-              if (!openTime || !closeTime) return { isOpen: true, label: t.patient.hospitalCard.openNow, color: 'bg-health-teal', textColor: 'text-[#005046]' };
-              
-              const now = new Date();
-              const day = now.toLocaleDateString('en-US', { weekday: 'short' });
-              
-              // If current day is not in open days
-              if (selectedDays && selectedDays.length > 0 && !selectedDays.includes(day)) {
-                return { isOpen: false, label: language === 'UR' ? 'بند ہے' : 'Closed', color: 'bg-emergency-red', textColor: 'text-white' };
-              }
-
-              const [hOpen, mOpen] = openTime.split(':').map(Number);
-              const [hClose, mClose] = closeTime.split(':').map(Number);
-              
-              const openTimeDate = new Date();
-              openTimeDate.setHours(hOpen, mOpen, 0);
-              
-              const closeTimeDate = new Date();
-              closeTimeDate.setHours(hClose, mClose, 0);
-              
-              const isOpen = now >= openTimeDate && now <= closeTimeDate;
-              return isOpen 
-                ? { isOpen: true, label: t.patient.hospitalCard.openNow, color: 'bg-health-teal', textColor: 'text-[#005046]' }
-                : { isOpen: false, label: language === 'UR' ? 'بند ہے' : 'Closed', color: 'bg-emergency-red', textColor: 'text-white' };
-            };
-
-            const status = getOpenStatus(h.openingTime || h.openTime, h.closingTime || h.closeTime, h.openDays);
+            const status = h.status || 'open';
+            const isOpen = status === 'open';
+            
+            // Check if active today (has tokens today)
+            const isActiveToday = isOpen && allTodayTokens.some(t => t.hospitalId === h.id);
 
             return (
               <motion.div 
@@ -245,11 +289,22 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                     alt={h.hospitalName} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className={`absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-slate-100`}>
-                    <div className={`w-2 h-2 ${status.color} rounded-full ${status.isOpen ? 'breathing-dot' : ''}`} />
-                    <span className={`font-mono text-[10px] font-bold uppercase tracking-widest ${status.isOpen ? status.textColor : 'text-emergency-red'}`}>
-                      {status.label}
-                    </span>
+                  <div className="absolute top-4 left-4 flex flex-col gap-2">
+                    <div className={`bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-slate-100`}>
+                      <div className={`w-2 h-2 ${isOpen ? 'bg-emerald-500 breathing-dot' : 'bg-emergency-red'} rounded-full`} />
+                      <span className={`font-mono text-[10px] font-bold uppercase tracking-widest ${isOpen ? 'text-emerald-600' : 'text-emergency-red'}`}>
+                        {isOpen ? t.patient.booking.openNow : t.patient.booking.closed}
+                      </span>
+                    </div>
+
+                    {isActiveToday && (
+                      <div className="bg-health-teal text-white px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-health-teal/20 animate-pulse">
+                        <CheckCircle2 size={12} />
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-widest">
+                          {t.patient.booking.activeToday}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="absolute top-4 right-4 bg-white/95 backdrop-blur px-2 py-1.5 rounded-xl flex items-center gap-1 shadow-lg border border-slate-100">
                     <Star size={12} className="text-amber-500" fill="currentColor" />
@@ -309,6 +364,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
       </div>
     </div>
   );
+};
 
   const handleClearOldData = async (shouldSave: boolean) => {
     if (!userData?.uid) return;
@@ -366,7 +422,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   );
 
   const renderProfileView = () => (
-    <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
       <div className="text-center py-8">
         <div className="relative inline-block">
           <div className="w-24 h-24 bg-primary/10 rounded-[32px] flex items-center justify-center text-primary text-3xl font-bold shadow-xl shadow-primary/10 mb-4 mx-auto">
@@ -380,49 +436,103 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         <p className="text-slate-400 font-medium text-sm">{userData?.email || 'patient@xdoc.pk'}</p>
       </div>
 
-      <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm p-8 space-y-6">
-        <div className="flex items-center gap-6">
-          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-            <Info size={20} />
+      {isEditingProfile ? (
+        <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm p-8 space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Full Name</label>
+              <input 
+                type="text" 
+                value={editProfileForm?.name || ''}
+                onChange={(e) => setEditProfileForm({...editProfileForm, name: e.target.value})}
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Phone Number</label>
+              <input 
+                type="text" 
+                value={editProfileForm?.phone || ''}
+                onChange={(e) => setEditProfileForm({...editProfileForm, phone: e.target.value})}
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">City</label>
+              <input 
+                type="text" 
+                value={editProfileForm?.city || ''}
+                onChange={(e) => setEditProfileForm({...editProfileForm, city: e.target.value})}
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700"
+              />
+            </div>
           </div>
-          <div className="flex-1 border-b border-slate-50 pb-4">
-             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email address</p>
-             <p className="font-bold text-slate-800">{userData?.email || 'N/A'}</p>
+          <div className="grid grid-cols-2 gap-4">
+             <button 
+               onClick={() => setIsEditingProfile(false)}
+               className="py-4 bg-slate-50 text-slate-400 rounded-2xl font-bold"
+             >
+               Cancel
+             </button>
+             <button 
+               onClick={handleUpdateProfile}
+               disabled={isSaving}
+               className="py-4 bg-primary text-white rounded-2xl font-bold shadow-xl shadow-primary/20"
+             >
+               {isSaving ? 'Saving...' : 'Save Profile'}
+             </button>
           </div>
         </div>
+      ) : (
+        <>
+          <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm p-8 space-y-6">
+            <div className="flex items-center gap-6">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+                <Info size={20} />
+              </div>
+              <div className="flex-1 border-b border-slate-50 pb-4">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email address</p>
+                 <p className="font-bold text-slate-800">{userData?.email || 'N/A'}</p>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-6">
-          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-            <Phone size={20} />
-          </div>
-          <div className="flex-1 border-b border-slate-50 pb-4">
-             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Phone Number</p>
-             <p className="font-bold text-slate-800">{userData?.profile?.phone || '0300-1234567'}</p>
-          </div>
-        </div>
+            <div className="flex items-center gap-6">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+                <Phone size={20} />
+              </div>
+              <div className="flex-1 border-b border-slate-50 pb-4">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Phone Number</p>
+                 <p className="font-bold text-slate-800">{userData?.profile?.phone || '0300-1234567'}</p>
+              </div>
+            </div>
 
-        <div className="flex items-center gap-6">
-          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-            <MapPin size={20} />
+            <div className="flex items-center gap-6">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+                <MapPin size={20} />
+              </div>
+              <div className="flex-1">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">City / Location</p>
+                 <p className="font-bold text-slate-800">{userData?.profile?.city || 'Karachi'}, Pakistan</p>
+              </div>
+            </div>
           </div>
-          <div className="flex-1">
-             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">City / Location</p>
-             <p className="font-bold text-slate-800">{userData?.profile?.city || 'Karachi'}, Pakistan</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="space-y-4">
-        <button className="w-full py-4 bg-white border border-slate-100 rounded-2xl font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-3 text-sm">
-          Edit Profile
-        </button>
-        <button 
-          onClick={onSignOut}
-          className="w-full py-4 bg-emergency-red/10 text-emergency-red rounded-2xl font-bold hover:bg-emergency-red hover:text-white transition-all flex items-center justify-center gap-3 text-sm"
-        >
-          <LogOut size={20} /> {t.patient.logout.signOut}
-        </button>
-      </div>
+          <div className="space-y-4">
+            <button 
+              onClick={() => setIsEditingProfile(true)}
+              className="w-full py-4 bg-white border border-slate-100 rounded-2xl font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-3 text-sm"
+            >
+              <UserSquare2 size={20} /> Edit Profile
+            </button>
+            <button 
+              onClick={onSignOut}
+              className="w-full py-4 bg-emergency-red/10 text-emergency-red rounded-2xl font-bold hover:bg-emergency-red hover:text-white transition-all flex items-center justify-center gap-3 text-sm"
+            >
+              <LogOut size={20} /> {t.patient.logout.signOut}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 
