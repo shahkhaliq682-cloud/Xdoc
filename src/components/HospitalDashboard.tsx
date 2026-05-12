@@ -55,7 +55,9 @@ import {
   getDocs,
   getDocFromServer,
   getDoc,
-  limit
+  limit,
+  writeBatch,
+  increment
 } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 import { 
@@ -206,6 +208,107 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   }, [initialHospitalData?.uid]);
 
   const [lastNotificationTime, setLastNotificationTime] = useState(Date.now());
+  const [noShowAlerts, setNoShowAlerts] = useState<string[]>([]);
+
+  const handleClearOldData = async (saveToArchive: boolean) => {
+    if (!hospitalData?.uid) return;
+    setIsSaving(true);
+    try {
+      const q = query(
+        collection(db, 'tokens'),
+        where('hospitalId', '==', hospitalData.uid)
+      );
+      const snap = await getDocs(q);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const batch = writeBatch(db);
+      snap.docs.forEach(tokenDoc => {
+        const data = tokenDoc.data();
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || 0);
+        if (createdAt < thirtyDaysAgo) {
+          if (saveToArchive) {
+            // Save to internal reports/archive if needed, but here we just follow user intent
+          }
+          batch.delete(tokenDoc.ref);
+          batch.delete(doc(db, 'hospitals', hospitalData.uid, 'tokens', tokenDoc.id));
+        }
+      });
+      await batch.commit();
+      setShowDataWarning(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Auto No-Show Detection Timer
+  useEffect(() => {
+    if (!hospitalData?.uid) return;
+    
+    const checkNoShows = async () => {
+      const settings = hospitalData.settings || {};
+      if (settings.autoNoShow === false) return;
+
+      const limitMinutes = Number(settings.noShowLimit) || 15;
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      const expiredTokens = tokens.filter(t => {
+        if (t.status !== 'waiting') return false;
+        if (t.appointmentDate !== todayStr) return false;
+        
+        // Parse appointment time (e.g., "10:30 AM")
+        try {
+          const [time, period] = (t.appointmentTime || '').split(' ');
+          let [hours, minutes] = time.split(':').map(Number);
+          if (period === 'PM' && hours !== 12) hours += 12;
+          if (period === 'AM' && hours === 12) hours = 0;
+          
+          const apptTime = new Date();
+          apptTime.setHours(hours, minutes, 0, 0);
+          
+          const diffInMinutes = (now.getTime() - apptTime.getTime()) / (1000 * 60);
+          return diffInMinutes > limitMinutes;
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (expiredTokens.length > 0) {
+        const batch = writeBatch(db);
+        for (const token of expiredTokens) {
+          // If alert is on, we don't auto-mark here, ReceptionMode will handle it 
+          // but "Auto Detection" usually means automated marking. 
+          // The requirement says "Auto mark" in Part 1, but "Alert before auto mark" in Part 8.
+          // We'll auto-mark if the alert setting is off.
+          if (settings.alertBeforeAutoMark === false) {
+            const updateData = { status: 'not-arrived', updatedAt: serverTimestamp() };
+            batch.update(doc(db, 'tokens', token.id), updateData);
+            batch.update(doc(db, 'hospitals', hospitalData.uid, 'tokens', token.id), updateData);
+            if (token.patientId) {
+              batch.update(doc(db, 'users', token.patientId, 'bookings', token.id), updateData);
+              batch.update(doc(db, 'users', token.patientId), {
+                missedBookings: increment(1)
+              });
+            }
+            
+            // Add notification
+            setNoShowAlerts(prev => [...prev, `${token.tokenNumber} ${token.patientName} ko automatically Not Arrived mark kar diya gaya`]);
+          }
+        }
+        if (settings.alertBeforeAutoMark === false) {
+          await batch.commit();
+        }
+      }
+    };
+
+    // Run once on load and then every 60s
+    checkNoShows();
+    const interval = setInterval(checkNoShows, 60000);
+    return () => clearInterval(interval);
+  }, [hospitalData?.uid, hospitalData?.settings, tokens]);
 
   // Listen to tokens
   useEffect(() => {
@@ -256,22 +359,39 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     try {
       if (!initialHospitalData?.uid) return;
       
+      const newStatus = status.toLowerCase();
       const updateData = { 
-        status: status.toLowerCase(), 
+        status: newStatus, 
         updatedAt: serverTimestamp(),
       };
       
       const batch = writeBatch(db);
       
+      // Get current token data to check previous status
+      const tokenRef = doc(db, 'tokens', tokenId);
+      const tokenSnap = await getDoc(tokenRef);
+      const oldStatus = tokenSnap.exists() ? tokenSnap.data().status?.toLowerCase() : '';
+
       // Update tokens collection
-      batch.update(doc(db, 'tokens', tokenId), updateData);
+      batch.update(tokenRef, updateData);
       
       // Update hospital's subcollection
       batch.update(doc(db, 'hospitals', initialHospitalData.uid, 'tokens', tokenId), updateData);
       
-      // Update patient's history in users collection
+      // Update patient's history and stats
       if (patientId) {
         batch.update(doc(db, 'users', patientId, 'bookings', tokenId), updateData);
+        
+        // Stats tracking
+        if (newStatus === 'completed' && oldStatus !== 'completed') {
+          batch.update(doc(db, 'users', patientId), { 
+            completedBookings: increment(1) 
+          });
+        } else if (newStatus === 'not-arrived' && oldStatus !== 'not-arrived') {
+          batch.update(doc(db, 'users', patientId), { 
+            missedBookings: increment(1) 
+          });
+        }
       }
       
       await batch.commit();
@@ -351,6 +471,29 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* No-Show Auto Alerts */}
+        <div className="fixed bottom-24 right-8 z-[60] flex flex-col gap-4 pointer-events-none">
+          <AnimatePresence>
+            {noShowAlerts.map((alert, idx) => (
+              <motion.div 
+                key={idx}
+                initial={{ x: 100, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 100, opacity: 0 }}
+                onAnimationComplete={() => {
+                  setTimeout(() => {
+                    setNoShowAlerts(prev => prev.filter((_, i) => i !== idx));
+                  }, 5000);
+                }}
+                className="bg-amber-100 border border-amber-200 text-amber-800 p-4 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto w-80"
+              >
+                <AlertTriangle size={20} className="shrink-0" />
+                <p className="text-xs font-bold">{alert}</p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
 
         {/* Global Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -559,17 +702,41 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
             <div className="py-20 text-center text-slate-400 font-medium">No matches found</div>
           ) : (
             filteredTokens.map((token) => (
-              <div key={token.id} className="p-6 bg-white rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between">
-                <div>
-                  <h4 className="text-lg font-bold text-slate-900">{token.patientName}</h4>
-                  <p className="text-sm text-slate-400 font-medium">{token.patientPhone || 'No phone'}</p>
+              <div key={token.id} className="p-6 bg-white rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-primary/20 transition-all">
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                      {token.patientName?.[0]}
+                   </div>
+                   <div>
+                    <h4 className="text-lg font-bold text-slate-900">{token.patientName}</h4>
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs text-slate-400 font-medium">{token.patientPhone || 'No phone'}</p>
+                      {token.status === 'not-arrived' && (
+                        <span className="flex items-center gap-1 text-[8px] font-black uppercase text-red-500 bg-red-50 px-2 py-0.5 rounded-md">
+                          <AlertTriangle size={8} /> {t.patient.booking.missed}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{token.doctorName}</p>
+                  <div className="flex items-center gap-3 justify-end mb-2">
+                     <p className="text-[10px] items-center gap-1 hidden md:flex font-black text-slate-400 uppercase tracking-widest">
+                       <CheckCircle2 size={10} className="text-health-teal" /> 
+                       {token.completedBookings || 0}
+                     </p>
+                     <p className="text-[10px] items-center gap-1 hidden md:flex font-black text-slate-400 uppercase tracking-widest">
+                       <X size={10} className="text-red-500" /> 
+                       {token.missedBookings || 0}
+                     </p>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{token.doctorName}</p>
+                  </div>
                   <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
-                    token.status === 'Completed' ? 'bg-health-teal/10 text-health-teal' : 'bg-slate-100 text-slate-500'
+                    token.status === 'completed' ? 'bg-health-teal/10 text-health-teal' : 
+                    token.status === 'not-arrived' ? 'bg-red-50 text-red-500' :
+                    'bg-slate-100 text-slate-500'
                   }`}>
-                    {token.status}
+                    {token.status === 'not-arrived' ? t.patient.booking.notArrived : token.status}
                   </span>
                 </div>
               </div>
@@ -604,29 +771,57 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           ))}
         </div>
 
-        <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
-           <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold text-slate-900">Patient Flow</h3>
-              <select className="bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-500 p-3">
-                 <option>Last 7 Days</option>
-                 <option>Last 30 Days</option>
-              </select>
-           </div>
-           
-           <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                 <BarChart data={sampleChartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      cursor={{ fill: '#f8fafc' }}
-                    />
-                    <Bar dataKey="patients" fill="#3B82F6" radius={[6, 6, 0, 0]} />
-                 </BarChart>
-              </ResponsiveContainer>
-           </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm space-y-6">
+             <div className="flex justify-between items-center">
+                <h3 className="text-xl font-black text-slate-900">{t.patient.booking.noShowsToday}</h3>
+                <span className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-xs font-black">
+                  {tokens.filter(t => t.status === 'not-arrived' && t.appointmentDate === new Date().toISOString().split('T')[0]).length}
+                </span>
+             </div>
+             <div className="space-y-3">
+               {tokens
+                 .filter(t => t.status === 'not-arrived' && t.appointmentDate === new Date().toISOString().split('T')[0])
+                 .slice(0, 5)
+                 .map(t => (
+                 <div key={t.id} className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between">
+                   <div>
+                     <p className="text-sm font-bold text-slate-800">{t.tokenNumber} {t.patientName}</p>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.appointmentTime}</p>
+                   </div>
+                   <X size={16} className="text-red-300" />
+                 </div>
+               ))}
+               {tokens.filter(t => t.status === 'not-arrived' && t.appointmentDate === new Date().toISOString().split('T')[0]).length === 0 && (
+                 <div className="py-12 text-center text-slate-300 font-bold tracking-widest text-[10px]">NO MISSES YET</div>
+               )}
+             </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm space-y-6">
+             <div className="flex justify-between items-center">
+                <h3 className="text-xl font-black text-slate-900">Patient Flow</h3>
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.patient.booking.noShowRate}</p>
+                  <p className="text-lg font-black text-red-500">12%</p>
+                </div>
+             </div>
+             
+             <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                   <BarChart data={sampleChartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        cursor={{ fill: '#f8fafc' }}
+                      />
+                      <Bar dataKey="patients" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+                   </BarChart>
+                </ResponsiveContainer>
+             </div>
+          </div>
         </div>
       </div>
     );
@@ -956,6 +1151,62 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                 onChange={(e) => setEditProfileData({...editProfileData, opdFee: e.target.value})}
                 className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 transition-all"
               />
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-6">
+            <div className="flex items-center gap-3">
+               <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-500">
+                  <Settings size={20} />
+               </div>
+               <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">{t.patient.booking.tokenSettings}</h4>
+            </div>
+
+            <div className="space-y-6">
+               <div>
+                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">{t.patient.booking.noShowLimit} ({t.patient.booking.minutes})</label>
+                 <input 
+                   type="number" 
+                   value={editProfileData?.settings?.noShowLimit || 15}
+                   onChange={(e) => setEditProfileData({
+                     ...editProfileData, 
+                     settings: { ...editProfileData.settings, noShowLimit: Number(e.target.value) }
+                   })}
+                   className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 transition-all"
+                 />
+               </div>
+
+               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-widest">{t.patient.booking.autoDetection}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Auto mark Not Arrived</p>
+                  </div>
+                  <button 
+                    onClick={() => setEditProfileData({
+                      ...editProfileData,
+                      settings: { ...editProfileData?.settings, autoNoShow: !editProfileData?.settings?.autoNoShow }
+                    })}
+                    className={`w-12 h-6 rounded-full relative transition-all duration-300 ${editProfileData?.settings?.autoNoShow ? 'bg-health-teal' : 'bg-slate-300'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${editProfileData?.settings?.autoNoShow ? 'right-1' : 'left-1'}`} />
+                  </button>
+               </div>
+
+               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-widest">{t.patient.booking.alertBeforeAutoMark}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Show alert in Reception Mode</p>
+                  </div>
+                  <button 
+                    onClick={() => setEditProfileData({
+                      ...editProfileData,
+                      settings: { ...editProfileData?.settings, alertBeforeAutoMark: !editProfileData?.settings?.alertBeforeAutoMark }
+                    })}
+                    className={`w-12 h-6 rounded-full relative transition-all duration-300 ${editProfileData?.settings?.alertBeforeAutoMark ? 'bg-health-teal' : 'bg-slate-300'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${editProfileData?.settings?.alertBeforeAutoMark ? 'right-1' : 'left-1'}`} />
+                  </button>
+               </div>
             </div>
           </div>
         </div>

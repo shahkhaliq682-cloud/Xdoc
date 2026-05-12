@@ -47,32 +47,98 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [lastNotification, setLastNotification] = useState<any>(null);
   const [screenEffect, setScreenEffect] = useState<'none' | 'green' | 'red'>('none');
+  const [inProgressStartTime, setInProgressStartTime] = useState<number | null>(null);
+  const [showNoShowAlert, setShowNoShowAlert] = useState<any>(null);
+  const [consultationTime, setConsultationTime] = useState(0);
   
   const prevTokensRef = useRef<any[]>([]);
 
-  // Live Clock
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Filter today's tokens and sort them
   const todayStr = new Date().toISOString().split('T')[0];
-  const todaysTokens = tokens.filter(tok => tok.appointmentDate === todayStr);
+  const todaysTokens = tokens
+    .filter(tok => tok.appointmentDate === todayStr)
+    .sort((a, b) => {
+      // Completed and Not-Arrived go to bottom
+      const statusOrder: any = { 'in-progress': 0, 'waiting': 1, 'not-arrived': 2, 'completed': 3 };
+      const aStatus = (a.status || 'waiting').toLowerCase();
+      const bStatus = (b.status || 'waiting').toLowerCase();
+      if (statusOrder[aStatus] !== statusOrder[bStatus]) {
+        return statusOrder[aStatus] - statusOrder[bStatus];
+      }
+      return (a.tokenNumber || '').localeCompare(b.tokenNumber || '');
+    });
 
   const stats = {
     total: todaysTokens.length,
-    waiting: todaysTokens.filter(tok => tok.status === 'waiting' || tok.status === 'Waiting').length,
-    completed: todaysTokens.filter(tok => tok.status === 'completed' || tok.status === 'Completed').length,
-    missed: todaysTokens.filter(tok => tok.status === 'not-arrived').length
+    waiting: todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'waiting' || (tok.status || '').toLowerCase() === 'Waiting').length,
+    completed: todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'completed' || (tok.status || '').toLowerCase() === 'Completed').length,
+    missed: todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'not-arrived').length
   };
 
-  const inProgressToken = todaysTokens.find(tok => tok.status === 'in-progress');
-  const waitingTokens = todaysTokens
-    .filter(tok => tok.status === 'waiting' || tok.status === 'Waiting')
-    .sort((a, b) => (a.tokenNumber || '').localeCompare(b.tokenNumber || ''));
+  const inProgressToken = todaysTokens.find(tok => (tok.status || '').toLowerCase() === 'in-progress');
+  const waitingTokens = todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'waiting');
+  
+  const missedToday = todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'not-arrived');
+  const doneToday = todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'completed');
 
   const nextWaiting = waitingTokens.slice(0, 5);
+
+  // Consultation Timer
+  useEffect(() => {
+    if (inProgressToken) {
+      if (!inProgressStartTime) setInProgressStartTime(Date.now());
+      const timer = setInterval(() => {
+        const start = inProgressToken.updatedAt?.toMillis?.() || inProgressStartTime || Date.now();
+        setConsultationTime(Math.floor((Date.now() - start) / 1000));
+      }, 1000);
+      return () => clearInterval(timer);
+    } else {
+      setInProgressStartTime(null);
+      setConsultationTime(0);
+    }
+  }, [inProgressToken?.id]);
+
+  // Auto No-Show Local Detection for Alerts
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const settings = hospitalData.settings || {};
+      if (settings.alertBeforeAutoMark === false) return;
+      
+      const limitMinutes = Number(settings.noShowLimit) || 15;
+      const now = new Date();
+
+      waitingTokens.forEach(token => {
+        try {
+          const [time, period] = (token.appointmentTime || '').split(' ');
+          let [hours, minutes] = time.split(':').map(Number);
+          if (period === 'PM' && hours !== 12) hours += 12;
+          if (period === 'AM' && hours === 12) hours = 0;
+          
+          const apptTime = new Date();
+          apptTime.setHours(hours, minutes, 0, 0);
+          
+          const diffInMinutes = (now.getTime() - apptTime.getTime()) / (1000 * 60);
+          if (diffInMinutes > limitMinutes && !showNoShowAlert) {
+            setShowNoShowAlert(token);
+          }
+        } catch (e) {}
+      });
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [waitingTokens, showNoShowAlert, hospitalData.settings]);
+
+  const getWaitMinutes = (token: any) => {
+    try {
+      const [time, period] = (token.appointmentTime || '').split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      
+      const apptTime = new Date();
+      apptTime.setHours(hours, minutes, 0, 0);
+      return Math.floor((Date.now() - apptTime.getTime()) / (1000 * 60));
+    } catch (e) { return 0; }
+  };
 
   // New token notification detection
   useEffect(() => {
@@ -86,7 +152,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
     prevTokensRef.current = tokens;
   }, [tokens, todayStr]);
 
-  const handleAction = async (action: 'start' | 'done' | 'missed') => {
+  const handleAction = async (action: 'start' | 'done' | 'missed' | 'skip') => {
     if (action === 'start') {
       const next = waitingTokens[0];
       if (next) {
@@ -99,17 +165,18 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
         await updateTokenStatus(inProgressToken.id, 'completed', inProgressToken.patientId);
         // Auto-advance
         if (waitingTokens[0]) {
-          await updateTokenStatus(waitingTokens[0].id, 'in-progress', waitingTokens[0].patientId);
+          setTimeout(() => updateTokenStatus(waitingTokens[0].id, 'in-progress', waitingTokens[0].patientId), 300);
         }
       }
-    } else if (action === 'missed') {
-      if (inProgressToken) {
+    } else if (action === 'missed' || action === 'skip') {
+      const target = action === 'skip' ? inProgressToken : inProgressToken;
+      if (target) {
         setScreenEffect('red');
         setTimeout(() => setScreenEffect('none'), 500);
-        await updateTokenStatus(inProgressToken.id, 'not-arrived', inProgressToken.patientId);
+        await updateTokenStatus(target.id, 'not-arrived', target.patientId);
         // Auto-advance
         if (waitingTokens[0]) {
-          await updateTokenStatus(waitingTokens[0].id, 'in-progress', waitingTokens[0].patientId);
+           setTimeout(() => updateTokenStatus(waitingTokens[0].id, 'in-progress', waitingTokens[0].patientId), 300);
         }
       }
     }
@@ -250,7 +317,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
                   onClick={() => handleAction('start')}
                   className="mt-8 px-12 py-6 bg-teal-500 text-[#04111D] rounded-[32px] font-black text-xl uppercase tracking-[0.2em] shadow-2xl shadow-teal-500/20 hover:scale-105 transition-all"
                 >
-                  {t.patient.booking.start} {waitingTokens[0].tokenNumber}
+                  {t.patient.booking.startNow} {waitingTokens[0].tokenNumber}
                 </button>
               )}
             </motion.div>
@@ -273,10 +340,25 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
                 <div className="space-y-1">
                   <h2 className="text-5xl font-black tracking-tight">{inProgressToken.patientName}</h2>
                   <p className="text-xl font-bold text-slate-400">{inProgressToken.doctorName} — {inProgressToken.specialization || 'General'}</p>
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{inProgressToken.appointmentTime} — Rs. {inProgressToken.fee}</p>
                 </div>
-                <div className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 font-black text-xs uppercase tracking-widest mt-6 animate-pulse">
-                  <Play size={14} fill="currentColor" /> {t.patient.booking.inProgress}
+                
+                {/* Consultation timer */}
+                <div className="mt-8 flex flex-col items-center gap-4">
+                   <div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-2xl border border-white/10">
+                      <Clock size={16} className="text-slate-400" />
+                      <span className="text-2xl font-black font-mono">
+                        {Math.floor(consultationTime / 60).toString().padStart(2, '0')}:
+                        {(consultationTime % 60).toString().padStart(2, '0')}
+                      </span>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t.patient.booking.consultationTime}</span>
+                   </div>
+                   <div className="w-64 h-2 bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min((consultationTime / 900) * 100, 100)}%` }}
+                        className={`h-full transition-colors duration-500 ${consultationTime > 900 ? 'bg-red-500' : 'bg-teal-500'}`}
+                      />
+                   </div>
                 </div>
               </div>
 
@@ -287,73 +369,144 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
                   className="flex flex-col items-center justify-center p-8 bg-emerald-500 text-white rounded-[40px] shadow-2xl shadow-emerald-500/20 hover:scale-105 transition-all group"
                 >
                   <CheckCircle2 size={40} className="mb-4" />
-                  <span className="font-black text-sm uppercase tracking-widest">{t.patient.booking.markDone}</span>
+                  <span className="font-black text-sm uppercase tracking-widest leading-none">{t.patient.booking.markDone}</span>
                 </button>
                 <button 
                   onClick={() => handleAction('missed')}
                   className="flex flex-col items-center justify-center p-8 bg-red-500 text-white rounded-[40px] shadow-2xl shadow-red-500/20 hover:scale-105 transition-all group"
                 >
                   <AlertCircle size={40} className="mb-4" />
-                  <span className="font-black text-sm uppercase tracking-widest">{t.patient.booking.absent}</span>
+                  <span className="font-black text-sm uppercase tracking-widest leading-none">{t.patient.booking.absent}</span>
                 </button>
                 <button 
                   onClick={handleNext}
                   className="flex flex-col items-center justify-center p-8 bg-amber-500 text-[#04111D] rounded-[40px] shadow-2xl shadow-amber-500/20 hover:scale-105 transition-all group"
                 >
                   <ChevronRight size={40} className="mb-4" />
-                  <span className="font-black text-sm uppercase tracking-widest">{t.patient.booking.next}</span>
+                  <span className="font-black text-sm uppercase tracking-widest leading-none">{t.patient.booking.continue}</span>
                 </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Next Up Queue */}
-        <div className="w-full max-w-4xl mt-24">
-          <div className="flex items-center justify-between px-8 mb-6">
-            <h3 className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">{t.patient.booking.nextUp}</h3>
-            <span className="text-teal-400 font-black text-[10px] uppercase tracking-widest">{waitingTokens.length} PATIENTS WAITING</span>
+        {/* Segmented Queue */}
+        <div className="w-full max-w-6xl mt-24 grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* NEXT UP */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="flex items-center justify-between px-4">
+              <h3 className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">{t.patient.booking.nextUp}</h3>
+              <span className="text-teal-400 font-black text-[10px] uppercase tracking-widest">{waitingTokens.length}</span>
+            </div>
+            <div className="space-y-3">
+               <AnimatePresence>
+                {nextWaiting.map((token, idx) => {
+                  const waitTime = getWaitMinutes(token);
+                  return (
+                    <motion.div 
+                      key={token.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="flex items-center justify-between p-4 bg-white/2 hover:bg-white/5 border border-white/5 rounded-3xl transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-xl font-dm-mono font-black text-teal-400">{token.tokenNumber}</span>
+                        <div>
+                          <p className="text-sm font-black tracking-tight line-clamp-1">{token.patientName}</p>
+                          <p className={`text-[10px] font-bold ${waitTime > 15 ? 'text-red-400' : 'text-slate-500'}`}>
+                            Waiting: {waitTime}m
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
           </div>
-          <div className="space-y-4">
-            <AnimatePresence>
-              {nextWaiting.map((token, idx) => (
-                <motion.div 
-                  key={token.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="flex items-center justify-between p-6 bg-white/2 hover:bg-white/5 border border-white/5 rounded-3xl transition-all"
-                >
-                  <div className="flex items-center gap-6">
-                    <span className="text-2xl font-mono font-black text-teal-400">{token.tokenNumber}</span>
-                    <div>
-                      <p className="text-lg font-black tracking-tight">{token.patientName}</p>
-                      <p className="text-xs font-bold text-slate-500">{token.doctorName} — {token.appointmentTime}</p>
+
+          {/* DONE TODAY */}
+          <div className="space-y-6">
+            <h3 className="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] px-4">{t.patient.booking.completed}</h3>
+            <div className="space-y-3 opacity-60">
+               {doneToday.slice(0, 3).map(token => (
+                 <div key={token.id} className="flex items-center justify-between p-4 bg-white/2 border border-white/5 rounded-3xl">
+                    <div className="flex items-center gap-4">
+                       <span className="text-lg font-dm-mono font-black text-slate-500">{token.tokenNumber}</span>
+                       <p className="text-sm font-bold text-slate-400 line-clamp-1">{token.patientName}</p>
                     </div>
-                  </div>
-                  <div className="px-5 py-2 bg-slate-800/50 rounded-xl text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                    {t.patient.booking.waiting}
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            {waitingTokens.length > 5 && (
-              <div className="text-center py-4 text-slate-600 font-black text-[10px] uppercase tracking-widest">
-                + {waitingTokens.length - 5} MORE IN QUEUE
-              </div>
-            )}
+                    <CheckCircle2 size={16} className="text-emerald-500" />
+                 </div>
+               ))}
+               {doneToday.length === 0 && <p className="text-[10px] font-bold text-slate-700 text-center py-4 tracking-[0.2em]">NO TOKENS DONE</p>}
+            </div>
+          </div>
+
+          {/* MISSED TODAY */}
+          <div className="space-y-6">
+            <h3 className="text-red-500/50 font-black uppercase tracking-[0.3em] text-[10px] px-4">{t.patient.booking.missed}</h3>
+            <div className="space-y-3 opacity-60">
+               {missedToday.slice(0, 3).map(token => (
+                 <div key={token.id} className="flex items-center justify-between p-4 bg-white/2 border border-red-500/10 rounded-3xl">
+                    <div className="flex items-center gap-4">
+                       <span className="text-lg font-dm-mono font-black text-red-400/50">{token.tokenNumber}</span>
+                       <p className="text-sm font-bold text-slate-500 line-clamp-1">{token.patientName}</p>
+                    </div>
+                    <span className="px-2 py-1 bg-red-500/10 text-red-500 text-[8px] font-black rounded-lg">MISSED</span>
+                 </div>
+               ))}
+               {missedToday.length === 0 && <p className="text-[10px] font-bold text-slate-700 text-center py-4 tracking-[0.2em]">ZERO NO-SHOWS</p>}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* No-Show Alert Popup */}
+      <AnimatePresence>
+        {showNoShowAlert && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center p-6 backdrop-blur-3xl bg-red-500/10">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-[#1A0C0E] border border-red-500/20 p-12 rounded-[56px] w-full max-w-xl text-center shadow-[0_0_100px_rgba(239,68,68,0.2)]"
+            >
+              <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+                <AlertCircle size={48} className="text-red-500" />
+              </div>
+              <h2 className="text-4xl font-black mb-2 text-red-100">{showNoShowAlert.tokenNumber} {showNoShowAlert.patientName}</h2>
+              <p className="text-red-500/60 font-black uppercase tracking-[0.3em] text-xs mb-10">{t.patient.booking.waitingTooLong}</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={async () => {
+                    await updateTokenStatus(showNoShowAlert.id, 'not-arrived', showNoShowAlert.patientId);
+                    setShowNoShowAlert(null);
+                  }}
+                  className="py-6 bg-red-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all"
+                >
+                  {t.patient.booking.missed}
+                </button>
+                <button 
+                  onClick={() => setShowNoShowAlert(null)}
+                  className="py-6 bg-white/5 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all"
+                >
+                  {t.patient.booking.fiveMinMore}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom Stats Bar */}
       <div className="grid grid-cols-4 border-t border-white/5 bg-white/2 backdrop-blur-md z-10">
         {[
           { label: t.patient.booking.totalToday, value: stats.total, color: 'text-white' },
           { label: t.patient.booking.waiting, value: stats.waiting, color: 'text-amber-500' },
-          { label: t.patient.booking.completed, value: stats.done, color: 'text-emerald-500' },
-          { label: t.patient.booking.missed, value: stats.missed, color: 'text-red-500' },
+          { label: t.patient.booking.completed, value: stats.completed, color: 'text-emerald-500' },
+          { label: t.patient.booking.notArrived, value: stats.missed, color: 'text-red-500' },
         ].map((stat, idx) => (
           <div key={idx} className="flex flex-col items-center justify-center py-6 border-r border-white/5 last:border-0 grow">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
