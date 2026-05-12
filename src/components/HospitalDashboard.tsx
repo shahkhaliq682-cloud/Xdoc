@@ -72,6 +72,10 @@ import {
 } from 'recharts';
 
 import ReceptionMode from './ReceptionMode';
+import { ListSkeleton, StatSkeleton } from './ui/Skeleton';
+import EmptyState from './ui/EmptyState';
+import { useToast } from '../contexts/ToastContext';
+import confetti from 'canvas-confetti';
 
 interface HospitalDashboardProps {
   hospitalData: any;
@@ -80,6 +84,7 @@ interface HospitalDashboardProps {
 
 const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: HospitalDashboardProps) => {
   const { t, language, setLanguage } = useLanguage();
+  const { toast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'data' | 'staff' | 'profile'>('home');
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -87,6 +92,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const [doctors, setDoctors] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [tokens, setTokens] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDataWarning, setShowDataWarning] = useState(false);
@@ -295,7 +301,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
             }
             
             // Add notification
-            setNoShowAlerts(prev => [...prev, `${token.tokenNumber} ${token.patientName} ko automatically Not Arrived mark kar diya gaya`]);
+            toast.warning(`${token.tokenNumber} ${token.patientName} ko automatically Not Arrived mark kar diya gaya`);
           }
         }
         if (settings.alertBeforeAutoMark === false) {
@@ -356,10 +362,14 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   }, [initialHospitalData?.uid]);
 
   const updateTokenStatus = async (tokenId: string, status: string, patientId?: string) => {
+    // Optimistic Update
+    const oldTokens = [...tokens];
+    const newStatus = status.toLowerCase();
+    setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, status: newStatus } : t));
+
     try {
       if (!initialHospitalData?.uid) return;
       
-      const newStatus = status.toLowerCase();
       const updateData = { 
         status: newStatus, 
         updatedAt: serverTimestamp(),
@@ -387,16 +397,27 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           batch.update(doc(db, 'users', patientId), { 
             completedBookings: increment(1) 
           });
+          // Celebration for completion
+          confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#0B5FFF', '#00D1FF', '#10B981']
+          });
+          toast.success(t.ux.toasts.booking_completed);
         } else if (newStatus === 'not-arrived' && oldStatus !== 'not-arrived') {
           batch.update(doc(db, 'users', patientId), { 
             missedBookings: increment(1) 
           });
+          toast.warning(t.ux.toasts.patient_missed);
         }
       }
       
       await batch.commit();
     } catch (err) {
       console.error("Error updating token:", err);
+      setTokens(oldTokens); // Revert on failure
+      toast.error(t.errors.standard);
     }
   };
 
@@ -423,6 +444,19 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     const revenueToday = todaysTokens
       .filter(t => t.status === 'completed')
       .reduce((sum, t) => sum + (Number(t.consultationFee || t.fee) || 0), 0);
+
+    if (isLoading) {
+      return (
+        <div className="p-8 space-y-10">
+          <div className="h-32 bg-slate-100 rounded-[48px] animate-pulse" />
+          <StatSkeleton count={4} />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2"><ListSkeleton count={5} /></div>
+            <div><StatSkeleton count={2} /></div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="p-8 space-y-10">
@@ -574,7 +608,12 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                  <div className="space-y-4">
                     <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest ml-4">{t.patient.booking.waitingList}</p>
                     {waitingTokens.length === 0 ? (
-                      <div className="py-20 text-center text-slate-300 font-bold italic tracking-widest opacity-50">NO ONE IS WAITING</div>
+                      <div className="py-2">
+                        <EmptyState 
+                          type="no_waiting" 
+                          onAction={() => setShowReceptionMode(true)} 
+                        />
+                      </div>
                     ) : (
                       waitingTokens.map(token => (
                          <div 
@@ -1093,9 +1132,10 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
             setIsSaving(true);
             try {
               await updateDoc(doc(db, 'hospitals', hospitalData.uid), editProfileData);
-              alert("Profile saved successfully!");
+              toast.success(t.ux.toasts.profile_updated);
             } catch (err) {
               console.error(err);
+              toast.error(t.errors.standard);
             } finally {
               setIsSaving(false);
             }
@@ -1375,20 +1415,6 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
            ))}
         </nav>
 
-        {/* Reception Mode Overlay */}
-        <AnimatePresence>
-          {showReceptionMode && (
-            <ReceptionMode 
-              hospitalData={hospitalData}
-              tokens={tokens}
-              onClose={() => setShowReceptionMode(false)}
-              updateTokenStatus={updateTokenStatus}
-              doctors={doctors}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* 30 Day Data Warning Popup */}
         <AnimatePresence>
           {showDataWarning && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
@@ -1402,24 +1428,38 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                    <AlertTriangle size={40} />
                 </div>
                 <div className="text-center space-y-4">
-                   <h3 className="text-2xl font-bold text-slate-900 leading-tight">{d.dataWarning}</h3>
+                   <h3 className="text-2xl font-bold text-slate-900 leading-tight">Last 30 Days Data Detected</h3>
+                   <p className="text-slate-500 font-medium">Platform rules require archiving or clearing data older than 30 days for optimal performance.</p>
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                    <button 
                     onClick={() => handleClearOldData(true)}
                     className="w-full py-5 bg-health-teal text-white font-bold rounded-2xl shadow-xl shadow-health-teal/20 active:scale-95 transition-all"
                    >
-                     {d.saveData}
+                     Archive & Clear
                    </button>
                    <button 
                     onClick={() => handleClearOldData(false)}
                     className="w-full py-5 bg-slate-50 text-slate-400 font-bold rounded-2xl active:scale-95 transition-all"
                    >
-                     {d.deleteData}
+                     Delete Permanently
                    </button>
                 </div>
               </motion.div>
             </div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showReceptionMode && (
+            <ReceptionMode 
+              isOpen={showReceptionMode}
+              onClose={() => setShowReceptionMode(false)}
+              tokens={tokens}
+              hospitalName={hospitalData?.hospitalName || 'Xdoc'}
+              updateTokenStatus={updateTokenStatus}
+              doctors={doctors}
+            />
           )}
         </AnimatePresence>
       </main>

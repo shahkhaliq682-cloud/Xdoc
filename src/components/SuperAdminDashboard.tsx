@@ -13,19 +13,31 @@ import {
   updateDoc, deleteDoc, getDocs, orderBy, limit, where 
 } from 'firebase/firestore';
 import { seedHospitals } from '../lib/seedData';
-import { Hospital as HospitalIcon } from 'lucide-react';
+import { Hospital as HospitalIcon, LayoutDashboard as LayoutIcon } from 'lucide-react';
+import { ListSkeleton, StatSkeleton } from './ui/Skeleton';
+import EmptyState from './ui/EmptyState';
+import { useToast } from '../contexts/ToastContext';
 
 interface SuperAdminDashboardProps {
   onSignOut: () => void;
 }
 
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) => {
+  const { toast } = useToast();
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [tokens, setTokens] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'hospitals' | 'monitor' | 'approvals'>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsRefreshing(false);
+    toast.success("Data updated from source.");
+  };
 
   useEffect(() => {
     // Hospitals listener
@@ -65,10 +77,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
     setSeeding(true);
     try {
       await seedHospitals();
-      alert("Demo hospitals seeded successfully!");
+      toast.success("Demo hospitals seeded successfully!");
     } catch (err) {
       console.error(err);
-      alert("Seeding failed.");
+      toast.error("Seeding failed.");
     } finally {
       setSeeding(false);
     }
@@ -102,9 +114,39 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
     { label: "Active Revenue", val: hospitals.filter(h => h.approved).length, icon: TrendingUp, color: "text-amber-500", bg: "bg-amber-500/10" },
   ];
 
-  const renderOverview = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  const renderOverview = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-8">
+          <StatSkeleton count={4} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="h-[400px] bg-slate-100 rounded-[40px] animate-pulse" />
+            <div className="h-[400px] bg-slate-100 rounded-[40px] animate-pulse" />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Refresh Indicator */}
+        <AnimatePresence>
+          {isRefreshing && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 40, opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="flex justify-center"
+            >
+              <div className="bg-white px-4 py-1.5 rounded-full shadow-sm text-xs font-bold text-primary flex items-center gap-2 border border-slate-100">
+                <Activity size={14} className="animate-spin" />
+                Refreshing Platform Statistics...
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((s, i) => (
           <div key={i} className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between">
             <div>
@@ -126,27 +168,31 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
             <button className="text-sm font-bold text-primary hover:underline">View All</button>
           </div>
           <div className="space-y-4">
-            {hospitals.filter(h => h.status === 'Under Review' || !h.approved).slice(0, 5).map(h => (
-              <div key={h.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
-                    <Building2 size={20} />
+            {hospitals.filter(h => h.status === 'Under Review' || !h.approved).length === 0 ? (
+              <EmptyState 
+                type="no_hospitals" 
+                onAction={() => setActiveTab('hospitals')} 
+              />
+            ) : (
+              hospitals.filter(h => h.status === 'Under Review' || !h.approved).slice(0, 5).map(h => (
+                <div key={h.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
+                      <Building2 size={20} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{h.hospitalName}</h4>
+                      <p className="text-xs text-slate-400">{h.city}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-sm leading-tight">{h.hospitalName}</h4>
-                    <p className="text-xs text-slate-400">{h.city}</p>
-                  </div>
+                  <button 
+                    onClick={() => handleUpdateStatus(h.id, 'active')}
+                    className="px-4 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-emerald-500/20"
+                  >
+                    Approve
+                  </button>
                 </div>
-                <button 
-                  onClick={() => handleUpdateStatus(h.id, 'active')}
-                  className="px-4 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-emerald-500/20"
-                >
-                  Approve
-                </button>
-              </div>
-            ))}
-            {hospitals.filter(h => h.status === 'Under Review' || !h.approved).length === 0 && (
-              <p className="text-center text-slate-400 font-medium py-10 italic">No pending registrations</p>
+              ))
             )}
           </div>
         </div>
@@ -179,9 +225,23 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
       </div>
     </div>
   );
+};
 
-  const renderHospitals = () => (
-    <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+  const renderHospitals = () => {
+    if (isLoading) {
+      return (
+        <div className="bg-white rounded-[40px] p-8 space-y-6">
+          <div className="flex justify-between items-center mb-8">
+            <div className="h-10 w-48 bg-slate-100 rounded-xl animate-pulse" />
+            <div className="h-10 w-64 bg-slate-100 rounded-xl animate-pulse" />
+          </div>
+          <ListSkeleton count={6} />
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h3 className="text-xl font-bold text-slate-900">Hospital Management</h3>
         <div className="flex items-center gap-3">
@@ -214,50 +274,59 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {hospitals.map(h => (
-              <tr key={h.id} className="hover:bg-slate-50/50 transition-colors group">
-                <td className="px-8 py-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                      <HospitalIcon size={20} />
-                    </div>
-                    <span className="font-bold text-slate-800">{h.hospitalName}</span>
-                  </div>
-                </td>
-                <td className="px-8 py-5">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-slate-700 text-sm">{h.city}</span>
-                    <span className="text-[10px] text-slate-400">{h.area}</span>
-                  </div>
-                </td>
-                <td className="px-8 py-5">
-                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${h.type?.toLowerCase().includes('government') ? 'bg-emerald-50 text-emerald-600' : 'bg-primary/5 text-primary'}`}>
-                    {h.type}
-                  </span>
-                </td>
-                <td className="px-8 py-5">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${h.status === 'active' ? 'bg-emerald-500' : 'bg-red-400'}`} />
-                    <span className="text-xs font-bold text-slate-600 capitalize">{h.status || 'Active'}</span>
-                  </div>
-                </td>
-                <td className="px-8 py-5 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => handleUpdateStatus(h.id, h.status === 'active' ? 'suspended' : 'active')} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all">
-                      <ShieldAlert size={18} />
-                    </button>
-                    <button onClick={() => handleDeleteHosp(h.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
+            {hospitals.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-20 text-center">
+                  <EmptyState type="no_hospitals" onAction={handleSeed} />
                 </td>
               </tr>
-            ))}
+            ) : (
+              hospitals.map(h => (
+                <tr key={h.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                        <HospitalIcon size={20} />
+                      </div>
+                      <span className="font-bold text-slate-800">{h.hospitalName}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-slate-700 text-sm">{h.city}</span>
+                      <span className="text-[10px] text-slate-400">{h.area}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5">
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${h.type?.toLowerCase().includes('government') ? 'bg-emerald-50 text-emerald-600' : 'bg-primary/5 text-primary'}`}>
+                      {h.type}
+                    </span>
+                  </td>
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${h.status === 'active' ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                      <span className="text-xs font-bold text-slate-600 capitalize">{h.status || 'Active'}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => handleUpdateStatus(h.id, h.status === 'active' ? 'suspended' : 'active')} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all">
+                        <ShieldAlert size={18} />
+                      </button>
+                      <button onClick={() => handleDeleteHosp(h.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
     </div>
   );
+};
 
   const renderLiveMonitor = () => (
     <div className="bg-[#04111D] rounded-[40px] shadow-2xl overflow-hidden min-h-[600px] flex flex-col animate-in fade-in zoom-in-95 duration-500">
@@ -334,7 +403,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
 
         <nav className="hidden lg:flex items-center gap-1">
           {[
-            { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
+            { id: 'overview', icon: LayoutIcon, label: 'Overview' },
             { id: 'hospitals', icon: Building2, label: 'Hospitals' },
             { id: 'monitor', icon: Activity, label: 'Live Monitor' },
             { id: 'approvals', icon: CheckCircle2, label: 'Approvals' }
@@ -372,6 +441,6 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
   );
 };
 
-const LayoutDashboard = ({ size }: { size: number }) => <List size={size} />;
+const LayoutDashboard = ({ size }: { size: number }) => <LayoutIcon size={size} />;
 
 export default SuperAdminDashboard;

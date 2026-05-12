@@ -67,13 +67,16 @@ import {
 import { auth, db } from './firebase';
 import { doc, setDoc, addDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
-import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { useLanguage } from './contexts/LanguageContext';
+import { useToast } from './contexts/ToastContext';
 import HospitalDashboard from './components/HospitalDashboard';
 import PatientDashboard from './components/PatientDashboard';
 import HospitalDetailPage from './components/HospitalDetailPage';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import BookingFlow from './components/BookingFlow';
 import BookingSuccess from './components/BookingSuccess';
+import OnboardingTour from './components/OnboardingTour';
+import LoadingButton from './components/ui/LoadingButton';
 
 // --- Header Component ---
 
@@ -3415,12 +3418,14 @@ const GlobalStatsScreen = () => {
 
 export default function App() {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const { currentUser, userData, logout } = useAuth();
   const [viewState, setViewState] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   // Patient flow states
   const [selectedHospital, setSelectedHospital] = useState<Hospital | any | null>(null);
@@ -3485,9 +3490,10 @@ export default function App() {
     try {
       await logout();
       setViewState('hero');
-      console.log(t.patient.logout.success);
+      toast.success(t.ux.toasts.logout_success);
     } catch (err) {
       console.error(err);
+      toast.error(t.errors.standard);
     } finally {
       setIsSignOutInProgress(false);
       setShowLogoutConfirm(false);
@@ -3564,6 +3570,12 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser && userData) {
+      // Check for onboarding
+      const hasSeenTour = localStorage.getItem(`xdoc_tour_${currentUser.uid}`);
+      if (!hasSeenTour) {
+        setShowOnboarding(true);
+      }
+
       if (userData?.role === 'Admin' || userData?.role === 'hospital_admin') {
         setViewState('admin_dashboard');
       } else if (userData?.role === 'SuperAdmin' || userData?.role === 'super_admin') {
@@ -3587,8 +3599,10 @@ export default function App() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      toast.success(t.ux.toasts.login_success);
     } catch (error) {
       console.error("Login failed", error);
+      toast.error(t.errors.login_failed);
     }
   };
 
@@ -3733,6 +3747,16 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {showOnboarding && currentUser && (
+          <OnboardingTour 
+            role={userData?.role || 'patient'} 
+            onClose={() => {
+              localStorage.setItem(`xdoc_tour_${currentUser.uid}`, 'true');
+              setShowOnboarding(false);
+            }} 
+          />
+        )}
+
         {showLogoutConfirm && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
             <motion.div 

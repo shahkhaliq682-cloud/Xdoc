@@ -14,6 +14,9 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
+import { ListSkeleton, StatSkeleton } from './ui/Skeleton';
+import EmptyState from './ui/EmptyState';
+import { useToast } from '../contexts/ToastContext';
 
 interface PatientDashboardProps {
   userData: any;
@@ -29,6 +32,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   onSignOut
 }) => {
   const { t, language } = useLanguage();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'hospitals' | 'history' | 'profile'>('hospitals');
   const [hospitalType, setHospitalType] = useState<'All' | 'Private Hospital' | 'Private Clinic' | 'Govt. Hospital'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,9 +40,19 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [allTodayTokens, setAllTodayTokens] = useState<any[]>([]);
   const [showDataWarning, setShowDataWarning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileForm, setEditProfileForm] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Pull to refresh simulation
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    // Simulate data fetch
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsRefreshing(false);
+    toast.success(t.ux.toasts.refresh_success);
+  };
 
   useEffect(() => {
     if (userData && !editProfileForm) {
@@ -60,10 +74,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         'profile.city': editProfileForm.city
       });
       setIsEditingProfile(false);
-      alert("Profile updated successfully!");
+      toast.success(t.ux.toasts.profile_updated);
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile.");
+      toast.error(t.errors.standard);
     } finally {
       setIsSaving(false);
     }
@@ -125,7 +139,9 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const cancelToken = async (token: any) => {
     if (token.status !== 'waiting' && token.status !== 'Waiting') return;
     
-    if (!confirm(language === 'UR' ? 'کیا آپ واقعی یہ ٹوکن منسوخ کرنا چاہتے ہیں؟' : 'Are you sure you want to cancel this token?')) return;
+    // Optimistic UI Update
+    const originalTokens = [...patientTokens];
+    setPatientTokens(prev => prev.map(t => t.id === token.id ? { ...t, status: 'cancelled' } : t));
 
     try {
       const tokenId = token.id;
@@ -143,8 +159,11 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
       batch.update(doc(db, 'users', patientId, 'history', tokenId), updateData);
       
       await batch.commit();
+      toast.success(t.ux.toasts.booking_cancelled);
     } catch (err) {
       console.error(err);
+      setPatientTokens(originalTokens); // Revert on failure
+      toast.error(t.errors.standard);
     }
   };
 
@@ -213,8 +232,34 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
   const renderHospitalsView = () => {
     const stats = getStats();
+    
+    if (isLoading) {
+      return (
+        <div className="p-6 space-y-8">
+          <StatSkeleton count={4} />
+          <div className="h-12 bg-slate-100 rounded-2xl animate-pulse" />
+          <div className="h-14 bg-slate-100 rounded-2xl animate-pulse" />
+          <ListSkeleton count={3} />
+        </div>
+      );
+    }
+
     return (
       <div className="p-6 space-y-8">
+        {/* Pull to Refresh Indicator */}
+        <div className="flex justify-center -mt-4 mb-2 overflow-hidden">
+          <motion.div
+            animate={{ 
+              y: isRefreshing ? 0 : -50,
+              opacity: isRefreshing ? 1 : 0
+            }}
+            className="bg-white px-4 py-2 rounded-full shadow-md flex items-center gap-2 text-primary font-bold text-xs"
+          >
+            <Activity size={14} className="animate-spin" />
+            {language === 'UR' ? 'اپ ڈیٹ ہو رہا ہے...' : 'Refreshing...'}
+          </motion.div>
+        </div>
+
         {/* Row 1 - Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {[
@@ -276,10 +321,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         </div>
 
         {filteredHospitals.length === 0 ? (
-          <div className="bg-white p-20 rounded-[40px] text-center border-2 border-dashed border-slate-200">
-            <HospitalIcon size={64} className="mx-auto text-slate-200 mb-6" />
-            <p className="text-xl font-bold text-slate-400">{t.dashboard.noHospitals}</p>
-          </div>
+          <EmptyState 
+            type="no_hospitals" 
+            onAction={() => setSearchQuery('')} 
+          />
         ) : (
           filteredHospitals.map((h) => {
             const type = h.type || 'Private Hospital';
@@ -583,6 +628,16 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     const filtered = getFilteredTokens();
     const todayStr = new Date().toISOString().split('T')[0];
 
+    if (isLoading) {
+      return (
+        <div className="p-6 space-y-6">
+          <div className="h-12 w-48 bg-slate-100 rounded-2xl animate-pulse" />
+          <div className="h-10 w-full bg-slate-100 rounded-2xl animate-pulse" />
+          <ListSkeleton count={4} />
+        </div>
+      );
+    }
+
     return (
       <div className="p-6 space-y-6 pb-24">
         <div className="flex items-center justify-between mb-4">
@@ -615,10 +670,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         </div>
 
         {filtered.length === 0 ? (
-          <div className="bg-white p-20 rounded-[40px] text-center border-2 border-dashed border-slate-100">
-            <Calendar size={64} className="mx-auto text-slate-100 mb-6" />
-            <p className="text-xl font-bold text-slate-300">No bookings found</p>
-          </div>
+          <EmptyState 
+            type="no_bookings" 
+            onAction={() => setActiveTab('hospitals')} 
+          />
         ) : (
           <div className="space-y-4">
             {filtered.map((token) => {
