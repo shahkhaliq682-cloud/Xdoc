@@ -2,14 +2,99 @@ export type Language = 'EN' | 'UR';
 
 export const translations = {
   EN: {
-    nav: {
-      home: 'Home',
-      findHospital: 'Find Hospital',
-      about: 'About',
-      login: 'Login',
-      signUp: 'Sign Up',
-      signUpFree: 'Sign Up Free',
-      profile: 'Profile',
+    homeRedesign: {
+      nav: {
+        home: 'Home',
+        hospitals: 'Hospitals',
+        about: 'About',
+        joinHospital: 'Join as Hospital',
+      },
+      hero: {
+        badge: '🏥 Pakistan\'s #1 Healthcare Platform',
+        title1: 'Apna Doctor',
+        title2: 'Dhundein —',
+        title3: 'Ghar Baithe.',
+        subtitle: 'Pakistan ke tamam hospitals aur clinics ek jagah. Ghar baithe doctor dhundein, token book karein.',
+        searchPlaceholder: 'Doctor, Hospital ya city...',
+        searchBtn: 'Search',
+        cardiology: 'Cardiology',
+        neurology: 'Neurology',
+        dental: 'Dental',
+        pediatrics: 'Pediatrics',
+        eye: 'Eye',
+        orthopedic: 'Orthopedic',
+        signUpFree: 'Sign Up Free →',
+        loginNow: 'Login Now',
+        verified: 'Verified Hospitals',
+        free: 'Free to Use',
+        instant: 'Instant Booking',
+        secure: '100% Secure',
+      },
+      stats: {
+        hospitals: 'Hospitals',
+        doctors: 'Doctors',
+        cities: 'Cities',
+        patients: 'Patients',
+      },
+      features: {
+        title: 'Kyun Xdoc?',
+        subtitle: 'Pakistan ki healthcare ko digital banane ke liye',
+        card1: { title: 'Online Token Booking', desc: 'Ghar baithe token book karein, queue mein khade rehne ki zaroorat nahi' },
+        card2: { title: 'Real-time Availability', desc: 'Doctor ghar se available hai ya nahi — pehle hi pata karein' },
+        card3: { title: 'Transparent Fees', desc: 'Doctor ki fees pehle dikhai deti hai, koi surprise nahi' },
+        card4: { title: 'Govt & Private Dono', desc: 'Government aur private dono hospitals ek jagah dhundein' },
+        card5: { title: 'WhatsApp Alerts', desc: 'Token ki baari aane par WhatsApp par notification milta hai' },
+        card6: { title: 'Waqt Bachayein', desc: 'Ghanton ki queue ki jagah minutes mein apna number secure karein' },
+      },
+      howItWorks: {
+        title: 'Kaise Kaam Karta Hai?',
+        subtitle: 'Sirf 4 simple steps!',
+        hospital: 'Hospital',
+        patient: 'Patient',
+        patientSteps: {
+          step1: { title: 'Search', desc: 'Hospital ya doctor ki talash karein' },
+          step2: { title: 'Choose', desc: 'Doctor choose karein, fees aur availability dekhein' },
+          step3: { title: 'Book', desc: 'Online token book karein, confirmation milega' },
+          step4: { title: 'Visit', desc: 'Apni baari par hospital jayein, time waste nahi' },
+        },
+        hospitalSteps: {
+          step1: { title: 'Register', desc: 'Register your hospital on Xdoc' },
+          step2: { title: 'Add Doctors', desc: 'Add doctors and staff' },
+          step3: { title: 'Receive Tokens', desc: 'Start receiving online tokens' },
+          step4: { title: 'Manage', desc: 'Manage everything from dashboard' },
+        }
+      },
+      hospitalTypes: {
+        title: 'Tamam Qisam Ke Healthcare Providers',
+        govt: { title: 'Government Hospital', desc: 'Muft ilaj, sarkaari suvidhaen', badge: 'FREE OPD' },
+        private: { title: 'Private Hospital', desc: 'Premium healthcare, experienced doctors', badge: 'PAID OPD' },
+        clinic: { title: 'Private Clinic', desc: 'Nearby clinics, affordable fees', badge: 'AFFORDABLE' },
+        govtClinic: { title: 'Govt Clinic', desc: 'Basic healthcare near your area', badge: 'FREE/LOW COST' },
+        findNow: 'Dhundein →'
+      },
+      specializations: {
+        title: 'Tamam Specializations',
+      },
+      cta: {
+        title: 'Apna Hospital Digital Karein',
+        subtitle: 'Xdoc par register karein aur patients tak pahunchein. Token system, staff management, aur analytics — sab free.',
+        benefit1: 'Free registration',
+        benefit2: 'Token system included',
+        benefit3: 'Staff management',
+        benefit4: 'Revenue tracking',
+        benefit5: 'WhatsApp notifications',
+        registerBtn: 'Hospital Register Karein →',
+        alreadyOn: 'already on Xdoc',
+        rating: 'hospital rating',
+        monthlyTokens: 'booked monthly'
+      },
+      footer: {
+        desc: 'Pakistan ka digital healthcare platform',
+        quickLinks: 'Quick Links',
+        hospitalTypes: 'Hospital Types',
+        company: 'Company',
+        copyright: '© 2026 Xdoc Digital Healthcare Platform. All rights reserved. Built with ❤️ in Pakistan.'
+      }
     },
     hero: {
       title: 'Find Your Doctor — From Home',
@@ -463,14 +548,99 @@ export const translations = {
     }
   },
   UR: {
-    nav: {
-      home: 'ہوم',
-      findHospital: 'ہسپتال ڈھونڈیں',
-      about: 'ہمارے بارے میں',
-      login: 'لاگ ان',
-      signUp: 'سائن اپ',
-      signUpFree: 'مفت سائن اپ کریں',
-      profile: 'پروفائل',
+    homeRedesign: {
+      nav: {
+        home: 'ہوم',
+        hospitals: 'ہسپتال',
+        about: 'معلومات',
+        joinHospital: 'ہسپتال جوائن کریں',
+      },
+      hero: {
+        badge: '🏥 پاکستان کا نمبر 1 ہیلتھ کیئر پلیٹ فارم',
+        title1: 'اپنا ڈاکٹر',
+        title2: 'ڈھونڈیں —',
+        title3: 'گھر بیٹھے۔',
+        subtitle: 'پاکستان کے تمام ہسپتال اور کلینکس ایک جگہ۔ گھر بیٹھے ڈاکٹر ڈھونڈیں، ٹوکن بک کریں۔',
+        searchPlaceholder: 'ڈاکٹر، ہسپتال یا شہر...',
+        searchBtn: 'تلاش کریں',
+        cardiology: 'کارڈیالوجی',
+        neurology: 'نیورولوجی',
+        dental: 'ڈینٹل',
+        pediatrics: 'پیڈیاٹرکس',
+        eye: 'آنکھیں',
+        orthopedic: 'آرتھوپیڈک',
+        signUpFree: 'مفت سائن اپ کریں →',
+        loginNow: 'ابھی لاگ ان کریں',
+        verified: 'تصدیق شدہ ہسپتال',
+        free: 'استعمال میں مفت',
+        instant: 'فوری بکنگ',
+        secure: '100% محفوظ',
+      },
+      stats: {
+        hospitals: 'ہسپتال',
+        doctors: 'ڈاکٹرز',
+        cities: 'شہر',
+        patients: 'مریض',
+      },
+      features: {
+        title: 'کیوں Xdoc؟',
+        subtitle: 'پاکستان کی ہیلتھ کیئر کو ڈیجیٹل بنانے کے لیے',
+        card1: { title: 'آن لائن ٹوکن بکنگ', desc: 'گھر بیٹھے ٹوکن بک کریں، قطار میں کھڑے رہنے کی ضرورت نہیں' },
+        card2: { title: 'اصلی وقت میں دستیابی', desc: 'ڈاکٹر گھر سے دستیاب ہے یا نہیں — پہلے ہی پتہ کریں' },
+        card3: { title: 'شفاف فیس', desc: 'ڈاکٹر کی فیس پہلے دکھائی دیتی ہے، کوئی سرپرائز نہیں' },
+        card4: { title: 'سرکاری اور نجی دونوں', desc: 'سرکاری اور نجی دونوں ہسپتال ایک جگہ ڈھونڈیں' },
+        card5: { title: 'واٹس ایپ الرٹس', desc: 'ٹوکن کی باری آنے پر واٹس ایپ پر نوٹیفکیشن ملتا ہے' },
+        card6: { title: 'وقت بچائیں', desc: 'گھنٹوں کی قطار کی جگہ منٹوں میں اپنا نمبر محفوظ کریں' },
+      },
+      howItWorks: {
+        title: 'یہ کیسے کام کرتا ہے؟',
+        subtitle: 'صرف 4 آسان مراحل!',
+        hospital: 'ہسپتال',
+        patient: 'مریض',
+        patientSteps: {
+          step1: { title: 'تلاش', desc: 'ہسپتال یا ڈاکٹر کی تلاش کریں' },
+          step2: { title: 'منتخب کریں', desc: 'ڈاکٹر منتخب کریں، فیس اور دستیابی دیکھیں' },
+          step3: { title: 'بک کریں', desc: 'آن لائن ٹوکن بک کریں، تصدیق ملے گی' },
+          step4: { title: 'تشریف لائیں', desc: 'اپنی باری پر ہسپتال جائیں، وقت ضائع نہیں' },
+        },
+        hospitalSteps: {
+          step1: { title: 'رجسٹر کریں', desc: 'اپنا ہسپتال رجسٹر کریں' },
+          step2: { title: 'ڈاکٹر شامل کریں', desc: 'ڈاکٹر اور عملہ شامل کریں' },
+          step3: { title: 'ٹوکن وصول کریں', desc: 'آن لائن ٹوکن وصول کرنا شروع کریں' },
+          step4: { title: 'انتظام کریں', desc: 'ڈیش بورڈ سے سب کچھ مینیج کریں' },
+        }
+      },
+      hospitalTypes: {
+        title: 'تمام قسم کے ہیلتھ کیئر فراہم کنندہ',
+        govt: { title: 'سرکاری ہسپتال', desc: 'مفت علاج، سرکاری سہولیات', badge: 'مفت پی ڈی' },
+        private: { title: 'پرائیویٹ ہسپتال', desc: 'بہترین علاج، تجربہ کار ڈاکٹر', badge: 'ادا شدہ پی ڈی' },
+        clinic: { title: 'نجی کلینک', desc: 'قریبی کلینک، کم فیس', badge: 'سستا' },
+        govtClinic: { title: 'سرکاری کلینک', desc: 'آپ کے علاقے کے قریب بنیادی ہیلتھ کیئر', badge: 'مفت/کم قیمت' },
+        findNow: 'ڈھونڈیں →'
+      },
+      specializations: {
+        title: 'تمام مہارتیں',
+      },
+      cta: {
+        title: 'اپنا ہسپتال ڈیجیٹل کریں',
+        subtitle: 'Xdoc پر رجسٹر کریں اور مریضوں تک پہنچیں۔ ٹوکن سسٹم، اسٹاف مینجمنٹ اور اینالیٹکس — سب مفت۔',
+        benefit1: 'مفت رجسٹریشن',
+        benefit2: 'ٹوکن سسٹم شامل ہے',
+        benefit3: 'اسٹاف مینجمنٹ',
+        benefit4: 'آمدنی کی ٹریکنگ',
+        benefit5: 'واٹس ایپ نوٹیفکیشنز',
+        registerBtn: 'ہسپتال رجسٹر کریں →',
+        alreadyOn: 'پہلے سے موجود',
+        rating: 'ہسپتال ریٹنگ',
+        monthlyTokens: 'ماہانہ بک شدہ ٹوکن'
+      },
+      footer: {
+        desc: 'پاکستان کا ڈیجیٹل ہیلتھ کیئر پلیٹ فارم',
+        quickLinks: 'فوری لنکس',
+        hospitalTypes: 'ہسپتال کی اقسام',
+        company: 'کمپنی',
+        copyright: '© 2026 Xdoc ڈیجیٹل ہیلتھ کیئر پلیٹ فارم۔ جملہ حقوق محفوظ ہیں۔ پاکستان میں ❤️ کے ساتھ بنایا گیا۔'
+      }
     },
     hero: {
       title: 'اپنا ڈاکٹر ڈھونڈیں — گھر بیٹھے',

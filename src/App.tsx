@@ -51,7 +51,8 @@ import {
   Ticket,
   Trash2,
   Upload,
-  Hospital as HospitalIcon
+  Hospital as HospitalIcon,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hospitals, doctors, staffMembers, queueTokens } from './mockData';
@@ -77,6 +78,8 @@ import BookingFlow from './components/BookingFlow';
 import BookingSuccess from './components/BookingSuccess';
 import OnboardingTour from './components/OnboardingTour';
 import LoadingButton from './components/ui/LoadingButton';
+
+import HomeRedesign from './components/HomeRedesign';
 
 // --- Splash Screen ---
 const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
@@ -144,7 +147,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -152,49 +155,49 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
   if (isLanding) {
     return (
       <>
-        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 px-4 md:px-6 h-[70px] flex items-center ${
-          isScrolled ? 'bg-white shadow-xl' : 'bg-transparent'
+        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 px-4 md:px-8 h-[80px] flex items-center border-b ${
+          isScrolled ? 'bg-white shadow-[0_2px_20px_rgba(0,0,0,0.08)] border-slate-100' : 'bg-white/50 backdrop-blur-md border-transparent'
         }`}>
-          <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
-            <div onClick={onLogoClick} className="flex items-center gap-3 cursor-pointer group">
-              <div className="w-10 h-10 rounded-xl medical-cross-gradient flex items-center justify-center text-white shadow-lg shadow-primary/20 transition-transform group-hover:scale-110">
-                <Activity size={24} />
+          <div className="max-w-[1400px] mx-auto w-full flex justify-between items-center">
+            <div onClick={onLogoClick} className="flex items-center gap-4 cursor-pointer group">
+              <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-xl shadow-primary/20 transition-all group-hover:scale-110 group-hover:rotate-6">
+                <Activity size={28} />
               </div>
-              <span className="text-2xl md:text-3xl font-display font-bold tracking-tighter text-[#0B5FFF]">Xdoc</span>
+              <span className="text-3xl font-black tracking-tighter text-slate-900">Xdoc</span>
             </div>
 
-            <nav className="hidden lg:flex items-center gap-12">
-              <a href="#" className="font-sans font-bold text-slate-600 hover:text-primary transition-colors">{t.nav.home}</a>
-              <a href="#" className="font-sans font-bold text-slate-600 hover:text-primary transition-colors">{t.nav.findHospital}</a>
-              <a href="#" className="font-sans font-bold text-slate-600 hover:text-primary transition-colors">{t.nav.about}</a>
+            <nav className="hidden lg:flex items-center gap-10">
+              <a href="#" className="text-sm font-black text-slate-500 hover:text-primary uppercase tracking-widest transition-colors">{t.homeRedesign.nav.home}</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); onLogoClick(); }} className="text-sm font-black text-slate-500 hover:text-primary uppercase tracking-widest transition-colors">{t.homeRedesign.nav.hospitals}</a>
+              <a href="#features" className="text-sm font-black text-slate-500 hover:text-primary uppercase tracking-widest transition-colors">{t.homeRedesign.nav.about}</a>
+              <button onClick={onSignUp} className="text-sm font-black text-primary hover:text-health-teal uppercase tracking-widest transition-colors">{t.homeRedesign.nav.joinHospital}</button>
             </nav>
             
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setLanguage(language === 'EN' ? 'UR' : 'EN')}
-                className="px-3 py-1.5 rounded-lg font-bold border-2 border-slate-100 hover:border-primary transition-all text-sm min-w-[50px] bg-white flex items-center justify-center gap-1"
+                className="px-4 py-2 rounded-xl font-black border-2 border-slate-100 hover:border-primary transition-all text-xs bg-white text-slate-600"
               >
-                {language === 'EN' ? 'اردو' : 'EN'}
-                <Volume2 size={14} className="opacity-50" />
+                {language === 'EN' ? 'اردو' : 'ENGLISH'}
               </button>
 
               {!userData ? (
                 <>
                   <button 
                     onClick={onLogin}
-                    className="hidden sm:block px-6 py-2.5 rounded-xl font-sans font-bold border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all text-sm"
+                    className="hidden lg:block px-8 py-3 rounded-xl font-black text-slate-900 hover:bg-slate-50 transition-all text-xs uppercase tracking-widest"
                   >
                     {t.nav.login}
                   </button>
                   <button 
                     onClick={onSignUp}
-                    className="hidden sm:block px-6 py-3 rounded-xl bg-health-teal text-white font-sans font-bold shadow-lg shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all text-sm"
+                    className="hidden sm:block px-8 py-3.5 rounded-xl bg-health-teal text-white font-black shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all text-xs uppercase tracking-widest"
                   >
                     {t.nav.signUp}
                   </button>
                   <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="lg:hidden p-2 text-slate-600 bg-slate-100 rounded-xl"
+                    className="lg:hidden p-3 text-slate-600 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
                   >
                     {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                   </button>
@@ -202,16 +205,16 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
               ) : (
                 <div className="flex items-center gap-4">
                   <div className="text-right hidden sm:block">
-                    <p className="text-xs font-bold text-slate-800">{userData.displayName}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">{userData.role}</p>
+                    <p className="text-xs font-black text-slate-900">{userData.displayName}</p>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{userData.role}</p>
                   </div>
                   <button 
                     onClick={() => logout()}
-                    className="w-10 h-10 rounded-xl border-2 border-slate-100 overflow-hidden group relative"
+                    className="w-12 h-12 rounded-2xl border-2 border-slate-100 overflow-hidden group relative shadow-sm"
                   >
                     <img src={userData.photoURL || "https://images.unsplash.com/photo-1559839734-2b71f1536783?auto=format&fit=crop&q=80&w=200"} alt="Profile" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <LogOut size={16} className="text-white" />
+                      <LogOut size={18} className="text-white" />
                     </div>
                   </button>
                 </div>
@@ -224,37 +227,57 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div 
-              initial={{ opacity: 0, x: '100%' }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: '100%' }}
-              className="fixed inset-0 z-[110] bg-white lg:hidden p-8 flex flex-col"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed inset-0 z-[110] bg-white lg:hidden p-6 flex flex-col pt-24"
             >
-              <div className="flex justify-between items-center mb-12">
-                <div onClick={() => { setIsMobileMenuOpen(false); onLogoClick?.(); }} className="flex items-center gap-3">
-                  <Activity size={32} className="text-primary" />
-                  <span className="text-2xl font-display font-bold text-[#0B5FFF]">Xdoc</span>
-                </div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-100 rounded-xl">
-                  <X size={24} />
-                </button>
+              <div className="flex justify-between items-center mb-12 px-2">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-xl shadow-primary/20">
+                      <Activity size={28} />
+                    </div>
+                    <span className="text-3xl font-black tracking-tighter text-slate-900">Xdoc</span>
+                 </div>
+                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-slate-50 rounded-2xl">
+                    <X size={24} className="text-slate-900" />
+                 </button>
               </div>
 
-              <nav className="flex flex-col gap-8 mb-auto">
-                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold text-slate-900 border-b border-slate-100 pb-4">{t.nav.home}</a>
-                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold text-slate-900 border-b border-slate-100 pb-4">{t.nav.findHospital}</a>
-                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold text-slate-900 border-b border-slate-100 pb-4">{t.nav.about}</a>
+              <nav className="flex flex-col gap-4 mb-auto">
+                {[
+                  { label: t.nav.home, icon: Home },
+                  { label: t.nav.findHospital, icon: Building2 },
+                  { label: t.nav.about, icon: Info },
+                  { label: t.homeRedesign.nav.joinHospital, icon: HospitalIcon }
+                ].map((item, idx) => {
+                  const IconComp = item.icon || Activity;
+                  return (
+                    <a 
+                      key={idx}
+                      href="#" 
+                      onClick={() => setIsMobileMenuOpen(false)} 
+                      className="flex items-center gap-5 p-6 rounded-[28px] bg-slate-50 text-xl font-black text-slate-900 active:bg-slate-100 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm">
+                        <IconComp size={20} />
+                      </div>
+                      {item.label}
+                    </a>
+                  );
+                })}
               </nav>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 mt-8 pb-8">
                 <button 
                   onClick={() => { setIsMobileMenuOpen(false); onLogin?.(); }}
-                  className="w-full py-5 rounded-2xl font-sans font-bold border-2 border-primary/20 text-primary"
+                  className="w-full py-6 rounded-[28px] font-black text-slate-900 bg-slate-100 uppercase tracking-widest text-sm"
                 >
                   {t.nav.login}
                 </button>
                 <button 
                   onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
-                  className="w-full py-5 rounded-2xl bg-health-teal text-white font-sans font-bold shadow-xl shadow-health-teal/20"
+                  className="w-full py-6 rounded-[28px] bg-primary text-white font-black shadow-2xl shadow-primary/20 uppercase tracking-widest text-sm"
                 >
                   {t.nav.signUpFree}
                 </button>
@@ -365,244 +388,7 @@ const Navbar = ({ activeTab, setActiveTab, darkMode = false }: { activeTab: stri
 };
 
 
-const StatsRow = () => {
-  const stats = [
-    { label: "Hospitals", val: "500+" },
-    { label: "Doctors", val: "2000+" },
-    { label: "Patients", val: "15000+" },
-    { label: "Cities", val: "50+" }
-  ];
-
-  return (
-    <div className="bg-white border-y border-slate-100 py-8 md:py-12 px-4 md:px-6">
-      <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-4">
-        {stats.map((s, i) => (
-          <div key={i} className={`text-center ${i % 2 === 0 ? 'border-r last:border-0' : 'md:border-r last:border-0'} border-slate-100`}>
-            <h4 className="text-3xl md:text-5xl font-bold text-primary tracking-tighter mb-2">{s.val}</h4>
-            <p className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-widest">{s.label}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const HeroSection = ({ onSignUp, onLogin }: { onSignUp: () => void, onLogin: () => void }) => {
-  const benefits = [
-    { icon: Calendar, title: "Online Token Booking", desc: "Book tokens instantly without physical visits", gradient: "from-blue-500 to-primary" },
-    { icon: Clock, title: "Real-time Availability", desc: "Check live doctor schedules before leaving home", gradient: "from-health-teal to-emerald-500" },
-    { icon: CreditCard, title: "Transparent Fees", desc: "See consultation fees upfront, no surprises", gradient: "from-amber-400 to-orange-500" },
-    { icon: Building2, title: "Govt & Private Hospitals", desc: "All major health facilities in one digital hub", gradient: "from-indigo-500 to-indigo-700" },
-    { icon: MessageSquare, title: "WhatsApp Alerts", desc: "Get status reminders via WhatsApp & App", gradient: "from-pink-500 to-rose-600" },
-    { icon: History, title: "Save Hours of Waiting", desc: "Efficient medical visits start right here", gradient: "from-violet-500 to-purple-600" }
-  ];
-
-  return (
-    <div className="bg-white min-h-[90vh] relative overflow-x-hidden flex flex-col justify-center">
-      {/* Background Decor */}
-      <div className="absolute top-0 right-0 w-full h-full pointer-events-none z-0">
-        <div className="absolute top-[-5%] right-[-10%] md:top-[-10%] md:right-[-5%] w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-primary/10 rounded-full blur-[80px] md:blur-[120px]" />
-        <div className="absolute bottom-[-5%] left-[-10%] md:bottom-[-10%] md:left-[-5%] w-[200px] h-[200px] md:w-[400px] md:h-[400px] bg-health-teal/5 rounded-full blur-[80px] md:blur-[120px]" />
-      </div>
-
-      <div className="max-w-[800px] mx-auto px-5 pt-[140px] pb-[60px] relative z-10 w-full">
-        <div className="text-center mx-auto">
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 bg-blue-50 border border-[#0B5FFF] rounded-full mb-6"
-          >
-            <div className="w-2 h-2 rounded-full bg-primary breathing-dot" />
-            <span className="text-[8px] sm:text-[10px] font-mono font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[#0B5FFF]">Pakistan's #1 Health Network</span>
-          </motion.div>
-          
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-[32px] md:text-[42px] lg:text-[56px] font-display font-bold tracking-tight leading-tight mb-5 text-[#04111D] max-w-[700px] mx-auto"
-          >
-            Apna Doctor Dhundein — <br className="hidden sm:block" />
-            Ghar Baithe.
-          </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-base sm:text-lg md:text-xl text-[#6B8FAE] font-normal max-w-[600px] mx-auto mb-8 leading-relaxed"
-          >
-            Pakistan ke tamam hospitals aur clinics ek jagah. Ghar baithe <br className="hidden md:block" />
-            doctor dhundein, token book karein.
-          </motion.p>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
-          >
-            <button 
-              onClick={onSignUp}
-              className="w-full sm:w-auto px-10 md:px-12 py-5 bg-health-teal text-white font-bold text-lg md:text-xl rounded-2xl shadow-2xl shadow-health-teal/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
-            >
-              Sign Up Free <ArrowRight size={24} />
-            </button>
-            <button 
-              onClick={onLogin}
-              className="w-full sm:w-auto px-10 md:px-12 py-5 bg-white border-2 border-slate-200 text-slate-900 font-bold text-lg md:text-xl rounded-2xl hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-3"
-            >
-              Login Now
-            </button>
-          </motion.div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto mt-20 px-4 sm:px-0">
-          {benefits.map((b, i) => (
-            <motion.div 
-              key={i}
-              whileHover={{ y: -10, scale: 1.02 }}
-              className="p-8 md:p-10 bg-white rounded-[32px] md:rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/50 group cursor-pointer"
-            >
-              <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-gradient-to-br ${b.gradient} flex items-center justify-center text-white mb-6 md:mb-8 group-hover:rotate-6 transition-transform duration-500 shadow-lg`}>
-                <b.icon size={innerWidth < 768 ? 32 : 40} />
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">{b.title}</h3>
-              <p className="text-sm md:text-base text-slate-500 font-bold leading-relaxed">{b.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const HowItWorks = () => {
-  const steps = [
-    { title: "Hospital Search Karein", icon: Search },
-    { title: "Doctor Select Karein", icon: Stethoscope },
-    { title: "Token Book Karein", icon: Ticket },
-    { title: "Visit Karein Apni Baari Par", icon: HospitalIcon }
-  ];
-
-  return (
-    <div className="bg-white py-20 md:py-32 px-4 md:px-6 overflow-hidden">
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-12 lg:gap-24 items-center">
-        
-        {/* Left Side: Content (40%) */}
-        <div className="lg:w-[40%] w-full">
-          <div className="mb-6">
-            <span className="text-health-teal text-xs font-bold uppercase tracking-[0.2em] bg-health-teal/5 px-4 py-2 rounded-full">HOW IT WORKS</span>
-          </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 leading-[1.1] mb-8">
-            Apni Healthcare Needs Poori Karein — <span className="text-primary">Ek Jagah!</span>
-          </h2>
-          
-          <div className="flex gap-4 mb-10">
-            <button className="px-8 py-3 bg-primary text-white rounded-full font-bold text-sm shadow-xl shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
-              Hospital
-            </button>
-            <button className="px-8 py-3 border-2 border-slate-100 text-slate-500 rounded-full font-bold text-sm hover:border-primary hover:text-primary transition-all active:scale-95">
-              Clinic
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            <p className="text-slate-900 font-bold text-lg">Sirf 4 easy steps!</p>
-            <ul className="space-y-5">
-              {[
-                "Hospital ya clinic search karein",
-                "Doctor select karein",
-                "Online token book karein",
-                "Hospital jayein apni baari par"
-              ].map((point, idx) => (
-                <li key={idx} className="flex items-center gap-4 text-slate-600 font-medium group">
-                  <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-primary font-bold text-xs group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                    {idx + 1}
-                  </div>
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Right Side: Step Cards (60%) */}
-        <div className="lg:w-[60%] w-full relative">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 relative z-10">
-            {steps.map((s, i) => (
-              <motion.div 
-                key={i}
-                whileHover={{ y: -5 }}
-                className="bg-white p-8 md:p-10 rounded-[32px] border border-slate-100 shadow-2xl shadow-slate-200/40 flex flex-col items-center text-center group transition-all duration-300"
-              >
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-slate-50 flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-all duration-500">
-                  <s.icon size={32} />
-                </div>
-                <div className="w-8 h-8 rounded-full bg-health-teal text-white flex items-center justify-center text-xs font-bold mb-4 shadow-lg shadow-health-teal/30">
-                  {i + 1}
-                </div>
-                <h4 className="text-lg md:text-xl font-bold text-slate-900 leading-tight px-2">{s.title}</h4>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Connection Lines (Desktop Only) */}
-          <div className="hidden lg:block absolute top-[25%] left-[45%] w-[10%] h-[2px] bg-slate-100 border-t-2 border-dashed border-slate-200" />
-          <div className="hidden lg:block absolute bottom-[25%] left-[45%] w-[10%] h-[2px] bg-slate-100 border-t-2 border-dashed border-slate-200" />
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
-const Footer = () => {
-  return (
-    <footer className="bg-[#04111D] text-white py-12 md:py-20 px-4 md:px-6">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-12">
-        <div className="col-span-1 md:col-span-2">
-          <div className="flex items-center gap-3 mb-6 md:mb-8">
-            <div className="w-10 h-10 rounded-xl medical-cross-gradient flex items-center justify-center text-white">
-              <Activity size={24} />
-            </div>
-            <span className="text-2xl md:text-3xl font-bold tracking-tighter">Xdoc</span>
-          </div>
-          <p className="text-sm md:text-base text-slate-400 font-bold max-w-sm mb-6 md:mb-8">
-            Pakistan's premier digital healthcare network connecting citizens with 
-            verified medical facilities and doctors.
-          </p>
-          <div className="flex gap-4">
-            {['Twitter', 'Facebook', 'Instagram', 'LinkedIn'].map((s) => (
-              <a key={s} href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary transition-colors text-[10px] font-bold uppercase">{s[0]}</a>
-            ))}
-          </div>
-        </div>
-        <div className="md:pt-4">
-          <h4 className="text-base md:text-lg font-bold mb-4 md:mb-8">Quick Links</h4>
-          <ul className="space-y-3 md:space-y-4 text-sm md:text-base text-slate-400 font-bold">
-            <li><a href="#" className="hover:text-white transition-colors">Find Hospitals</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Doctor Directory</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Emergency Services</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Join as Provider</a></li>
-          </ul>
-        </div>
-        <div className="md:pt-4">
-          <h4 className="text-base md:text-lg font-bold mb-4 md:mb-8">Company</h4>
-          <ul className="space-y-3 md:space-y-4 text-sm md:text-base text-slate-400 font-bold">
-            <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Contact Support</a></li>
-          </ul>
-        </div>
-      </div>
-      <div className="max-w-7xl mx-auto mt-12 md:mt-20 pt-8 border-t border-white/10 text-center text-slate-500 font-bold text-[10px] md:text-sm">
-        &copy; 2024 Xdoc Digital Healthcare Platform. All rights reserved. Built with love in Pakistan.
-      </div>
-    </footer>
-  );
-};
-
+// --- Auth & Onboarding Components ---
 
 const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { onLoginSuccess: (role: string) => void, onSignUpClick: (type: 'Hospital' | 'Patient') => void, onForgotPasswordClick: () => void }) => {
   const { t } = useLanguage();
@@ -3678,12 +3464,14 @@ export default function App() {
               onLogin={() => setViewState('login')}
               isLanding={true} 
             />
-            <HeroSection 
+            <HomeRedesign 
               onSignUp={() => setViewState('auth_choice')} 
               onLogin={() => setViewState('login')}
+              onSearch={(q) => {
+                // Future: add search logic here or set view to patient results
+                console.log("Search query:", q);
+              }}
             />
-            <HowItWorks />
-            <Footer />
           </div>
         );
       case 'login':
