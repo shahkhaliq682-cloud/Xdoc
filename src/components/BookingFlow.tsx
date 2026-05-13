@@ -14,6 +14,7 @@ import {
   query, where, getDocs, doc, setDoc, getDoc, runTransaction,
   onSnapshot
 } from 'firebase/firestore';
+import LoadingButton from './ui/LoadingButton';
 
 interface BookingFlowProps {
   hospital: any;
@@ -35,6 +36,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
   const [patientPhone, setPatientPhone] = useState(userData?.phone || userData?.phoneFull || '');
   const [note, setNote] = useState('');
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   const morningSlots = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'];
   const afternoonSlots = ['02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'];
@@ -44,6 +46,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
 
   useEffect(() => {
     if (selectedDate && doctor?.id) {
+      setSlotsLoading(true);
       const year = selectedDate.getFullYear();
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
@@ -59,6 +62,10 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const booked = snapshot.docs.map(doc => doc.data().appointmentTime);
         setBookedSlots(booked);
+        setSlotsLoading(false);
+      }, (err) => {
+        console.error(err);
+        setSlotsLoading(false);
       });
 
       return () => unsubscribe();
@@ -229,11 +236,18 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
 
   const renderStep3 = () => (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-8 h-8 rounded-full bg-health-teal/10 flex items-center justify-center text-health-teal">
-          <Clock size={18} />
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-health-teal/10 flex items-center justify-center text-health-teal">
+            <Clock size={18} />
+          </div>
+          <h4 className="text-lg font-bold text-slate-900">{t.patient.booking.selectTime}</h4>
         </div>
-        <h4 className="text-lg font-bold text-slate-900">{t.patient.booking.selectTime}</h4>
+        {slotsLoading && (
+          <div className="flex items-center gap-2 text-[10px] font-black text-health-teal animate-pulse uppercase tracking-widest">
+            {t.ux.loading_dots}
+          </div>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -424,20 +438,15 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
         <button onClick={prevStep} className="flex-1 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all uppercase tracking-widest text-xs">
           {t.patient.logout.cancel}
         </button>
-        <button 
+        <LoadingButton 
+          isLoading={loading}
+          loadingText={t.ux.booking}
+          onClick={handleBooking}
           disabled={loading}
-          onClick={handleBooking} 
-          className="flex-1 py-4 bg-health-teal text-white font-bold rounded-2xl shadow-xl shadow-health-teal/20 transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2"
+          className="flex-1 py-4 bg-health-teal text-white font-bold rounded-2xl shadow-xl shadow-health-teal/20 transition-all uppercase tracking-widest text-xs"
         >
-          {loading ? (
-             <motion.div 
-               animate={{ rotate: 360 }}
-               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-             >
-               <Clock size={20} />
-             </motion.div>
-          ) : t.patient.booking.confirmBooking}
-        </button>
+          {t.patient.booking.confirmBooking}
+        </LoadingButton>
       </div>
 
       {loading && (

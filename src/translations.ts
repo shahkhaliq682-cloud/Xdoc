@@ -328,30 +328,41 @@ export const translations = {
       },
       ux: {
         loading: 'Loading...',
-        pleaseWait: 'Please wait...',
-        success: 'Success',
-        error: 'Error',
-        tryAgain: 'Try again',
-        noData: 'No data',
-        welcome: 'Welcome',
-        done: 'Done',
-        saving: 'Saving...',
-        saved: 'Saved',
-        deleting: 'Deleting...',
-        deleted: 'Deleted',
         refreshing: 'Refreshing...',
-        welcomeTitle: 'Welcome to Xdoc!',
-        welcomeSub: 'Your healthcare journey starts here.',
-        continue: 'Continue',
-        shuruKarein: 'Start Now',
-        samajhGaya: 'Got it',
-        skip: 'Skip',
-        backToDashboard: 'Back to Dashboard',
-        doctorAddKarein: 'Add Doctor',
-        baadMein: 'Later',
-        ready: 'You are ready! 🚀',
-        readySub: 'Your hospital is now visible to patients.',
-        viewDashboard: 'View Dashboard',
+        saving: 'Saving...',
+        booking: 'Booking...',
+        connecting: 'Connecting...',
+        almost_done: 'Almost done...',
+        done: 'Done',
+        live: 'LIVE',
+        offline: 'OFFLINE',
+        reconnected: 'Reconnected',
+        toasts: {
+          login_success: 'Login Successful!',
+          logout_success: 'Logged out successfully',
+          profile_updated: 'Profile updated!',
+          booking_cancelled: 'Booking cancelled',
+          refresh_success: 'Data updated from source',
+          booking_completed: 'Booking completed successfully!',
+          patient_missed: 'Patient marked as missed'
+        },
+        emptyStates: {
+          no_hospitals: {
+            title: 'No Hospitals Found',
+            subtitle: 'Try searching for a different area or hospital type.',
+            button: 'Show All'
+          },
+          no_history: {
+            title: 'No Booking History',
+            subtitle: 'You haven\'t made any bookings yet.',
+            button: 'Book Now'
+          },
+          no_waiting: {
+            title: 'No One is Waiting',
+            subtitle: 'The waiting queue is currently empty.',
+            button: 'Open Reception'
+          }
+        }
       },
       errors: {
         userNotFound: 'This email is not registered. Please sign up first.',
@@ -771,30 +782,42 @@ export const translations = {
       },
       ux: {
         loading: 'لوڈ ہو رہا ہے',
-        pleaseWait: 'برائے کرم انتظار کریں',
-        success: 'کامیابی',
-        error: 'خرابی',
-        tryAgain: 'دوبارہ کوشش کریں',
-        noData: 'کوئی ڈیٹا نہیں',
-        welcome: 'خوش آمدید',
-        done: 'مکمل',
-        saving: 'محفوظ ہو رہا ہے',
-        saved: 'محفوظ ہو گیا',
-        deleting: 'حذف ہو رہا ہے',
-        deleted: 'حذف ہو گیا',
+        wait: 'انتظار کریں',
         refreshing: 'تازہ ہو رہا ہے',
-        welcomeTitle: 'Xdoc میں خوش آمدید!',
-        welcomeSub: 'آپ کا صحت کا سفر یہاں سے شروع ہوتا ہے۔',
-        continue: 'جاری رکھیں',
-        shuruKarein: 'ابھی شروع کریں',
-        samajhGaya: 'سمجھ گیا',
-        skip: 'چھوڑیں',
-        backToDashboard: 'ڈیش بورڈ پر واپس جائیں',
-        doctorAddKarein: 'ڈاکٹر شامل کریں',
-        baadMein: 'بعد میں',
-        ready: 'آپ تیار ہیں! 🚀',
-        readySub: 'آپ کا ہسپتال اب مریضوں کو نظر آ رہا ہے۔',
-        viewDashboard: 'ڈیش بورڈ دیکھیں',
+        saving: 'محفوظ ہو رہا ہے',
+        booking: 'بک ہو رہا ہے',
+        connecting: 'جڑ رہا ہے',
+        almost_done: 'تقریباً مکمل',
+        done: 'مکمل',
+        live: 'لائیو',
+        offline: 'آف لائن',
+        reconnected: 'دوبارہ جڑ گیا',
+        toasts: {
+          login_success: 'لاگ ان کامیاب!',
+          logout_success: 'لاگ آؤٹ کامیاب',
+          profile_updated: 'پروفائل اپ ڈیٹ ہو گئی!',
+          booking_cancelled: 'بکنگ منسوخ کر دی گئی',
+          refresh_success: 'ڈیٹا اپ ڈیٹ ہو گیا',
+          booking_completed: 'بکنگ کامیابی سے مکمل ہوئی!',
+          patient_missed: 'مریض کو غیر حاضر نشان زد کر دیا گیا'
+        },
+        emptyStates: {
+          no_hospitals: {
+            title: 'کوئی ہسپتال نہیں ملا',
+            subtitle: 'مختلف علاقہ یا ہسپتال کی قسم تلاش کرنے کی کوشش کریں۔',
+            button: 'سب دکھائیں'
+          },
+          no_history: {
+            title: 'کوئی ہسٹری نہیں',
+            subtitle: 'آپ نے ابھی تک کوئی بکنگ نہیں کی ہے۔',
+            button: 'ابھی بک کریں'
+          },
+          no_waiting: {
+            title: 'کوئی بھی انتظار نہیں کر رہا',
+            subtitle: 'انتظار کی فہرست ابھی خالی ہے۔',
+            button: 'ریسپشن کھولیں'
+          }
+        }
       },
       errors: {
         userNotFound: 'یہ ای میل رجسٹرڈ نہیں ہے۔ پہلے سائن اپ کریں۔',

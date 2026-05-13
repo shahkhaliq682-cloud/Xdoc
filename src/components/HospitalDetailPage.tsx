@@ -10,6 +10,8 @@ import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { collection, query, getDocs, where, limit } from 'firebase/firestore';
 import { db } from '../firebase';
+import { SmartImage } from './ui/SmartImage';
+import { HospitalDetailSkeleton } from './ui/Skeleton';
 
 interface HospitalDetailPageProps {
   hospital: any;
@@ -61,6 +63,10 @@ const HospitalDetailPage: React.FC<HospitalDetailPageProps> = ({ hospital, onBac
 
   const isGovt = hospital.type?.toLowerCase().includes('government');
   
+  if (loading) {
+    return <HospitalDetailSkeleton />;
+  }
+  
   const currentTime = new Date();
   const currentHour = currentTime.getHours();
   const currentMinute = currentTime.getMinutes();
@@ -74,10 +80,11 @@ const HospitalDetailPage: React.FC<HospitalDetailPageProps> = ({ hospital, onBac
     <div className="bg-slate-50 min-h-screen pb-20">
       {/* Header Image */}
       <div className="h-72 md:h-[450px] relative">
-        <img 
+        <SmartImage 
           src={hospital.imageUrl || hospital.photo || `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1200&h=600&sig=${hospital.id}`} 
-          className="w-full h-full object-cover"
+          className="w-full h-full"
           alt={hospital.hospitalName}
+          fallbackInitials={hospital.hospitalName?.[0]}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         
@@ -215,7 +222,12 @@ const HospitalDetailPage: React.FC<HospitalDetailPageProps> = ({ hospital, onBac
                 <div key={doctor.id} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex flex-col hover:shadow-xl transition-all group">
                    <div className="flex items-start gap-5 mb-8">
                       <div className="w-20 h-20 rounded-[28px] bg-primary/10 flex items-center justify-center text-primary text-3xl font-bold shadow-lg shadow-primary/5 overflow-hidden">
-                         {doctor.photo ? <img src={doctor.photo} className="w-full h-full object-cover" /> : doctor.name?.[0] || 'D'}
+                         <SmartImage 
+                           src={doctor.photo} 
+                           alt={doctor.name} 
+                           className="w-full h-full" 
+                           fallbackInitials={doctor.name?.[0] || 'D'} 
+                         />
                       </div>
                       <div className="flex-1">
                          <div className="flex items-center justify-between mb-1">

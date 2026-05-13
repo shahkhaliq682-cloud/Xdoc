@@ -72,7 +72,7 @@ import {
 } from 'recharts';
 
 import ReceptionMode from './ReceptionMode';
-import { ListSkeleton, StatSkeleton } from './ui/Skeleton';
+import { ListSkeleton, StatSkeleton, DashboardSkeleton } from './ui/Skeleton';
 import EmptyState from './ui/EmptyState';
 import { useToast } from '../contexts/ToastContext';
 import confetti from 'canvas-confetti';
@@ -93,12 +93,37 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const [staff, setStaff] = useState<any[]>([]);
   const [tokens, setTokens] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDataWarning, setShowDataWarning] = useState(false);
   const [newTokenId, setNewTokenId] = useState<string | null>(null);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [showReceptionMode, setShowReceptionMode] = useState(false);
+  const [isLive, setIsLive] = useState(true);
+
+  // Firestore connection tracking
+  useEffect(() => {
+    window.addEventListener('online', () => setIsLive(true));
+    window.addEventListener('offline', () => setIsLive(false));
+    
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'debug_tests', 'connection_test'));
+        setIsLive(true);
+      } catch (error: any) {
+        if (error.message?.includes('offline')) {
+          setIsLive(false);
+        }
+      }
+    };
+    testConnection();
+    
+    return () => {
+      window.removeEventListener('online', () => setIsLive(true));
+      window.removeEventListener('offline', () => setIsLive(false));
+    };
+  }, []);
 
   // Filter today's tokens
   const today = new Date();
@@ -321,6 +346,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     let isMounted = true;
     if (!initialHospitalData?.uid) return;
     
+    setIsSyncing(true);
     // Listen for today's tokens specifically for real-time dashboard
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -350,9 +376,15 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
         });
 
         setTokens(newTokens);
+        setIsLoading(false);
+        setIsSyncing(false);
       }
     }, (error) => {
-      if (isMounted) handleFirestoreError(error, OperationType.LIST, 'tokens');
+      if (isMounted) {
+        handleFirestoreError(error, OperationType.LIST, 'tokens');
+        setIsLoading(false);
+        setIsSyncing(false);
+      }
     });
 
     return () => { 
@@ -446,16 +478,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       .reduce((sum, t) => sum + (Number(t.consultationFee || t.fee) || 0), 0);
 
     if (isLoading) {
-      return (
-        <div className="p-8 space-y-10">
-          <div className="h-32 bg-slate-100 rounded-[48px] animate-pulse" />
-          <StatSkeleton count={4} />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2"><ListSkeleton count={5} /></div>
-            <div><StatSkeleton count={2} /></div>
-          </div>
-        </div>
-      );
+      return <DashboardSkeleton />;
     }
 
     return (
@@ -924,7 +947,9 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
             className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary font-medium"
           />
         </div>
-        <button 
+        <LoadingButton 
+          isLoading={isSaving}
+          loadingText={editingStaffId ? t.ux.saving : t.ux.adding}
           onClick={async () => {
             if (!newStaff.name) return;
             setIsSaving(true);
@@ -960,8 +985,8 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           disabled={isSaving}
           className="w-full py-5 bg-primary text-white text-lg font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
         >
-          {isSaving ? (editingStaffId ? 'Saving...' : 'Adding...') : (editingStaffId ? t.common?.save || 'Update Staff' : d.addStaff)}
-        </button>
+          {editingStaffId ? t.common?.save || 'Update Staff' : d.addStaff}
+        </LoadingButton>
         {editingStaffId && (
           <button 
             onClick={() => {
@@ -1127,7 +1152,9 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-3xl font-black text-slate-900 tracking-tight">{t.patient.booking.editProfile}</h2>
-        <button 
+        <LoadingButton 
+          isLoading={isSaving}
+          loadingText={t.ux.saving}
           onClick={async () => {
             setIsSaving(true);
             try {
@@ -1142,8 +1169,8 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           }}
           className="px-8 py-3 bg-health-teal text-white rounded-2xl font-black text-sm shadow-xl shadow-health-teal/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
         >
-          {isSaving ? 'Saving...' : <><Save size={18} /> {t.dashboard.saveChanges}</>}
-        </button>
+          <Save size={18} /> {t.dashboard.saveChanges}
+        </LoadingButton>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1357,6 +1384,23 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                <h1 className="text-xl font-black text-slate-900 tracking-tight truncate max-w-[300px]">
                  {hospitalData?.hospitalName || 'HOSPITAL DASHBOARD'}
                </h1>
+               
+               <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-100 rounded-full">
+                 <div className={`w-2 h-2 rounded-full ${isLive ? 'bg-success-green breathing-dot' : 'bg-red-400'}`} />
+                 <span className={`text-[10px] font-black uppercase tracking-widest ${isLive ? 'text-success-green' : 'text-red-400'}`}>
+                    {isLive ? t.ux.live : t.ux.offline}
+                 </span>
+               </div>
+
+               {isSyncing && (
+                 <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 border border-primary/10 rounded-full animate-pulse">
+                   <div className="w-2 h-2 rounded-full bg-primary animate-spin" />
+                   <span className="text-[10px] font-black text-primary uppercase tracking-widest">
+                     Syncing
+                   </span>
+                 </div>
+               )}
+
                <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
                   <span className={`text-[10px] font-black uppercase tracking-widest ${hospitalData?.status === 'open' ? 'text-emerald-600' : 'text-slate-400'}`}>
                     {hospitalData?.status === 'open' ? t.patient.booking.status + ': OPEN' : t.patient.booking.status + ': CLOSED'}

@@ -14,7 +14,8 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
-import { ListSkeleton, StatSkeleton } from './ui/Skeleton';
+import { ListSkeleton, StatSkeleton, HistorySkeleton } from './ui/Skeleton';
+import { SmartImage } from './ui/SmartImage';
 import EmptyState from './ui/EmptyState';
 import { useToast } from '../contexts/ToastContext';
 
@@ -356,10 +357,11 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                 className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl transition-all cursor-pointer group"
               >
                 <div className="h-48 relative overflow-hidden">
-                  <img 
+                  <SmartImage 
                     src={h.imageUrl || h.photo || `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800&h=400&sig=${h.id}`} 
                     alt={h.hospitalName} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full group-hover:scale-105 transition-transform duration-500"
+                    fallbackInitials={h.hospitalName?.[0]}
                   />
                   <div className="absolute top-4 left-4 flex flex-col gap-2">
                     <div className={`bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-slate-100`}>
@@ -669,14 +671,24 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
           ))}
         </div>
 
-        {filtered.length === 0 ? (
-          <EmptyState 
-            type="no_bookings" 
-            onAction={() => setActiveTab('hospitals')} 
-          />
-        ) : (
-          <div className="space-y-4">
-            {filtered.map((token) => {
+        <AnimatePresence mode="wait">
+          {isLoading ? (
+            <motion.div
+              key="history-loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <HistorySkeleton />
+            </motion.div>
+          ) : filtered.length === 0 ? (
+            <EmptyState 
+              type="no_bookings" 
+              onAction={() => setActiveTab('hospitals')} 
+            />
+          ) : (
+            <div className="space-y-4">
+              {filtered.map((token) => {
               const isUpcoming = token.appointmentDate >= todayStr && token.status === 'waiting';
               const isPast = token.status === 'completed' || token.status === 'not-arrived' || token.status === 'cancelled';
               
@@ -763,9 +775,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
             })}
           </div>
         )}
-      </div>
-    );
-  };
+      </AnimatePresence>
+    </div>
+  );
+};
 
   return (
     <div className="bg-[#faf8ff] min-h-screen pb-32">

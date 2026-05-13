@@ -78,6 +78,63 @@ import BookingSuccess from './components/BookingSuccess';
 import OnboardingTour from './components/OnboardingTour';
 import LoadingButton from './components/ui/LoadingButton';
 
+// --- Splash Screen ---
+const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 2000);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[1000] bg-white flex flex-col items-center justify-center"
+    >
+      <motion.div 
+        animate={{ scale: [1, 1.1, 1] }} 
+        transition={{ repeat: Infinity, duration: 1.5 }}
+        className="w-24 h-24 rounded-3xl medical-cross-gradient flex items-center justify-center text-white shadow-2xl shadow-primary/30 mb-6"
+      >
+        <Activity size={48} />
+      </motion.div>
+      <h2 className="text-3xl font-display font-bold text-slate-900 tracking-tighter mb-2">Xdoc</h2>
+      <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px]">Apna Doctor Dhundein</p>
+      
+      <div className="flex gap-2 mt-8">
+        {[0, 1, 2].map(i => (
+          <motion.div 
+            key={i}
+            animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
+            transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+            className="w-2 h-2 rounded-full bg-primary"
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+// --- Page Progress Bar ---
+const PageProgressBar = ({ isLoading }: { isLoading: boolean }) => {
+  return (
+    <AnimatePresence>
+      {isLoading && (
+        <motion.div 
+          initial={{ width: 0, opacity: 1 }}
+          animate={{ width: isLoading ? '70%' : '100%' }}
+          exit={{ width: '100%', opacity: 0 }}
+          transition={{ 
+            width: { duration: isLoading ? 0.8 : 0.2, ease: "easeInOut" },
+            opacity: { duration: 0.2, delay: 0.2 }
+          }}
+          className="fixed top-0 left-0 h-[3px] bg-primary z-[2000] shadow-[0_0_10px_#00C9B1]"
+        />
+      )}
+    </AnimatePresence>
+  );
+};
+
 // --- Header Component ---
 
 const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, onLogin, showMenu = false, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, onLogin?: () => void, isLanding?: boolean }) => {
@@ -3420,6 +3477,8 @@ export default function App() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const { currentUser, userData, logout } = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const [viewState, setViewState] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -3732,8 +3791,21 @@ export default function App() {
     }
   };
 
+  // Page navigation loader effect
+  useEffect(() => {
+    if (showSplash) return;
+    setIsPageLoading(true);
+    const timer = setTimeout(() => setIsPageLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, [viewState, activeTab, selectedHospital, selectedDoctor, showSplash]);
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
   return (
     <div className={`min-h-screen selection:bg-primary/20 ${isDarkMode ? 'bg-bg-dark' : 'bg-white'}`}>
+      <PageProgressBar isLoading={isPageLoading} />
       <AnimatePresence mode="wait">
         <motion.div
           key={viewState}
