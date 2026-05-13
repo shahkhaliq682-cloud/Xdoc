@@ -169,13 +169,15 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, o
   return (
     <div className="bg-white">
       {/* 1. HERO SECTION */}
-      <section className="relative min-h-[90vh] flex flex-col justify-center pt-20 overflow-hidden">
-        {/* Sky Gradient bg */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#EBF4FF] via-white to-white pointer-events-none" />
+      <section className="relative min-h-[90vh] flex flex-col justify-center pt-20 overflow-hidden bg-white">
+        {/* Subtle radial glow background */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-blue-50/50 rounded-full blur-[120px] opacity-60" />
+          <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] bg-teal-50/30 rounded-full blur-[100px] opacity-40" />
+        </div>
         
-        {/* Floating Background Props */}
-        <div className="absolute top-[20%] left-[5%] w-64 h-64 bg-blue-100 rounded-full blur-[100px] opacity-40 animate-pulse" />
-        <div className="absolute bottom-[20%] right-[5%] w-96 h-96 bg-teal-50 rounded-full blur-[120px] opacity-40" />
+        {/* Sky Gradient overlay for smooth transition */}
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#EBF4FF]/30 to-transparent pointer-events-none" />
 
         <div className="max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10 w-full py-20">
           
@@ -184,53 +186,71 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, o
             <motion.div 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-primary/20 rounded-full mb-8 shadow-sm"
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-primary/10 rounded-full mb-10 shadow-sm"
             >
-              <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary">{h.hero.badge}</span>
+              <div className="w-2 h-2 rounded-full bg-[#00C9B1] animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{h.hero.badge}</span>
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="space-y-2 mb-8"
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.15, delayChildren: 0.2 }
+                }
+              }}
+              className="space-y-4 mb-10"
             >
-              <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter leading-[1.1]">
+              <motion.h1 
+                variants={{
+                  hidden: { opacity: 0, y: 30 },
+                  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } }
+                }}
+                className="text-5xl md:text-8xl font-black text-[#0F172A] tracking-[-0.04em] leading-[1.05]"
+              >
                 {h.hero.title1} <br />
                 {h.hero.title2} <br />
-                <span className="text-health-teal">{h.hero.title3}</span>
-              </h1>
+                <span className="text-[#00C9B1] drop-shadow-sm">{h.hero.title3}</span>
+              </motion.h1>
+
+              <motion.p
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }
+                }}
+                className="text-lg md:text-2xl text-[#64748B] font-medium max-w-2xl leading-relaxed mt-8"
+              >
+                {language === 'UR' 
+                  ? 'پاکستان کے تمام ہسپتال اور کلینک اب ایک جگہ۔ گھر بیٹھے ڈاکٹر ڈھونڈیں اور آن لائن ٹوکن بک کریں۔'
+                  : 'Pakistan ke tamam hospitals aur clinics ek jagah. Ghar baithe doctor dhundein aur online token book karein.'
+                }
+              </motion.p>
             </motion.div>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg md:text-xl text-slate-500 font-bold max-w-xl mb-12 leading-relaxed"
-            >
-              {h.hero.subtitle}
-            </motion.p>
-
-            {/* Search Bar */}
+            {/* Search Bar - Slightly wider and more refined */}
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="relative max-w-2xl mb-8 group"
+              transition={{ delay: 0.6, duration: 1, ease: [0.22, 1, 0.36, 1] }}
+              className="relative max-w-3xl mb-12 group"
             >
-              <div className="flex items-center bg-white p-2 rounded-[24px] shadow-2xl shadow-blue-500/10 border-2 border-slate-100 group-focus-within:border-primary transition-all">
-                <Search className="ml-6 text-slate-400" size={24} />
+              <div className="flex items-center bg-white p-2.5 rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] border-2 border-slate-50 group-focus-within:border-[#00C9B1]/30 transition-all duration-500">
+                <Search className="ml-6 text-slate-300" size={24} />
                 <input 
                   type="text" 
                   placeholder={h.hero.searchPlaceholder}
                   value={searchVal}
                   onChange={(e) => setSearchVal(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && onSearch(searchVal)}
-                  className="w-full px-4 py-4 bg-transparent border-none focus:ring-0 font-bold text-lg text-slate-900"
+                  className="w-full px-4 py-5 bg-transparent border-none focus:ring-0 font-bold text-xl text-slate-800 placeholder-slate-300"
                 />
                 <button 
                   onClick={() => onSearch(searchVal)}
-                  className="hidden md:block px-10 py-4 bg-health-teal text-white font-black rounded-2xl hover:scale-105 active:scale-95 transition-all text-sm uppercase tracking-widest"
+                  className="hidden md:block px-12 py-5 bg-[#00C9B1] text-white font-black rounded-[24px] hover:bg-[#00B59F] hover:shadow-lg hover:shadow-teal-500/20 active:scale-95 transition-all text-sm uppercase tracking-widest"
                 >
                   {h.hero.searchBtn}
                 </button>
