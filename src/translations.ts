@@ -2,6 +2,16 @@ export type Language = 'EN' | 'UR';
 
 export const translations = {
   EN: {
+    nav: {
+      home: 'Home',
+      findHospital: 'Find Hospital',
+      about: 'About',
+      login: 'Login',
+      signUp: 'Sign Up',
+      signUpFree: 'Sign Up Free',
+      profile: 'Profile',
+      joinHospital: 'Join as Hospital',
+    },
     homeRedesign: {
       nav: {
         home: 'Home',
@@ -548,13 +558,17 @@ export const translations = {
     }
   },
   UR: {
+    nav: {
+      home: 'ہوم',
+      findHospital: 'ہسپتال تلاش کریں',
+      about: 'معلومات',
+      login: 'لاگ ان',
+      signUp: 'سائن اپ',
+      signUpFree: 'مفت سائن اپ',
+      profile: 'پروفائل',
+      joinHospital: 'ہسپتال جوائن کریں',
+    },
     homeRedesign: {
-      nav: {
-        home: 'ہوم',
-        hospitals: 'ہسپتال',
-        about: 'معلومات',
-        joinHospital: 'ہسپتال جوائن کریں',
-      },
       hero: {
         badge: '🏥 پاکستان کا نمبر 1 ہیلتھ کیئر پلیٹ فارم',
         title1: 'اپنا ڈاکٹر',

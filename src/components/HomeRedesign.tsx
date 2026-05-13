@@ -33,7 +33,8 @@ import {
   Zap,
   DollarSign,
   Building,
-  Star
+  Star,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence, useInView } from 'motion/react';
 import { 

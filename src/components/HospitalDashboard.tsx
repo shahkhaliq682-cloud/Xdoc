@@ -74,6 +74,7 @@ import {
 import ReceptionMode from './ReceptionMode';
 import { ListSkeleton, StatSkeleton, DashboardSkeleton } from './ui/Skeleton';
 import EmptyState from './ui/EmptyState';
+import LoadingButton from './ui/LoadingButton';
 import { useToast } from '../contexts/ToastContext';
 import confetti from 'canvas-confetti';
 
