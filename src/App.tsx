@@ -80,6 +80,7 @@ import OnboardingTour from './components/OnboardingTour';
 import LoadingButton from './components/ui/LoadingButton';
 
 import HomeRedesign from './components/HomeRedesign';
+import HospitalRegistration from './components/HospitalRegistration';
 
 // --- Splash Screen ---
 const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
@@ -1023,7 +1024,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
-const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
+const OldHospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: '', 
@@ -2112,40 +2113,40 @@ const HospitalListPage = ({ hospitals, onHospitalClick }: { hospitals: any[], on
                         <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#005046]">Open Now</span>
                       </div>
                     </div>
-                    <div className="p-10 flex-1 flex flex-col">
-                      <div className="flex justify-between items-start mb-4">
+                    <div className="p-8 md:p-12 flex-1 flex flex-col">
+                      <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
                         <div className="space-y-2">
                           <div className="flex items-center gap-3">
-                            <h3 className="text-2xl font-bold text-slate-900 leading-tight">{h.hospitalName || h.name}</h3>
-                            {h.verified && <CheckCircle2 size={24} className="text-primary" fill="currentColor" />}
+                            <h3 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-none">{h.hospitalName || h.name}</h3>
+                            {h.verified && <CheckCircle2 size={20} className="text-[#0B5FFF]" fill="currentColor" />}
                           </div>
                           <div className="flex items-center gap-2 text-slate-400">
                             <MapPin size={16} />
                             <span className="text-sm font-bold">{h.area || h.address}, {h.city}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 shadow-sm">
+                        <div className="flex items-center gap-2 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100/50 shadow-sm self-start md:self-auto">
                           <Star size={18} fill="currentColor" />
-                          <span className="font-mono text-lg font-bold">{h.rating || 0}</span>
+                          <span className="font-bold text-lg leading-none">{h.rating || 4.8}</span>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 mt-6 mb-8">
-                        <div className="bg-primary/5 text-primary px-4 py-2 rounded-xl flex items-center gap-2 border border-primary/10">
-                          <ShieldCheck size={16} />
-                          <span className="font-mono text-[10px] font-bold uppercase tracking-widest">{h.type || h.hospitalType || h.category || 'PRIVATE'}</span>
+                      <div className="flex flex-wrap gap-2 mb-10">
+                        <div className="bg-[#0B5FFF]/5 text-[#0B5FFF] px-4 py-2 rounded-xl flex items-center gap-2 border border-[#0B5FFF]/10">
+                          <Building2 size={16} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">{h.type || h.hospitalType || h.category || 'PRIVATE'}</span>
                         </div>
                         {(h.specializations || h.specs || []).slice(0, 3).map((spec: string, i: number) => (
-                          <span key={i} className="bg-slate-50 text-slate-500 px-4 py-2 rounded-xl font-mono text-[10px] font-bold uppercase border border-slate-100">{spec}</span>
+                          <span key={i} className="bg-slate-50 text-slate-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100">{spec}</span>
                         ))}
                       </div>
 
-                      <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-50">
-                        <div>
-                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Consultation start at</p>
-                          <p className="text-3xl font-bold text-slate-900">Rs. {(parseInt(h.opdFee || h.startingFee) || 1000).toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
+                      <div className="mt-auto flex flex-col sm:flex-row items-center justify-between pt-10 border-t border-slate-50 gap-6">
+                        <div className="text-center sm:text-left">
+                          <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Consultation start at</p>
+                          <p className="text-3xl font-black text-slate-900">Rs. {(parseInt(h.opdFee || h.startingFee) || 1500).toLocaleString()} <span className="text-sm font-medium text-slate-400">/visit</span></p>
                         </div>
-                        <button className="bg-health-teal text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all">
+                        <button className="w-full sm:w-auto bg-[#0B5FFF] text-white font-bold px-12 py-5 rounded-[22px] shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all text-base uppercase tracking-widest">
                           Book Now
                         </button>
                       </div>
