@@ -1009,13 +1009,13 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
             disabled={isSubmitting}
             className="w-full py-5 bg-[#0B5FFF] text-white font-bold text-xl rounded-2xl shadow-xl hover:bg-blue-600 transition-all disabled:opacity-70 mt-4"
           >
-            {isSubmitting ? 'Creating Account...' : t.signup.createAccount}
+            {isSubmitting ? 'Creating Account...' : t.signup.labels.createAccount}
           </button>
 
           {errors.general && <p className="text-red-500 text-center text-sm font-bold">{errors.general}</p>}
 
           <p className="text-center text-slate-500 font-medium pt-4">
-            {t.signup.alreadyHaveAccount.split('?')[0]}? <span className="text-primary font-bold cursor-pointer transition-all" onClick={() => onComplete()}>{t.signup.alreadyHaveAccount.split('?')[1] || 'Login'}</span>
+            {(t.signup.labels.alreadyHaveAccount || "").split('?')[0]}? <span className="text-primary font-bold cursor-pointer transition-all" onClick={() => onComplete()}>{(t.signup.labels.alreadyHaveAccount || "").split('?')[1] || 'Login'}</span>
           </p>
         </form>
       </div>

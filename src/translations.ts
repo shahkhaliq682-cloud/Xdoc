@@ -683,6 +683,10 @@ export const translations = {
         chronicConditions: 'دیرینہ بیماریاں',
         languagePref: 'پسندیدہ زبان',
         notifications: 'اطلاعات (نوٹیفیکیشنز)',
+        opdFee: 'او پی ڈی فیس',
+        createAccount: 'میرا اکاؤنٹ بنائیں',
+        registerHospital: 'میرا ہسپتال رجسٹر کریں',
+        alreadyHaveAccount: 'پہلے سے اکاؤنٹ ہے؟ لاگ ان کریں',
       },
       errors: {
         required: 'یہ فیلڈ ضروری ہے',
