@@ -140,7 +140,7 @@ const PageProgressBar = ({ isLoading }: { isLoading: boolean }) => {
 
 // --- Header Component ---
 
-const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, onLogin, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, onLogin?: () => void, isLanding?: boolean }) => {
+const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, onLogin, isLanding = false, viewState, setViewState }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, onLogin?: () => void, isLanding?: boolean, viewState?: string, setViewState?: (v: any) => void }) => {
   const { userData, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -829,7 +829,12 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
             Find Care <ArrowRight size={20} />
           </div>
         </motion.div>
-      const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
+      </div>
+    </div>
+  </div>
+);
+
+const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
     fullName: '',
@@ -1016,9 +1021,6 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
       </div>
     </div>
   );
-};      </div>
-    </div>
-  );
 };
 
 const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
@@ -1040,6 +1042,42 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
+  const [step, setStep] = useState(1);
+  const totalSteps = 8;
+  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+  const [isEmergency, setIsEmergency] = useState(false);
+  const [quickSelect, setQuickSelect] = useState<'Mon-Fri' | 'Mon-Sat' | 'All' | null>('Mon-Sat');
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+  const [staffCounts, setStaffCounts] = useState({ doctors: 0, nurses: 0, receptionists: 0, support: 0 });
+  const [individualStaff, setIndividualStaff] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  const [media, setMedia] = useState({ logo: null, photos: [] as any[], about: '' });
+
+  const facilityGroups = {
+    "Medical Facilities": ["Emergency Ward", "ICU", "Operation Theater (OT)", "Labour Room"],
+    "Diagnostic Facilities": ["Pathology Lab", "X-Ray", "Ultrasound"],
+    "Support Facilities": ["Pharmacy", "Ambulance Service"],
+    "Patient Comfort": ["Private Rooms", "General Ward", "Waiting Area"],
+    "Digital Services": ["Online Appointment", "Telemedicine"]
+  };
+  const allFacilities = Object.values(facilityGroups).flat();
+
+  const handleQuickSelect = (type: 'Mon-Fri' | 'Mon-Sat' | 'All') => {
+    setQuickSelect(type);
+    if (type === 'Mon-Fri') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+    else if (type === 'Mon-Sat') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+    else if (type === 'All') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  };
+
+  const toggleDay = (day: string) => {
+    setQuickSelect(null);
+    setSelectedDays(prev => 
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
+  };
+
+  const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
+  const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
   const allSpecs = [
     'General Physician', 'Cardiology', 'Neurology', 'Orthopedic', 'Gynecology', 
@@ -3016,7 +3054,9 @@ export default function App() {
               onLogoClick={() => setViewState('hero')} 
               onSignUp={() => setViewState('auth_choice')} 
               onLogin={() => setViewState('login')}
-              isLanding={true} 
+              isLanding={true}
+              viewState={viewState}
+              setViewState={setViewState}
             />
             <HomeRedesign 
               onSignUp={() => setViewState('auth_choice')} 
