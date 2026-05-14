@@ -140,14 +140,14 @@ const PageProgressBar = ({ isLoading }: { isLoading: boolean }) => {
 
 // --- Header Component ---
 
-const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, onLogin, showMenu = false, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, onLogin?: () => void, isLanding?: boolean }) => {
+const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp, onLogin, isLanding = false }: { darkMode?: boolean, hospitalName?: string, onToggleSidebar?: () => void, onLogoClick?: () => void, showMenu?: boolean, onSignUp?: () => void, onLogin?: () => void, isLanding?: boolean }) => {
   const { userData, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -155,66 +155,70 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
   if (isLanding) {
     return (
       <>
-        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 px-4 md:px-8 h-[80px] flex items-center border-b ${
-          isScrolled ? 'bg-white shadow-[0_2px_20px_rgba(0,0,0,0.08)] border-slate-100' : 'bg-white/50 backdrop-blur-md border-transparent'
+        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-200 h-16 flex items-center border-b ${
+          isScrolled 
+            ? 'bg-white/95 backdrop-blur-md border-slate-200 shadow-sm' 
+            : 'bg-white border-transparent'
         }`}>
-          <div className="max-w-[1400px] mx-auto w-full flex justify-between items-center">
-            <div onClick={onLogoClick} className="flex items-center gap-4 cursor-pointer group">
-              <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-xl shadow-primary/20 transition-all group-hover:scale-110 group-hover:rotate-6">
-                <Activity size={28} />
+          <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex justify-between items-center">
+            {/* Left: Logo */}
+            <div onClick={onLogoClick} className="flex items-center gap-2 cursor-pointer group">
+              <div className="w-8 h-8 rounded-lg bg-[#0B5FFF] flex items-center justify-center text-white shadow-md shadow-primary/20 transition-transform group-hover:scale-110">
+                <Activity size={18} />
               </div>
-              <span className="text-3xl font-black tracking-tighter text-slate-900">Xdoc</span>
+              <span className="text-xl font-bold tracking-tight text-[#0B1D35]">Xdoc</span>
             </div>
 
-            <nav className="hidden lg:flex items-center gap-10">
-              <a href="#" className="text-sm font-black text-slate-500 hover:text-primary uppercase tracking-widest transition-colors">{t.homeRedesign.nav.home}</a>
-              <a href="#" onClick={(e) => { e.preventDefault(); onLogoClick(); }} className="text-sm font-black text-slate-500 hover:text-primary uppercase tracking-widest transition-colors">{t.homeRedesign.nav.hospitals}</a>
-              <a href="#features" className="text-sm font-black text-slate-500 hover:text-primary uppercase tracking-widest transition-colors">{t.homeRedesign.nav.about}</a>
-              <button onClick={onSignUp} className="text-sm font-black text-primary hover:text-health-teal uppercase tracking-widest transition-colors">{t.homeRedesign.nav.joinHospital}</button>
+            {/* Center: Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-8">
+              <a href="#" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.home}</a>
+              <a href="#hospitals" onClick={(e) => { e.preventDefault(); onLogoClick?.(); }} className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.findHospital}</a>
+              <a href="#features" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.about}</a>
             </nav>
             
-            <div className="flex items-center gap-4">
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2">
               <button 
                 onClick={() => setLanguage(language === 'EN' ? 'UR' : 'EN')}
-                className="px-4 py-2 rounded-xl font-black border-2 border-slate-100 hover:border-primary transition-all text-xs bg-white text-slate-600"
+                className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors uppercase tracking-wider"
               >
-                {language === 'EN' ? 'اردو' : 'ENGLISH'}
+                {language === 'EN' ? 'اردو' : 'English'}
               </button>
 
               {!userData ? (
                 <>
                   <button 
                     onClick={onLogin}
-                    className="hidden lg:block px-8 py-3 rounded-xl font-black text-slate-900 hover:bg-slate-50 transition-all text-xs uppercase tracking-widest"
+                    className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
                   >
-                    {t.nav.login}
+                    {t.nav?.login}
                   </button>
                   <button 
                     onClick={onSignUp}
-                    className="hidden sm:block px-8 py-3.5 rounded-xl bg-health-teal text-white font-black shadow-xl shadow-health-teal/20 hover:scale-105 active:scale-95 transition-all text-xs uppercase tracking-widest"
+                    className="hidden sm:block px-5 py-2.5 rounded-lg bg-[#0B5FFF] text-white text-sm font-semibold shadow-sm hover:bg-blue-600 active:scale-95 transition-all"
                   >
-                    {t.nav.signUp}
+                    {t.nav?.signUpFree}
                   </button>
                   <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="lg:hidden p-3 text-slate-600 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+                    className="md:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
                   >
-                    {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                   </button>
                 </>
               ) : (
-                <div className="flex items-center gap-4">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-xs font-black text-slate-900">{userData.displayName}</p>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{userData.role}</p>
+                <div className="flex items-center gap-3">
+                  <div className="hidden sm:block text-right">
+                    <p className="text-xs font-semibold text-slate-900">{userData.displayName}</p>
+                    <p className="text-[10px] text-slate-400 capitalize">{userData.role.replace('_', ' ')}</p>
                   </div>
                   <button 
                     onClick={() => logout()}
-                    className="w-12 h-12 rounded-2xl border-2 border-slate-100 overflow-hidden group relative shadow-sm"
+                    className="w-9 h-9 rounded-full border border-slate-200 overflow-hidden relative group"
                   >
                     <img src={userData.photoURL || "https://images.unsplash.com/photo-1559839734-2b71f1536783?auto=format&fit=crop&q=80&w=200"} alt="Profile" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <LogOut size={18} className="text-white" />
+                      <LogOut size={14} className="text-white" />
                     </div>
                   </button>
                 </div>
@@ -223,65 +227,41 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
           </div>
         </header>
 
-        {/* Mobile Menu Overlay */}
+        {/* Mobile Menu */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div 
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="fixed inset-0 z-[110] bg-white lg:hidden p-6 flex flex-col pt-24"
+              exit={{ opacity: 0, y: -10 }}
+              className="fixed top-16 left-0 w-full z-[90] bg-white border-b border-slate-200 p-6 md:hidden shadow-xl"
             >
-              <div className="flex justify-between items-center mb-12 px-2">
-                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-xl shadow-primary/20">
-                      <Activity size={28} />
-                    </div>
-                    <span className="text-3xl font-black tracking-tighter text-slate-900">Xdoc</span>
-                 </div>
-                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-slate-50 rounded-2xl">
-                    <X size={24} className="text-slate-900" />
-                 </button>
-              </div>
-
-              <nav className="flex flex-col gap-4 mb-auto">
-                {[
-                  { label: t.nav.home, icon: Home },
-                  { label: t.nav.findHospital, icon: Building2 },
-                  { label: t.nav.about, icon: Info },
-                  { label: t.homeRedesign.nav.joinHospital, icon: HospitalIcon }
-                ].map((item, idx) => {
-                  const IconComp = item.icon || Activity;
-                  return (
-                    <a 
-                      key={idx}
-                      href="#" 
-                      onClick={() => setIsMobileMenuOpen(false)} 
-                      className="flex items-center gap-5 p-6 rounded-[28px] bg-slate-50 text-xl font-black text-slate-900 active:bg-slate-100 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm">
-                        <IconComp size={20} />
-                      </div>
-                      {item.label}
-                    </a>
-                  );
-                })}
+              <nav className="flex flex-col gap-1">
+                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-medium">{t.nav?.home}</a>
+                <a href="#" onClick={() => { setIsMobileMenuOpen(false); onLogoClick?.(); }} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-medium">{t.nav?.findHospital}</a>
+                <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-medium">{t.nav?.about}</a>
+                <div className="h-px bg-slate-100 my-4" />
+                <button 
+                   onClick={() => { setLanguage(language === 'EN' ? 'UR' : 'EN'); setIsMobileMenuOpen(false); }}
+                   className="w-full text-left px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-medium"
+                >
+                  {language === 'EN' ? 'Urdu Language' : 'انگریزی زبان'}
+                </button>
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <button 
+                    onClick={() => { setIsMobileMenuOpen(false); onLogin?.(); }}
+                    className="py-3 rounded-xl font-semibold text-slate-900 bg-slate-100"
+                  >
+                    {t.nav?.login}
+                  </button>
+                  <button 
+                    onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
+                    className="py-3 rounded-xl bg-primary text-white font-semibold shadow-lg shadow-primary/20"
+                  >
+                    {t.nav?.signUpFree}
+                  </button>
+                </div>
               </nav>
-
-              <div className="flex flex-col gap-4 mt-8 pb-8">
-                <button 
-                  onClick={() => { setIsMobileMenuOpen(false); onLogin?.(); }}
-                  className="w-full py-6 rounded-[28px] font-black text-slate-900 bg-slate-100 uppercase tracking-widest text-sm"
-                >
-                  {t.nav.login}
-                </button>
-                <button 
-                  onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
-                  className="w-full py-6 rounded-[28px] bg-primary text-white font-black shadow-2xl shadow-primary/20 uppercase tracking-widest text-sm"
-                >
-                  {t.nav.signUpFree}
-                </button>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
