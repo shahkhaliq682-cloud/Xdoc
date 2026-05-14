@@ -32,19 +32,15 @@ import { db } from '../firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 
 // --- Stat Item for the Strip ---
-const StatItem = ({ end, label, realCountPromise }: { end: number, label: string, realCountPromise?: Promise<number> }) => {
+const StatItem = ({ end, label }: { end: number, label: string }) => {
   const [count, setCount] = useState(0);
   const [actualEnd, setActualEnd] = useState(end);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
 
   useEffect(() => {
-    if (realCountPromise) {
-      realCountPromise.then(val => {
-        if (val > 0) setActualEnd(val);
-      }).catch(() => {});
-    }
-  }, [realCountPromise]);
+    setActualEnd(end);
+  }, [end]);
 
   useEffect(() => {
     if (isInView) {
@@ -108,6 +104,33 @@ const Step = ({ number, title, desc, icon: Icon, isLast = false }: { number: num
 const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, onLogin: () => void, onSearch: (q: string) => void }) => {
   const { t, language } = useLanguage();
   const [searchVal, setSearchVal] = useState('');
+
+  const [counts, setCounts] = useState({
+    hospitals: 500,
+    doctors: 2000,
+    cities: 50,
+    patients: 15000
+  });
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const hospitalCount = await getRealCount('users', where('role', '==', 'hospital_admin'));
+        const doctorCount = await getRealCount('doctors');
+        const patientCount = await getRealCount('users', where('role', '==', 'patient'));
+        
+        setCounts(prev => ({
+          ...prev,
+          hospitals: hospitalCount > 0 ? hospitalCount : prev.hospitals,
+          doctors: doctorCount > 0 ? doctorCount : prev.doctors,
+          patients: patientCount > 0 ? patientCount : prev.patients
+        }));
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    };
+    fetchCounts();
+  }, []);
 
   const getRealCount = async (coll: string, qry?: any) => {
     try {
@@ -228,16 +251,16 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, o
       <section className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4">
           <div className="border-r border-slate-100 last:border-r-0">
-             <StatItem end={500} label={h.stats.hospitals} realCountPromise={getRealCount('users', where('role', '==', 'hospital_admin'))} />
+             <StatItem end={counts.hospitals} label={h.stats.hospitals} />
           </div>
           <div className="border-r border-slate-100 last:border-r-0 max-sm:border-r-0">
-             <StatItem end={2000} label={h.stats.doctors} realCountPromise={getRealCount('doctors')} />
+             <StatItem end={counts.doctors} label={h.stats.doctors} />
           </div>
           <div className="border-r border-slate-100 last:border-r-0 lg:max-xl:border-r-0">
-             <StatItem end={50} label={h.stats.cities} />
+             <StatItem end={counts.cities} label={h.stats.cities} />
           </div>
           <div className="border-r border-slate-100 last:border-r-0">
-             <StatItem end={15000} label={h.stats.patients} realCountPromise={getRealCount('users', where('role', '==', 'patient'))} />
+             <StatItem end={counts.patients} label={h.stats.patients} />
           </div>
         </div>
       </section>
@@ -262,7 +285,7 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, o
       </section>
 
       {/* 4. HOW IT WORKS SECTION */}
-      <section className="bg-[#F8FAFC] py-24 md:py-32 px-6 border-y border-slate-100">
+      <section id="how-it-works" className="bg-[#F8FAFC] py-24 md:py-32 px-6 border-y border-slate-100">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-3xl font-bold text-[#0B1D35] mb-4">{h.howItWorks.title}</h2>
@@ -291,8 +314,10 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, o
               {h.cta.registerBtn}
             </button>
             <button 
-              onClick={() => {}}
-              className="w-full sm:w-auto px-10 py-4 bg-transparent border-1.5 border-white/40 text-white font-bold rounded-xl hover:bg-white/10 transition-all font-medium"
+              onClick={() => {
+                document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="w-full sm:w-auto px-10 py-4 bg-transparent border-1.5 border-white/40 text-white font-bold rounded-xl hover:bg-white/10 transition-all"
             >
               See How It Works
             </button>
@@ -305,7 +330,7 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, o
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
              <div>
-                <div className="flex items-center gap-2 mb-6">
+                <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
                    <div className="w-8 h-8 bg-[#0B5FFF] rounded-lg flex items-center justify-center text-white">
                      <Activity size={18} />
                    </div>
@@ -324,29 +349,29 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, o
              <div>
                 <h4 className="text-sm font-bold mb-6 text-white">{h.footer.quickLinks.title}</h4>
                 <ul className="space-y-4 text-slate-400 text-sm">
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.quickLinks.hospitals}</a></li>
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.quickLinks.login}</a></li>
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.quickLinks.about}</a></li>
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.quickLinks.join}</a></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.quickLinks.hospitals}</button></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.quickLinks.login}</button></li>
+                   <li><button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.quickLinks.about}</button></li>
+                   <li><button onClick={onSignUp} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.quickLinks.join}</button></li>
                 </ul>
              </div>
 
              <div>
                 <h4 className="text-sm font-bold mb-6 text-white">{h.footer.hospitalTypes.title}</h4>
                 <ul className="space-y-4 text-slate-400 text-sm">
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.hospitalTypes.govt}</a></li>
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.hospitalTypes.private}</a></li>
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.hospitalTypes.clinic}</a></li>
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.hospitalTypes.govtClinic}</a></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.hospitalTypes.govt}</button></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.hospitalTypes.private}</button></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.hospitalTypes.clinic}</button></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.hospitalTypes.govtClinic}</button></li>
                 </ul>
              </div>
 
              <div>
                 <h4 className="text-sm font-bold mb-6 text-white">{h.footer.company.title}</h4>
                 <ul className="space-y-4 text-slate-400 text-sm">
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.company.privacy}</a></li>
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.company.terms}</a></li>
-                   <li><a href="#" className="hover:text-white transition-colors">{h.footer.company.contact}</a></li>
+                   <li><button className="hover:text-white transition-colors cursor-pointer text-left">Privacy Policy</button></li>
+                   <li><button className="hover:text-white transition-colors cursor-pointer text-left">Terms of Service</button></li>
+                   <li><a href="mailto:support@xdoc.pk" className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.company.contact}</a></li>
                 </ul>
              </div>
           </div>

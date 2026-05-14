@@ -49,11 +49,21 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   };
 
   try {
-    const json = JSON.stringify(errInfo);
+    // Basic circular reference safe stringify
+    const cache = new Set();
+    const json = JSON.stringify(errInfo, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (cache.has(value)) {
+          return '[Circular]';
+        }
+        cache.add(value);
+      }
+      return value;
+    });
     console.error('Firestore Error:', json);
     throw new Error(json);
   } catch (e) {
-    // Fallback in case of circular reference during stringification
+    // Fallback in case even the circular-safe stringify fails or if we're already handling a stringify error
     const fallbackMsg = `Firestore Error [${operationType}] on [${path}]: ${message}`;
     console.error(fallbackMsg, authInfo);
     throw new Error(fallbackMsg);

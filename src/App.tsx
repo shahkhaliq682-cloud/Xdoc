@@ -171,9 +171,24 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
 
             {/* Center: Desktop Nav */}
             <nav className="hidden md:flex items-center gap-8">
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.home}</a>
-              <a href="#hospitals" onClick={(e) => { e.preventDefault(); onLogoClick?.(); }} className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.findHospital}</a>
-              <a href="#features" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.about}</a>
+              <button onClick={() => { setViewState('hero'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.home}</button>
+              <button 
+                onClick={() => {
+                  if (viewState !== 'hero') {
+                    setViewState('hero');
+                    setTimeout(() => setViewState('auth_choice'), 100);
+                  } else {
+                    setViewState('auth_choice');
+                  }
+                }} 
+                className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+              >
+                {t.nav?.findHospital}
+              </button>
+              <button onClick={() => {
+                if (viewState !== 'hero') setViewState('hero');
+                setTimeout(() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }), 100);
+              }} className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.about}</button>
             </nav>
             
             {/* Right: Actions */}
@@ -814,78 +829,44 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
             Find Care <ArrowRight size={20} />
           </div>
         </motion.div>
-      </div>
-    </div>
-  </div>
-);
-
-const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
+      const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const { t } = useLanguage();
-  const [step, setStep] = useState(1);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const totalSteps = 5;
-
   const [formData, setFormData] = useState({
     fullName: '',
-    dob: '',
-    gender: 'Male',
-    cnic: '',
-    phone: '+92 ',
-    whatsapp: '',
-    sameAsPhone: true,
+    phone: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    city: 'Karachi',
-    area: '',
-    bloodGroup: 'Don\'t Know',
-    allergies: '',
-    chronicConditions: [] as string[],
-    language: 'English',
-    whatsappNotifications: true,
-    emailNotifications: true
+    gender: 'Male',
+    city: 'Karachi'
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad'];
-  const chronicList = ['Diabetes', 'High Blood Pressure', 'Heart Disease', 'Asthma', 'Kidney Disease'];
 
-  const validateStep = () => {
+  const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (step === 1) {
-      if (!formData.fullName) newErrors.fullName = t.signup.errors.required;
-      if (!formData.dob) newErrors.dob = t.signup.errors.required;
-    } else if (step === 2) {
-      if (!formData.phone || formData.phone === '+92 ') newErrors.phone = t.signup.errors.required;
-      if (!formData.email) newErrors.email = t.signup.errors.required;
-      if (!formData.password) newErrors.password = t.signup.errors.required;
-      else if (formData.password.length < 6) newErrors.password = t.signup.errors.passwordTooShort;
-      if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
-    } else if (step === 3) {
-      if (!formData.area) newErrors.area = t.signup.errors.required;
-    }
+    if (!formData.fullName) newErrors.fullName = t.signup.errors.required;
+    if (!formData.phone) newErrors.phone = t.signup.errors.required;
+    if (!formData.email) newErrors.email = t.signup.errors.required;
+    if (!formData.password) newErrors.password = t.signup.errors.required;
+    else if (formData.password.length < 6) newErrors.password = t.signup.errors.passwordTooShort;
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const nextStep = () => {
-    if (validateStep()) setStep(s => Math.min(s + 1, totalSteps));
-  };
-  const prevStep = () => setStep(s => Math.max(s - 1, 1));
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    
     setIsSubmitting(true);
-    setErrors({});
     try {
-      // 1. Create Auth Account
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // 2. Prepare Data
       const patientData = {
         uid: user.uid,
         email: formData.email,
@@ -894,502 +875,172 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
         createdAt: serverTimestamp(),
         profile: {
           name: formData.fullName,
-          dob: formData.dob,
-          gender: formData.gender,
-          cnic: formData.cnic,
           phone: formData.phone,
-          whatsapp: formData.sameAsPhone ? formData.phone : formData.whatsapp,
+          gender: formData.gender,
           city: formData.city,
-          area: formData.area,
-          bloodGroup: formData.bloodGroup,
-          allergies: formData.allergies,
-          chronicConditions: formData.chronicConditions,
-          language: formData.language,
-          whatsappNotifications: formData.whatsappNotifications,
-          emailNotifications: formData.emailNotifications,
+          whatsappNotifications: true,
+          emailNotifications: true,
         }
       };
 
-      // 3. Save to Firestore using UID as Doc ID
-      try {
-        await setDoc(doc(db, 'users', user.uid), patientData);
-      } catch (dbErr: any) {
-        console.error("Firestore Error:", dbErr);
-        throw new Error(`Database Error: ${dbErr.message || 'Permission denied'}`);
-      }
-      
+      await setDoc(doc(db, 'users', user.uid), patientData);
       setIsSubmitted(true);
-      
-      // Success redirect
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-
+      setTimeout(() => onComplete(), 1500);
     } catch (err: any) {
-      console.error("Registration Error:", err);
-      let errorMsg = err.message || 'Failed to create account. Please try again.';
-      
-      if (err.code === 'auth/email-already-in-use') {
-        errorMsg = t.auth.emailAlreadyInUse;
-        setErrors({ email: t.auth.emailAlreadyInUse, general: t.auth.emailAlreadyInUse });
-      } else if (err.code === 'auth/network-request-failed') {
-        errorMsg = "Internet connection check karein (Auth error).";
-        setErrors({ general: errorMsg });
-      } else {
-        setErrors({ general: errorMsg });
-      }
+      console.error(err);
+      setErrors({ general: err.message });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const steps = [
-    { title: "Basic Info", icon: User },
-    { title: "Contact", icon: MessageCircle },
-    { title: "Location", icon: MapPin },
-    { title: "Medical", icon: Activity },
-    { title: "Preferences", icon: Settings }
-  ];
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-12 rounded-[40px] shadow-xl text-center max-w-md w-full">
+          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Check size={40} />
+          </div>
+          <h2 className="text-3xl font-bold mb-4">Welcome to Xdoc!</h2>
+          <p className="text-slate-500">Your account is ready. Redirecting...</p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-24 pb-32 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <h2 className="text-4xl font-bold text-slate-900 mb-3">{t.signup.patientTitle}</h2>
-            <p className="text-slate-500 font-medium tracking-tight">Join Pakistan's largest digital health network</p>
+    <div className="min-h-screen bg-slate-50 pt-32 pb-20 px-6">
+      <div className="max-w-xl mx-auto">
+        <div className="text-center mb-10">
+          <h2 className="text-4xl font-extrabold text-slate-900 mb-2">{t.signup.patientTitle}</h2>
+          <p className="text-slate-500 font-medium">Join Pakistan's largest healthcare network</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white p-8 md:p-10 rounded-[40px] shadow-xl border border-slate-100 space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">{t.signup.labels.fullName} *</label>
+            <input 
+              type="text" 
+              placeholder="Full Name" 
+              value={formData.fullName}
+              onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+            />
+            {errors.fullName && <p className="text-red-500 text-xs font-bold pl-2">{errors.fullName}</p>}
           </div>
-          <div className="flex items-center gap-4 bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
-            <span className="text-sm font-bold text-slate-400">Step {step} of {totalSteps}</span>
-            <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-              <motion.div 
-                animate={{ width: `${(step / totalSteps) * 100}%` }}
-                className="h-full bg-health-teal"
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">{t.signup.labels.phone} *</label>
+              <input 
+                type="tel" 
+                placeholder="Phone Number" 
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
               />
+              {errors.phone && <p className="text-red-500 text-xs font-bold pl-2">{errors.phone}</p>}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">{t.signup.labels.city} *</label>
+              <select 
+                value={formData.city}
+                onChange={(e) => setFormData({...formData, city: e.target.value})}
+                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold appearance-none"
+              >
+                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-[48px] p-8 md:p-12 shadow-xl shadow-slate-200/50 border border-slate-100 min-h-[500px] flex flex-col">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="flex-1"
-            >
-              {!isSubmitted ? (
-                <>
-                  {step === 1 && (
-                    <div className="space-y-8">
-                      <div className="flex flex-col items-center gap-4 mb-8">
-                        <div className="w-32 h-32 rounded-full bg-slate-50 border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 relative overflow-hidden group hover:border-primary transition-colors cursor-pointer text-center">
-                          <Camera size={32} />
-                          <span className="text-[10px] font-bold uppercase mt-2">Upload Photo</span>
-                          <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
-                        </div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Optional Profile Photo</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.fullName} *</label>
-                          <input 
-                            type="text" 
-                            placeholder="e.g. Ahmed Ali" 
-                            value={formData.fullName}
-                            onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                            className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.fullName ? 'ring-2 ring-red-500' : ''}`} 
-                          />
-                          {errors.fullName && <p className="text-red-500 text-xs font-bold pl-2">{errors.fullName}</p>}
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.dob} *</label>
-                          <input 
-                            type="date" 
-                            value={formData.dob}
-                            onChange={(e) => setFormData({...formData, dob: e.target.value})}
-                            className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.dob ? 'ring-2 ring-red-500' : ''}`} 
-                          />
-                          {errors.dob && <p className="text-red-500 text-xs font-bold pl-2">{errors.dob}</p>}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.gender} *</label>
-                          <div className="flex gap-4">
-                            {['Male', 'Female', 'Other'].map(g => (
-                              <button
-                                key={g}
-                                type="button"
-                                onClick={() => setFormData({...formData, gender: g})}
-                                className={`flex-1 py-4 rounded-2xl font-bold transition-all border-2 ${
-                                  formData.gender === g ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-50 border-transparent text-slate-500'
-                                }`}
-                              >
-                                {g}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.cnic}</label>
-                          <input 
-                            type="text" 
-                            placeholder="42101-XXXXXXX-X" 
-                            value={formData.cnic}
-                            onChange={(e) => setFormData({...formData, cnic: e.target.value})}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {step === 2 && (
-                    <div className="space-y-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.phone} *</label>
-                          <input 
-                            type="tel" 
-                            placeholder="+92 3XX XXXXXXX" 
-                            value={formData.phone}
-                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                            className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold ${errors.phone ? 'ring-2 ring-red-500' : ''}`} 
-                          />
-                          {errors.phone && <p className="text-red-500 text-xs font-bold pl-2">{errors.phone}</p>}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <label className="text-sm font-bold text-slate-700">{t.signup.labels.whatsapp}</label>
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                              <input 
-                                type="checkbox" 
-                                checked={formData.sameAsPhone}
-                                onChange={(e) => setFormData({...formData, sameAsPhone: e.target.checked})}
-                                className="w-4 h-4 rounded text-primary" 
-                              />
-                              <span className="text-[10px] font-bold text-slate-400 group-hover:text-primary transition-colors">Same as phone</span>
-                            </label>
-                          </div>
-                          <input 
-                            type="tel" 
-                            disabled={formData.sameAsPhone}
-                            placeholder="+92 3XX XXXXXXX" 
-                            value={formData.sameAsPhone ? formData.phone : formData.whatsapp}
-                            onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
-                            className={`w-full px-6 py-4 rounded-2xl border-none focus:ring-2 focus:ring-primary font-bold ${formData.sameAsPhone ? 'bg-slate-100 text-slate-400' : 'bg-slate-50 text-slate-900'}`} 
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.email} *</label>
-                        <input 
-                          type="email" 
-                          placeholder="yourname@example.com" 
-                          value={formData.email}
-                          onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.email ? 'ring-2 ring-red-500' : ''}`} 
-                        />
-                        {errors.email && <p className="text-red-500 text-xs font-bold pl-2">{errors.email}</p>}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2 relative">
-                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.password} *</label>
-                          <div className="relative">
-                            <input 
-                              type={showPassword ? "text" : "password"} 
-                              value={formData.password}
-                              onChange={(e) => setFormData({...formData, password: e.target.value})}
-                              className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.password ? 'ring-2 ring-red-500' : ''}`} 
-                            />
-                            <button 
-                              type="button"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-                            >
-                              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                            </button>
-                          </div>
-                          {errors.password && <p className="text-red-500 text-xs font-bold pl-2">{errors.password}</p>}
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">Confirm Password *</label>
-                          <input 
-                            type="password" 
-                            value={formData.confirmPassword}
-                            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                            className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.confirmPassword ? 'ring-2 ring-red-500' : ''}`} 
-                          />
-                          {errors.confirmPassword && <p className="text-red-500 text-xs font-bold pl-2">{errors.confirmPassword}</p>}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {step === 3 && (
-                    <div className="space-y-8">
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.city} *</label>
-                        <select 
-                          value={formData.city}
-                          onChange={(e) => setFormData({...formData, city: e.target.value})}
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold appearance-none shadow-sm"
-                        >
-                          {cities.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.area} *</label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. Gulshan-e-Iqbal, Block 13" 
-                          value={formData.area}
-                          onChange={(e) => setFormData({...formData, area: e.target.value})}
-                          className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.area ? 'ring-2 ring-red-500' : ''}`} 
-                        />
-                        {errors.area && <p className="text-red-500 text-xs font-bold pl-2">{errors.area}</p>}
-                      </div>
-                      <div className="p-8 bg-blue-50/50 rounded-[40px] border border-blue-100 flex items-center gap-6">
-                        <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center text-primary shadow-sm ring-8 ring-blue-50">
-                          <MapPin size={32} />
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-slate-900">Locating Doctors</h4>
-                          <p className="text-sm text-slate-500 font-medium">We'll prioritize showing doctors near {formData.area || 'your area'} in {formData.city}.</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {step === 4 && (
-                    <div className="space-y-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.bloodGroup}</label>
-                          <select 
-                            value={formData.bloodGroup}
-                            onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold appearance-none"
-                          >
-                            {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'].map(g => (
-                              <option key={g} value={g}>{g}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-700">{t.signup.labels.allergies}</label>
-                          <input 
-                            type="text" 
-                            placeholder="e.g. Penicillin, Peanuts" 
-                            value={formData.allergies}
-                            onChange={(e) => setFormData({...formData, allergies: e.target.value})}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.chronicConditions}</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {chronicList.map(item => {
-                            const isSelected = formData.chronicConditions.includes(item);
-                            return (
-                              <div 
-                                key={item}
-                                onClick={() => setFormData(prev => ({
-                                  ...prev,
-                                  chronicConditions: isSelected 
-                                    ? prev.chronicConditions.filter(c => c !== item)
-                                    : [...prev.chronicConditions, item]
-                                }))}
-                                className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                                  isSelected ? 'bg-primary/5 border-primary shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
-                                }`}
-                              >
-                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-primary' : 'bg-white border-2 border-slate-200'}`}>
-                                  {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
-                                </div>
-                                <span className={`text-sm font-bold ${isSelected ? 'text-slate-900' : 'text-slate-500'}`}>{item}</span>
-                              </div>
-                            );
-                          })}
-                          <div 
-                            onClick={() => setFormData({...formData, chronicConditions: []})}
-                            className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                              formData.chronicConditions.length === 0 ? 'bg-success-green/5 border-success-green shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
-                            }`}
-                          >
-                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${formData.chronicConditions.length === 0 ? 'bg-success-green' : 'bg-white border-2 border-slate-200'}`}>
-                              {formData.chronicConditions.length === 0 && <Check size={14} className="text-white" strokeWidth={4} />}
-                            </div>
-                            <span className={`text-sm font-bold ${formData.chronicConditions.length === 0 ? 'text-slate-900' : 'text-slate-500'}`}>None</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {step === 5 && (
-                    <div className="space-y-8">
-                      <div className="space-y-4">
-                        <label className="text-sm font-bold text-slate-700">{t.signup.labels.notifications}</label>
-                        <div className="space-y-4">
-                          <div className={`flex items-center justify-between p-6 rounded-[32px] border-2 transition-all ${formData.whatsappNotifications ? 'bg-[#00C9B1]/5 border-[#00C9B1] shadow-md shadow-[#00C9B1]/5' : 'bg-slate-50 border-transparent'}`}>
-                            <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${formData.whatsappNotifications ? 'bg-[#00C9B1] text-white rotate-3' : 'bg-slate-200 text-slate-400'}`}>
-                                <MessageCircle size={24} />
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-900 tracking-tight">WhatsApp Alerts</p>
-                                <p className="text-xs text-slate-500 font-medium">Receive tokens & reminders</p>
-                              </div>
-                            </div>
-                            <div 
-                              onClick={() => setFormData({...formData, whatsappNotifications: !formData.whatsappNotifications})}
-                              className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 shadow-inner ${formData.whatsappNotifications ? 'bg-[#00C9B1]' : 'bg-slate-200'}`}
-                            >
-                              <motion.div animate={{ x: formData.whatsappNotifications ? 24 : 0 }} className="w-6 h-6 bg-white rounded-full shadow-sm" />
-                            </div>
-                          </div>
-
-                          <div className={`flex items-center justify-between p-6 rounded-[32px] border-2 transition-all ${formData.emailNotifications ? 'bg-primary/5 border-primary shadow-md shadow-primary/5' : 'bg-slate-50 border-transparent'}`}>
-                            <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${formData.emailNotifications ? 'bg-primary text-white -rotate-3' : 'bg-slate-200 text-slate-400'}`}>
-                                <Mail size={24} />
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-900 tracking-tight">Email Notifications</p>
-                                <p className="text-xs text-slate-500 font-medium">Security & medical reports</p>
-                              </div>
-                            </div>
-                            <div 
-                              onClick={() => setFormData({...formData, emailNotifications: !formData.emailNotifications})}
-                              className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 shadow-inner ${formData.emailNotifications ? 'bg-primary' : 'bg-slate-200'}`}
-                            >
-                              <motion.div animate={{ x: formData.emailNotifications ? 24 : 0 }} className="w-6 h-6 bg-white rounded-full shadow-sm" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-8 text-center">
-                        <button 
-                          type="button"
-                          disabled={isSubmitting}
-                          onClick={handleSubmit}
-                          className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] hover:shadow-health-teal/40 active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70 disabled:scale-100"
-                        >
-                          {isSubmitting ? (
-                            <div className="flex items-center gap-3">
-                              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                              <span>Account bana raha hai...</span>
-                            </div>
-                          ) : (
-                            <>Create My Account <ArrowRight size={24} /></>
-                          )}
-                        </button>
-                        {errors.general && (
-                          <div className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center gap-2">
-                            <p className="text-red-500 text-xs font-bold">{errors.general}</p>
-                            <button 
-                              onClick={handleSubmit}
-                              className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline"
-                            >
-                              Retry Again
-                            </button>
-                          </div>
-                        )}
-                        <p className="text-center mt-6 text-slate-500 font-medium">
-                          Already have an account? <span className="text-primary font-bold cursor-pointer hover:underline" onClick={onComplete}>Login here</span>
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-20 flex-1 flex flex-col justify-center">
-                  <div className="w-24 h-24 bg-success-green/10 text-success-green rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-                    <CheckCircle2 size={56} />
-                  </div>
-                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6 tracking-tight">Account Created!</h3>
-                  <div className="max-w-md mx-auto space-y-6">
-                    <p className="text-slate-500 text-lg leading-relaxed">
-                      Welcome to Xdoc, {formData.fullName.split(' ')[0]}. Find your doctor now and book appointments seamlessly.
-                    </p>
-                    <button 
-                      type="button"
-                      onClick={onComplete}
-                      className="w-full py-5 bg-primary text-white rounded-2xl font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
-                    >
-                      Find Your Doctor <ArrowRight size={20} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {!isSubmitted && (
-          <div className="flex items-center justify-between mt-12 bg-white/50 backdrop-blur-sm p-4 rounded-3xl border border-white">
-            <button 
-              onClick={prevStep}
-              disabled={step === 1}
-              className={`px-12 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all ${
-                step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-600 hover:bg-white hover:shadow-sm active:scale-95'
-              }`}
-            >
-              <ArrowLeft size={20} /> Back
-            </button>
-            {step < totalSteps && (
-              <button 
-                onClick={nextStep}
-                className="px-16 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/25 hover:scale-[1.05] active:scale-95 transition-all flex items-center gap-2"
-              >
-                Continue <ArrowRight size={20} />
-              </button>
-            )}
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">{t.signup.labels.email} *</label>
+            <input 
+              type="email" 
+              placeholder="Email Address" 
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+            />
+            {errors.email && <p className="text-red-500 text-xs font-bold pl-2">{errors.email}</p>}
           </div>
-        )}
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">{t.signup.labels.password} *</label>
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            {errors.password && <p className="text-red-500 text-xs font-bold pl-2">{errors.password}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">{t.signup.labels.gender} *</label>
+            <div className="flex gap-4">
+              {['Male', 'Female'].map(g => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setFormData({...formData, gender: g})}
+                  className={`flex-1 py-4 rounded-2xl font-bold transition-all border-2 ${
+                    formData.gender === g ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-50 border-transparent text-slate-500'
+                  }`}
+                >
+                  {g === 'Male' ? 'Male' : 'Female'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="w-full py-5 bg-[#0B5FFF] text-white font-bold text-xl rounded-2xl shadow-xl hover:bg-blue-600 transition-all disabled:opacity-70 mt-4"
+          >
+            {isSubmitting ? 'Creating Account...' : t.signup.createAccount}
+          </button>
+
+          {errors.general && <p className="text-red-500 text-center text-sm font-bold">{errors.general}</p>}
+
+          <p className="text-center text-slate-500 font-medium pt-4">
+            {t.signup.alreadyHaveAccount.split('?')[0]}? <span className="text-primary font-bold cursor-pointer transition-all" onClick={() => onComplete()}>{t.signup.alreadyHaveAccount.split('?')[1] || 'Login'}</span>
+          </p>
+        </form>
       </div>
+    </div>
+  );
+};      </div>
     </div>
   );
 };
 
 const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const { t } = useLanguage();
-  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    name: '', type: 'Private Hospital', medicalLicense: '', ownerName: '', email: '', password: '', confirmPassword: '',
-    city: '', address: '', area: '', phone: '', whatsapp: '', emergencyContact: '',
-    openingTime: '09:00', closingTime: '21:00',
-    opd: '', emergency: '', isFree: false
+    name: '', 
+    type: 'Private Hospital', 
+    ownerName: '', 
+    email: '', 
+    password: '',
+    city: '', 
+    address: '', 
+    area: '', 
+    phone: '',
+    opdFee: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
-  const [isEmergency, setIsEmergency] = useState(false);
-  const [quickSelect, setQuickSelect] = useState<'Mon-Fri' | 'Mon-Sat' | 'All' | null>('Mon-Sat');
-  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
-  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
-  
-  // Section 5: Staff
-  const [staffCounts, setStaffCounts] = useState({ doctors: 0, nurses: 0, receptionists: 0, support: 0 });
-  const [individualStaff, setIndividualStaff] = useState<any[]>([]);
-
-  // Section 6: Fees & Pricing
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
-
-  // Section 7: Media & About
-  const [media, setMedia] = useState({ logo: null, photos: [] as any[], about: '' });
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const totalSteps = 8;
+  const [showPassword, setShowPassword] = useState(false);
+  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
+
   const allSpecs = [
     'General Physician', 'Cardiology', 'Neurology', 'Orthopedic', 'Gynecology', 
     'Pediatrics', 'Dentistry', 'Dermatology (Skin)', 'Ophthalmology (Eye)', 
@@ -1398,105 +1049,42 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
     'Physiotherapy', 'Nutritionist', 'Emergency Medicine'
   ];
 
-  const facilityGroups = {
-    "Medical Facilities": [
-      "Emergency Ward", "ICU", "CCU (Cardiac Care Unit)", "Operation Theater (OT)", 
-      "Labour Room", "NICU (Neonatal ICU)", "Burns Unit", "Dialysis Center", 
-      "Chemotherapy Unit", "Physiotherapy Unit"
-    ],
-    "Diagnostic Facilities": [
-      "Pathology Lab", "X-Ray", "Ultrasound", "MRI", "CT Scan", "ECG", 
-      "Echo Cardiography", "Mammography", "Endoscopy"
-    ],
-    "Support Facilities": [
-      "Pharmacy", "Blood Bank", "Ambulance Service", "Vaccination Center", 
-      "Dental Unit", "Eye Unit", "Skin Unit"
-    ],
-    "Patient Comfort": [
-      "Private Rooms", "General Ward", "Cafeteria", "Parking", "Prayer Room", 
-      "Waiting Area", "Wheelchair Available", "Lift / Elevator"
-    ],
-    "Digital Services": [
-      "Online Appointment", "WhatsApp Consultation", "Telemedicine", 
-      "Home Sample Collection", "Online Reports"
-    ]
+  const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad'];
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name) newErrors.name = t.signup.errors.required;
+    if (!formData.ownerName) newErrors.ownerName = t.signup.errors.required;
+    if (!formData.email) newErrors.email = t.signup.errors.required;
+    if (!formData.password) newErrors.password = t.signup.errors.required;
+    else if (formData.password.length < 6) newErrors.password = t.signup.errors.passwordTooShort;
+    if (!formData.city) newErrors.city = t.signup.errors.required;
+    if (!formData.address) newErrors.address = t.signup.errors.required;
+    if (!formData.area) newErrors.area = t.signup.errors.required;
+    if (!formData.phone) newErrors.phone = t.signup.errors.required;
+    if (!formData.opdFee) newErrors.opdFee = t.signup.errors.required;
+    if (selectedSpecs.length === 0) newErrors.specs = t.signup.errors.atLeastOneSpec;
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const allFacilities = Object.values(facilityGroups).flat();
-
-  const handleQuickSelect = (type: 'Mon-Fri' | 'Mon-Sat' | 'All') => {
-    setQuickSelect(type);
-    if (type === 'Mon-Fri') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-    else if (type === 'Mon-Sat') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
-    else if (type === 'All') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
-  };
-
-  const toggleDay = (day: string) => {
-    setQuickSelect(null);
-    setSelectedDays(prev => 
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+  const toggleSpec = (spec: string) => {
+    setSelectedSpecs(prev => 
+      prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec]
     );
   };
 
-  const validateStep = () => {
-    const newErrors: Record<string, string> = {};
-    if (step === 1) {
-      if (!formData.name) newErrors.name = t.signup.errors.required;
-      if (!formData.ownerName) newErrors.ownerName = t.signup.errors.required;
-      if (!formData.email) newErrors.email = t.signup.errors.required;
-      if (!formData.password) newErrors.password = t.signup.errors.required;
-      else if (formData.password.length < 6) newErrors.password = t.signup.errors.passwordTooShort;
-    } else if (step === 2) {
-      if (!formData.city) newErrors.city = t.signup.errors.required;
-      if (!formData.address) newErrors.address = t.signup.errors.required;
-      if (!formData.area) newErrors.area = t.signup.errors.required;
-      if (!formData.phone) newErrors.phone = t.signup.errors.required;
-    } else if (step === 3) {
-      if (selectedDays.length === 0) newErrors.days = t.signup.errors.atLeastOneDay;
-    } else if (step === 4) {
-      if (selectedSpecs.length === 0) newErrors.specs = t.signup.errors.atLeastOneSpec;
-    } else if (step === 6) {
-      if (!formData.opd && !formData.isFree) newErrors.opd = t.signup.errors.required;
-      if (paymentMethods.length === 0) newErrors.paymentMethods = t.signup.errors.paymentMethod;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
     
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return false;
-    return true;
-  };
-
-  const nextStep = () => {
-    if (validateStep()) setStep(s => Math.min(s + 1, totalSteps));
-  };
-  const prevStep = () => setStep(s => Math.max(s - 1, 1));
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
     setIsSubmitting(true);
     setErrors({});
     try {
-      // 1. Basic validation check
-      if (!formData.email || !formData.password || !formData.name) {
-        throw new Error("Kuch fields missing hain");
-      }
-
-      // 2. Create Auth Account
-      let userCredential;
-      try {
-        userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      } catch (authErr: any) {
-        console.error("Auth Error:", authErr);
-        if (authErr.code === 'auth/email-already-in-use') {
-          setErrors({ email: t.auth.emailAlreadyInUse, general: t.auth.emailAlreadyInUse });
-          return;
-        }
-        throw authErr;
-      }
-      
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // 3. Prepare Hospital Data
       const hospitalData = {
         hospitalName: formData.name,
         ownerName: formData.ownerName,
@@ -1507,60 +1095,46 @@ const HospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
         area: formData.area,
         type: formData.type,
         specializations: selectedSpecs,
-        facilities: selectedFacilities,
-        openDays: selectedDays,
-        openTime: formData.openingTime,
-        closeTime: formData.closingTime,
-        emergency24_7: isEmergency,
-        opdFee: formData.opd,
-        paymentMethods: paymentMethods,
+        opdFee: formData.opdFee,
         status: "active",
         createdAt: serverTimestamp(),
-        approved: true, // Auto-approved for instant access
+        approved: true,
         uid: user.uid
       };
 
-      // 4. Save to Firestore using UID as Doc ID
-      try {
-        // Save to hospitals collection
-        await setDoc(doc(db, 'hospitals', user.uid), hospitalData);
-        
-        // Save to users collection for auth/role management
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: formData.email,
-          role: 'hospital_admin',
-          createdAt: serverTimestamp()
-        });
-      } catch (dbErr: any) {
-        console.error("Database Error:", dbErr);
-        throw new Error(`Database Error: ${dbErr.message || 'Permission denied'}`);
-      }
+      await setDoc(doc(db, 'hospitals', user.uid), hospitalData);
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email: formData.email,
+        role: 'hospital_admin',
+        createdAt: serverTimestamp()
+      });
       
       setIsSubmitted(true);
-      
-      // Success redirect after 2s
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-
+      setTimeout(() => onComplete(), 2000);
     } catch (err: any) {
-      console.error("Full Registration Error:", err);
-      let errorMsg = err.message || 'Failed to register hospital. Please try again.';
-      
-      if (err.code === 'auth/email-already-in-use') {
-        errorMsg = t.auth.emailAlreadyInUse;
-      } else if (err.message === "Kuch fields missing hain") {
-        errorMsg = "Kuch fields missing hain - Please fill all required fields.";
-      } else if (!navigator.onLine || err.message.toLowerCase().includes('network')) {
-        errorMsg = "Internet connection check karein";
-      }
-
+      console.error(err);
+      let errorMsg = err.message || 'Failed to register hospital.';
+      if (err.code === 'auth/email-already-in-use') errorMsg = t.auth.emailAlreadyInUse;
       setErrors({ general: errorMsg });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-12 rounded-[40px] shadow-xl text-center max-w-md w-full">
+          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Check size={40} />
+          </div>
+          <h2 className="text-3xl font-bold mb-4">Registration Successful!</h2>
+          <p className="text-slate-500 font-medium">Your hospital is now live on Xdoc. Redirecting to your dashboard...</p>
+        </motion.div>
+      </div>
+    );
+  }
 
   const sections = [
     t.signup.hospitalTitle,

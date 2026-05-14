@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-urdu: "Noto Sans Arabic", sans-serif;
+  --font-urdu: "Noto Nastaliq Urdu", serif;
   --font-primary: "Inter", sans-serif;
   
   --color-primary: #0B5FFF;
@@ -29,10 +29,12 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold tracking-tight;
     font-style: normal !important;
-    font-family: var(--font-sans);
   }
   * {
     font-style: normal !important;
+  }
+  .font-urdu, .font-urdu h1, .font-urdu h2, .font-urdu h3, .font-urdu h4, .font-urdu h5, .font-urdu h6 {
+    font-family: var(--font-urdu) !important;
   }
 }
 
