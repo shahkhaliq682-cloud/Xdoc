@@ -837,6 +837,7 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
 
 const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -890,11 +891,17 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
       };
 
       await setDoc(doc(db, 'users', user.uid), patientData);
+      toast.success("Welcome to Xdoc!");
       setIsSubmitted(true);
       setTimeout(() => onComplete(), 1500);
     } catch (err: any) {
       console.error(err);
-      setErrors({ general: err.message });
+      let errorMsg = err.message || 'Registration failed. Please try again.';
+      if (err.code === 'auth/email-already-in-use') {
+        errorMsg = t.auth?.emailAlreadyInUse || 'This email is already in use by another account.';
+      }
+      setErrors({ general: errorMsg });
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -1016,7 +1023,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
           {errors.general && <p className="text-red-500 text-center text-sm font-bold">{errors.general}</p>}
 
           <p className="text-center text-slate-500 font-medium pt-4">
-            {(t.signup.labels.alreadyHaveAccount || "").split('?')[0]}? <span className="text-primary font-bold cursor-pointer transition-all" onClick={() => onComplete()}>{(t.signup.labels.alreadyHaveAccount || "").split('?')[1] || 'Login'}</span>
+            {(t.signup?.labels?.alreadyHaveAccount || "Already have an account? Login").split('?')[0]}? <span className="text-primary font-bold cursor-pointer transition-all" onClick={() => onComplete()}>{(t.signup?.labels?.alreadyHaveAccount || "Already have an account? Login").split('?')[1] || 'Login'}</span>
           </p>
         </form>
       </div>
@@ -1026,6 +1033,7 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
 
 const OldHospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '', 
     type: 'Private Hospital', 
@@ -1149,13 +1157,15 @@ const OldHospitalRegistration = ({ onComplete }: { onComplete: () => void }) => 
         createdAt: serverTimestamp()
       });
       
+      toast.success("Registration Successful!");
       setIsSubmitted(true);
       setTimeout(() => onComplete(), 2000);
     } catch (err: any) {
       console.error(err);
       let errorMsg = err.message || 'Failed to register hospital.';
-      if (err.code === 'auth/email-already-in-use') errorMsg = t.auth.emailAlreadyInUse;
+      if (err.code === 'auth/email-already-in-use') errorMsg = t.auth?.emailAlreadyInUse || 'Email already in use';
       setErrors({ general: errorMsg });
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -3204,8 +3214,8 @@ export default function App() {
       <AnimatePresence>
         {showOnboarding && currentUser && (
           <OnboardingTour 
-            role={userData?.role || 'patient'} 
-            onClose={() => {
+            type={userData?.role === 'hospital_admin' || userData?.role === 'Admin' ? 'hospital' : 'patient'} 
+            onComplete={() => {
               localStorage.setItem(`xdoc_tour_${currentUser.uid}`, 'true');
               setShowOnboarding(false);
             }} 

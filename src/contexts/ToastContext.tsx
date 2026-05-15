@@ -13,6 +13,12 @@ interface Toast {
 
 interface ToastContextType {
   showToast: (message: string, type: ToastType, duration?: number) => void;
+  toast: {
+    success: (message: string, duration?: number) => void;
+    error: (message: string, duration?: number) => void;
+    info: (message: string, duration?: number) => void;
+    warning: (message: string, duration?: number) => void;
+  };
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -31,12 +37,19 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  const toast = React.useMemo(() => ({
+    success: (message: string, duration?: number) => showToast(message, 'success', duration),
+    error: (message: string, duration?: number) => showToast(message, 'error', duration),
+    info: (message: string, duration?: number) => showToast(message, 'info', duration),
+    warning: (message: string, duration?: number) => showToast(message, 'warning', duration),
+  }), [showToast]);
+
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, toast }}>
       {children}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-3 w-[90%] max-w-md pointer-events-none">
         <AnimatePresence mode="popLayout">

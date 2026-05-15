@@ -29,52 +29,52 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ type, onComplete
 
   const steps = type === 'hospital' ? [
     {
-      title: t.onboarding.hospital.step1Title,
-      sub: t.onboarding.hospital.step1Sub,
-      btn: t.onboarding.hospital.step1Btn,
+      title: t?.onboarding?.hospital?.step1Title || 'Welcome!',
+      sub: t?.onboarding?.hospital?.step1Sub || 'Your hospital is now digital!',
+      btn: t?.onboarding?.hospital?.step1Btn || 'Next',
       icon: <Sparkles className="text-amber-400" size={64} />,
       bg: 'bg-amber-500/10'
     },
     {
-      title: t.onboarding.hospital.step2Title,
-      sub: t.onboarding.hospital.step2Sub,
-      btn: t.onboarding.hospital.step2Btn,
+      title: t?.onboarding?.hospital?.step2Title || 'Dashboard',
+      sub: t?.onboarding?.hospital?.step2Sub || 'Manage everything here.',
+      btn: t?.onboarding?.hospital?.step2Btn || 'Next',
       icon: <Building2 className="text-blue-500" size={64} />,
       bg: 'bg-blue-500/10'
     },
     {
-      title: t.onboarding.hospital.step3Title,
-      sub: t.onboarding.hospital.step3Sub,
-      btn: t.onboarding.hospital.step3Btn,
+      title: t?.onboarding?.hospital?.step3Title || 'Add Doctors',
+      sub: t?.onboarding?.hospital?.step3Sub || 'Patients can see them.',
+      btn: t?.onboarding?.hospital?.step3Btn || 'Next',
       icon: <Stethoscope className="text-health-teal" size={64} />,
       bg: 'bg-teal-500/10'
     },
     {
-      title: t.onboarding.hospital.step4Title,
-      sub: t.onboarding.hospital.step4Sub,
-      btn: t.onboarding.hospital.step4Btn,
+      title: t?.onboarding?.hospital?.step4Title || 'Ready!',
+      sub: t?.onboarding?.hospital?.step4Sub || 'Visibility is active.',
+      btn: t?.onboarding?.hospital?.step4Btn || 'Start',
       icon: <CheckCircle2 className="text-emerald-500" size={64} />,
       bg: 'bg-emerald-500/10'
     }
   ] : [
     {
-      title: t.onboarding.patient.step1Title,
-      sub: t.onboarding.patient.step1Sub,
-      btn: t.onboarding.patient.step1Btn,
+      title: t?.onboarding?.patient?.step1Title || 'Welcome!',
+      sub: t?.onboarding?.patient?.step1Sub || 'Healthcare in one place.',
+      btn: t?.onboarding?.patient?.step1Btn || 'Next',
       icon: <User2 className="text-teal-500" size={64} />,
       bg: 'bg-teal-500/10'
     },
     {
-      title: t.onboarding.patient.step2Title,
-      sub: t.onboarding.patient.step2Sub,
-      btn: t.onboarding.patient.step2Btn,
+      title: t?.onboarding?.patient?.step2Title || 'Find Care',
+      sub: t?.onboarding?.patient?.step2Sub || 'Hospitals and Clinics.',
+      btn: t?.onboarding?.patient?.step2Btn || 'Next',
       icon: <Building2 className="text-blue-500" size={64} />,
       bg: 'bg-blue-500/10'
     },
     {
-      title: t.onboarding.patient.step3Title,
-      sub: t.onboarding.patient.step3Sub,
-      btn: t.onboarding.patient.step3Btn,
+      title: t?.onboarding?.patient?.step3Title || 'Book Tokens',
+      sub: t?.onboarding?.patient?.step3Sub || 'From your home.',
+      btn: t?.onboarding?.patient?.step3Btn || 'Next',
       icon: <Stethoscope className="text-emerald-500" size={64} />,
       bg: 'bg-emerald-500/10'
     }
@@ -120,7 +120,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ type, onComplete
               onClick={handleSkip}
               className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 py-2"
             >
-              {t.onboarding.hospital.skip || 'Skip'}
+              {t?.onboarding?.hospital?.skip || 'Skip'}
             </button>
           </div>
 

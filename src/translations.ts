@@ -416,7 +416,8 @@ export const translations = {
         saveSettings: 'Save Settings',
         noShowRate: 'No-show rate'
       },
-      ux: {
+    },
+    ux: {
         loading: 'Loading...',
         refreshing: 'Refreshing...',
         saving: 'Saving...',
@@ -550,7 +551,6 @@ export const translations = {
           step3Btn: 'Start Now',
         }
       }
-    }
   },
   UR: {
     nav: {
@@ -954,7 +954,8 @@ export const translations = {
         saveSettings: 'سیٹنگز محفوظ کریں',
         noShowRate: 'نو شو ریٹ'
       },
-      ux: {
+    },
+    ux: {
         loading: 'لوڈ ہو رہا ہے',
         wait: 'انتظار کریں',
         refreshing: 'تازہ ہو رہا ہے',
@@ -1089,6 +1090,5 @@ export const translations = {
           step3Btn: 'ابھی شروع کریں',
         }
       }
-    }
   }
 } as const;

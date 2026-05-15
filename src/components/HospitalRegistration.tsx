@@ -14,6 +14,7 @@ import {
 import { auth, db } from '../firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface HospitalRegistrationProps {
   onComplete: () => void;
@@ -21,6 +22,7 @@ interface HospitalRegistrationProps {
 
 const HospitalRegistration: React.FC<HospitalRegistrationProps> = ({ onComplete }) => {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '', 
     type: 'Private Hospital', 
@@ -154,11 +156,19 @@ const HospitalRegistration: React.FC<HospitalRegistrationProps> = ({ onComplete 
         createdAt: serverTimestamp()
       });
       
+      toast.success("Registration Successful!");
       setIsSubmitted(true);
       setTimeout(() => onComplete(), 2000);
     } catch (err: any) {
       console.error(err);
-      setErrors({ general: err.message });
+      if (err.code === 'auth/email-already-in-use') {
+        setErrors(prev => ({ ...prev, email: t.auth.emailAlreadyInUse }));
+        toast.error(t.auth.emailAlreadyInUse);
+        setActiveSection(1);
+      } else {
+        toast.error(err.message || "Registration failed");
+        setErrors({ general: err.message });
+      }
     } finally {
       setIsSubmitting(false);
     }

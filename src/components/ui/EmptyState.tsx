@@ -8,7 +8,14 @@ export const EmptyState: React.FC<{
   onAction?: () => void;
 }> = ({ type, onAction }) => {
   const { language } = useLanguage();
-  const d = (translations[language] as any).ux.emptyStates[type] || translations[language].ux.emptyStates.noSearchResults;
+  const t = translations[language] as any;
+  const emptyStates = t.emptyStates || t.ux?.emptyStates || {};
+  
+  const d = emptyStates[type] || emptyStates.noSearchResults || emptyStates.no_hospitals || {
+    title: 'No Data Found',
+    subtitle: 'Nothing to see here right now.',
+    button: null
+  };
 
   return (
     <motion.div 
