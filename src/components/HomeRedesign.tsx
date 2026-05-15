@@ -101,7 +101,7 @@ const Step = ({ number, title, desc, icon: Icon, isLast = false }: { number: num
   </div>
 );
 
-const HomeRedesign = ({ onSignUp, onLogin, onSearch }: { onSignUp: () => void, onLogin: () => void, onSearch: (q: string) => void }) => {
+const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick }: { onSignUp: () => void, onLogin: () => void, onSearch: (q: string) => void, onHospitalClick?: (h: any) => void }) => {
   const { t, language } = useLanguage();
   const [searchVal, setSearchVal] = useState('');
 
