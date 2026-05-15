@@ -75,21 +75,28 @@ const HospitalRegistration: React.FC<HospitalRegistrationProps> = ({ onComplete 
       const hospitalData = {
         hospitalName: formData.hospitalName,
         type: formData.facilityType,
+        facilityType: formData.facilityType,
         ownerName: formData.ownerName,
         email: formData.email,
         phone: formData.phone,
         city: formData.city,
         address: formData.address,
+        area: formData.address.split(',')[0], // Extract area if possible
         specializations: formData.specializations,
-        opdFee: formData.opdFee,
+        opdFee: formData.opdFee || "0",
         openDays: formData.openDays,
         openTime: formData.openTime,
         closeTime: formData.closeTime,
-        emergency: formData.emergency,
+        emergency: formData.emergency ? 'Yes' : 'No',
+        facilities: ['Emergency Ward', 'Pharmacy', 'Lab'], // Default set
+        rating: 0,
+        totalReviews: 0,
         status: "active",
         createdAt: serverTimestamp(),
+        imageUrl: `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800&h=400&sig=${user.uid}`,
         approved: true,
-        uid: user.uid
+        uid: user.uid,
+        id: user.uid
       };
 
       await setDoc(doc(db, 'hospitals', user.uid), hospitalData);

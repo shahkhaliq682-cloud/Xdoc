@@ -24,19 +24,32 @@ interface BookingFlowProps {
 }
 
 const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, onSuccess }) => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { userData, currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const isUrdu = language === 'UR';
+
+  // Walk-in mode detection
+  const isWalkIn = !doctor;
 
   // Form State
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date()); // Default to today
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [patientName, setPatientName] = useState(userData?.fullName || userData?.name || userData?.displayName || '');
   const [patientPhone, setPatientPhone] = useState(userData?.phone || userData?.phoneFull || '');
+  const [visitReason, setVisitReason] = useState('General Checkup');
   const [note, setNote] = useState('');
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+
+  // Visit Reason Options
+  const reasonOptions = [
+    { value: 'General Checkup', labelEN: 'General Checkup', labelUR: 'عام معائنہ' },
+    { value: 'Follow-up', labelEN: 'Follow-up', labelUR: 'فالو اپ' },
+    { value: 'Emergency', labelEN: 'Emergency', labelUR: 'ایمرجنسی' },
+    { value: 'Other', labelEN: 'Other', labelUR: 'دیگر' }
+  ];
 
   const morningSlots = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'];
   const afternoonSlots = ['02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'];
@@ -107,16 +120,18 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
           tokenNumber,
           hospitalId: hospitalId,
           hospitalName: hospital.hospitalName || hospital.name,
-          doctorId: doctor.id,
-          doctorName: doctor.name,
-          specialization: doctor.specialization,
+          doctorId: doctor?.id || null,
+          doctorName: doctor?.name || "General",
+          specialization: doctor?.specialization || hospital.specializations?.[0] || "General",
           patientId: currentUser.uid,
           patientName,
           patientPhone,
+          visitReason: visitReason,
           patientNote: note,
           appointmentDate: dateStr,
           appointmentTime: selectedSlot,
-          consultationFee: Number(doctor.fee || hospital.startingFee || 0),
+          consultationFee: Number(doctor?.fee || hospital.opdFee || 0),
+          fee: Number(doctor?.fee || hospital.opdFee || 0),
           status: 'waiting',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -142,26 +157,42 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
     }
   };
 
-  const nextStep = () => setStep(s => s + 1);
+  const nextStep = () => {
+    // If walk-in, we can skip step 1 (summary of doctor) and 2 (date is today by default)
+    // but the user might want to pick a date/time. 
+    // The request says Step 1 is "Book Token" title with hospital name.
+    setStep(s => s + 1);
+  };
   const prevStep = () => setStep(s => s - 1);
 
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="flex flex-col items-center gap-4 py-4">
         <div className="w-24 h-24 bg-health-teal bg-opacity-10 rounded-full flex items-center justify-center text-health-teal text-4xl font-bold border-4 border-white shadow-lg">
-          {doctor.name?.[0]}
+          {doctor ? doctor.name?.[0] : <HospitalIcon size={48} />}
         </div>
         <div className="text-center">
-          <h3 className="text-2xl font-bold text-slate-900">Dr. {doctor.name}</h3>
+          <h3 className="text-2xl font-bold text-slate-900">
+            {doctor ? `Dr. ${doctor.name}` : (isUrdu ? 'واک اِن ٹوکن' : 'Walk-in Token')}
+          </h3>
           <div className="flex items-center justify-center gap-2 mt-2">
             <span className="px-3 py-1 bg-health-teal/10 text-health-teal text-xs font-bold rounded-full uppercase tracking-widest leading-none">
-              {doctor.specialization}
+              {doctor ? doctor.specialization : (hospital.hospitalName || hospital.name)}
             </span>
           </div>
-          <p className="text-slate-500 text-sm mt-3 font-medium">{doctor.qualification || 'Senior Consultant'}</p>
+          {!doctor && (
+             <p className="text-slate-500 text-sm mt-3 font-medium">
+               {isUrdu ? 'براہ راست ہسپتال تشریف لائیں' : 'General checkup without specific doctor'}
+             </p>
+          )}
+          {doctor && (
+            <p className="text-slate-500 text-sm mt-3 font-medium">{doctor.qualification || 'Senior Consultant'}</p>
+          )}
           <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
             <Wallet size={16} className="text-health-teal" />
-            <span className="text-slate-900 font-bold">Rs. {doctor.fee || hospital.startingFee}</span>
+            <span className="text-slate-900 font-bold">
+              {doctor ? `Rs. ${doctor.fee || hospital.opdFee}` : (hospital.opdFee > 0 ? `Rs. ${hospital.opdFee}` : t.patient.details.free)}
+            </span>
           </div>
         </div>
       </div>
@@ -358,6 +389,24 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
         </div>
 
         <div className="space-y-2">
+           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.patient.booking.visitReason}</label>
+           <div className="relative">
+             <Stethoscope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+             <select
+               value={visitReason}
+               onChange={(e) => setVisitReason(e.target.value)}
+               className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-health-teal appearance-none"
+             >
+               {reasonOptions.map(opt => (
+                 <option key={opt.value} value={opt.value}>
+                    {isUrdu ? opt.labelUR : opt.labelEN}
+                 </option>
+               ))}
+             </select>
+           </div>
+        </div>
+
+        <div className="space-y-2">
            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{t.patient.booking.noteForDoctor}</label>
            <div className="relative">
              <MessageSquare className="absolute left-4 top-4 text-slate-400" size={18} />
@@ -408,7 +457,9 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
         
         <div className="flex items-center gap-4 relative">
           <Stethoscope size={20} className="text-health-teal" />
-          <span className="font-bold">Dr. {doctor.name}</span>
+          <span className="font-bold">
+            {doctor ? `Dr. ${doctor.name}` : (isUrdu ? 'واک اِن ٹوکن' : 'General Walk-in')}
+          </span>
         </div>
 
         <div className="flex items-center gap-4 relative">
@@ -425,7 +476,9 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
 
         <div className="flex items-center gap-4 relative border-t border-white/10 pt-4">
           <Wallet size={20} className="text-health-teal" />
-          <span className="font-bold text-xl">Rs. {doctor.fee || hospital.startingFee}</span>
+          <span className="font-bold text-xl">
+            {doctor ? `Rs. ${doctor.fee || hospital.opdFee}` : (hospital.opdFee > 0 ? `Rs. ${hospital.opdFee}` : t.patient.details.free)}
+          </span>
         </div>
 
         <div className="flex items-center gap-4 relative border-t border-white/10 pt-4">

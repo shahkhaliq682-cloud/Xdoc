@@ -1967,8 +1967,27 @@ export default function App() {
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | any | null>(null);
   const [isBookingFlow, setIsBookingFlow] = useState(false);
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
+  const [loginPrompt, setLoginPrompt] = useState(false);
 
   const [lastCreatedToken, setLastCreatedToken] = useState<any>(null);
+
+  // Handle book click
+  const handleBookToken = (doctorData: any) => {
+    if (!currentUser) {
+      setSelectedDoctor(doctorData); // Save intent
+      setLoginPrompt(true);
+      return;
+    }
+    setSelectedDoctor(doctorData);
+    setIsBookingFlow(true);
+  };
+
+  const handleLoginSuccess = () => {
+    setLoginPrompt(false);
+    if (selectedHospital) {
+      setIsBookingFlow(true);
+    }
+  };
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isSignOutInProgress, setIsSignOutInProgress] = useState(false);
@@ -2144,6 +2163,41 @@ export default function App() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const renderCurrentView = () => {
+    if (loginPrompt) {
+      return (
+        <div className="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-xl flex items-center justify-center p-6">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-[40px] p-10 max-w-lg w-full text-center shadow-2xl"
+          >
+            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-8">
+              <Lock size={48} />
+            </div>
+            <h2 className="text-3xl font-black text-slate-900 mb-4">Login Required</h2>
+            <p className="text-slate-500 font-medium mb-8">Token book karne ke liye login karna zaroori hai. Kia aap login karna chahte hain?</p>
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => setLoginPrompt(false)}
+                className="py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all uppercase tracking-widest text-xs"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  setLoginPrompt(false);
+                  setViewState('login');
+                }}
+                className="py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 transition-all uppercase tracking-widest text-xs"
+              >
+                Login / Signup
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
     switch (viewState) {
       case 'hero':
         return (
@@ -2163,6 +2217,7 @@ export default function App() {
                 // Future: add search logic here or set view to patient results
                 console.log("Search query:", q);
               }}
+              onHospitalClick={(h) => setSelectedHospital(h)}
             />
           </div>
         );
@@ -2171,9 +2226,15 @@ export default function App() {
           <>
             <LoginPage 
               onLoginSuccess={(role) => {
-                if (role === 'hospital_admin') setViewState('admin_dashboard');
-                else if (role === 'super_admin') setViewState('super_admin');
-                else setViewState('patient_home');
+                if (selectedHospital) {
+                  handleLoginSuccess();
+                } else if (role === 'hospital_admin') {
+                  setViewState('admin_dashboard');
+                } else if (role === 'super_admin') {
+                  setViewState('super_admin');
+                } else {
+                  setViewState('patient_home');
+                }
               }}
               onSignUpClick={(type) => type === 'Hospital' ? setViewState('hospital_reg') : setViewState('patient_reg')}
               onForgotPasswordClick={() => setIsForgotPasswordOpen(true)}
@@ -2200,7 +2261,7 @@ export default function App() {
       case 'hospital_reg':
         return (
           <HospitalRegistration 
-            onComplete={() => setViewState('login')} 
+            onComplete={() => setViewState('admin_dashboard')} 
           />
         );
       case 'patient_reg':
@@ -2232,20 +2293,21 @@ export default function App() {
                 setLastCreatedToken(null);
                 setSelectedHospital(null);
                 setSelectedDoctor(null);
+                setIsBookingFlow(false);
                 setViewState('patient_home');
               }}
             />
           );
         }
-        if (selectedDoctor) {
+        if (isBookingFlow) {
            return (
             <BookingFlow 
               hospital={selectedHospital}
               doctor={selectedDoctor}
-              onClose={() => setSelectedDoctor(null)}
+              onClose={() => setIsBookingFlow(false)}
               onSuccess={(token) => {
                 setLastCreatedToken(token);
-                setSelectedDoctor(null);
+                setIsBookingFlow(false);
               }}
             />
           );
@@ -2255,7 +2317,7 @@ export default function App() {
             <HospitalDetailPage 
               hospital={selectedHospital} 
               onBack={() => setSelectedHospital(null)}
-              onBook={(docData) => setSelectedDoctor(docData)}
+              onBook={handleBookToken}
             />
           );
         }
