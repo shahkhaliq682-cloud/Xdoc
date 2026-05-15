@@ -101,7 +101,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
   // Auto No-Show Local Detection for Alerts
   useEffect(() => {
     const timer = setInterval(() => {
-      const settings = hospitalData.settings || {};
+      const settings = hospitalData?.settings || {};
       if (settings.alertBeforeAutoMark === false) return;
       
       const limitMinutes = Number(settings.noShowLimit) || 15;
@@ -125,7 +125,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
       });
     }, 10000);
     return () => clearInterval(timer);
-  }, [waitingTokens, showNoShowAlert, hospitalData.settings]);
+  }, [waitingTokens, showNoShowAlert, hospitalData?.settings]);
 
   const getWaitMinutes = (token: any) => {
     try {
@@ -197,9 +197,8 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
     setIssueLoading(true);
     try {
       const doctor = doctors.find(d => d.id === selectedDoctorId);
-      const hospitalId = hospitalData.uid;
-      
-      // Calculate token number
+      const hospitalId = hospitalData?.uid || hospitalData?.id;
+      if (!hospitalId) throw new Error("Hospital ID missing");
       const existingTokens = tokens.filter(t => t.appointmentDate === todayStr);
       const nextNum = existingTokens.length + 1;
       const tokenNumber = `T-${nextNum.toString().padStart(3, '0')}`;

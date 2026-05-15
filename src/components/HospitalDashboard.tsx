@@ -130,14 +130,32 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString().split('T')[0];
-  const todayTokens = tokens.filter(t => t.appointmentDate === todayStr);
 
-  const stats = {
-    tokensToday: todayTokens.length,
-    waiting: todayTokens.filter(t => t.status === 'Waiting' || t.status === 'waiting').length,
-    completed: todayTokens.filter(t => t.status === 'Completed').length,
-    revenueToday: todayTokens.reduce((sum, t) => sum + (t.status === 'Completed' ? (Number(t.fee) || 0) : 0), 0)
+  // Stats calculation helper
+  const calculateStats = (tokenList: any[]) => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayTokens = tokenList.filter(t => 
+      t.appointmentDate === today || 
+      (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] === today : false)
+    );
+
+    return {
+      tokensToday: todayTokens.length,
+      waiting: todayTokens.filter(t => t.status === 'waiting' || t.status === 'Waiting').length,
+      completedToday: todayTokens.filter(t => t.status === 'completed' || t.status === 'Completed').length,
+      revenueToday: todayTokens
+        .filter(t => t.status === 'completed' || t.status === 'Completed')
+        .reduce((sum, t) => sum + (Number(t.consultationFee || t.fee) || 0), 0),
+      totalCompleted: tokenList.filter(t => t.status === 'completed' || t.status === 'Completed').length,
+      totalNotArrived: tokenList.filter(t => t.status === 'not-arrived').length,
+      totalCancelled: tokenList.filter(t => t.status === 'cancelled').length,
+      totalRevenue: tokenList
+        .filter(t => t.status === 'completed' || t.status === 'Completed')
+        .reduce((sum, t) => sum + (Number(t.consultationFee || t.fee) || 0), 0)
+    };
   };
+
+  const dashboardStats = calculateStats(tokens);
 
   const sampleChartData = [
     { day: 'Mon', patients: 45 },
@@ -156,11 +174,12 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   // 30-day data check
   useEffect(() => {
-    if (hospitalData?.uid) {
+    if (hospitalData?.uid || hospitalData?.id) {
+      const hId = hospitalData.uid || hospitalData.id;
       const checkOldData = async () => {
         const q = query(
           collection(db, 'tokens'),
-          where('hospitalId', '==', hospitalData.uid)
+          where('hospitalId', '==', hId)
         );
         const snap = await getDocs(q);
         const thirtyDaysAgo = new Date();
@@ -178,18 +197,19 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       };
       checkOldData();
     }
-  }, [hospitalData?.uid]);
+  }, [hospitalData?.uid, hospitalData?.id]);
 
   // Listen to hospital data
   useEffect(() => {
     let isMounted = true;
+    const hId = initialHospitalData?.uid || initialHospitalData?.id;
     const fetchHospitalData = async () => {
-      if (!initialHospitalData?.uid) return;
+      if (!hId) return;
       try {
-        const docRef = doc(db, 'hospitals', initialHospitalData.uid);
+        const docRef = doc(db, 'hospitals', hId);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
           if (isMounted && docSnap.exists()) {
-            setHospitalData({ uid: docSnap.id, ...docSnap.data() });
+            setHospitalData({ uid: docSnap.id, id: docSnap.id, ...docSnap.data() });
           }
         });
         return () => unsubscribe();
@@ -199,56 +219,63 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     };
     fetchHospitalData();
     return () => { isMounted = false; };
-  }, [initialHospitalData?.uid]);
+  }, [initialHospitalData?.uid, initialHospitalData?.id]);
 
   // Listen to doctors
   useEffect(() => {
     let isMounted = true;
+    const hId = initialHospitalData?.uid || initialHospitalData?.id;
     const fetchDoctors = async () => {
-      if (!initialHospitalData?.uid) return;
+      if (!hId) return;
       try {
-        const q = query(collection(db, `hospitals/${initialHospitalData.uid}/doctors`));
-        const snapshot = await getDocs(q);
-        if (isMounted) {
-          setDoctors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        }
+        const q = query(collection(db, `hospitals/${hId}/doctors`));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          if (isMounted) {
+            setDoctors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          }
+        });
+        return () => unsubscribe();
       } catch (error: any) {
         if (isMounted) console.error("Error fetching doctors:", error);
       }
     };
     fetchDoctors();
     return () => { isMounted = false; };
-  }, [initialHospitalData?.uid]);
+  }, [initialHospitalData?.uid, initialHospitalData?.id]);
 
   // Listen to staff
   useEffect(() => {
     let isMounted = true;
+    const hId = initialHospitalData?.uid || initialHospitalData?.id;
     const fetchStaff = async () => {
-      if (!initialHospitalData?.uid) return;
+      if (!hId) return;
       try {
-        const q = query(collection(db, `hospitals/${initialHospitalData.uid}/staff`));
-        const snapshot = await getDocs(q);
-        if (isMounted) {
-          setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        }
+        const q = query(collection(db, `hospitals/${hId}/staff`));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          if (isMounted) {
+            setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          }
+        });
+        return () => unsubscribe();
       } catch (error: any) {
         if (isMounted) console.error("Error fetching staff:", error);
       }
     };
     fetchStaff();
     return () => { isMounted = false; };
-  }, [initialHospitalData?.uid]);
+  }, [initialHospitalData?.uid, initialHospitalData?.id]);
 
   const [lastNotificationTime, setLastNotificationTime] = useState(Date.now());
   const [noShowAlerts, setNoShowAlerts] = useState<string[]>([]);
 
   const handleClearOldData = async (saveToArchive: boolean) => {
-    if (!hospitalData?.uid) return;
+    const hId = hospitalData?.uid || hospitalData?.id;
+    if (!hId) return;
     setIsSaving(true);
     try {
       const q = query(
         collection(db, 'tokens'),
-        where('hospitalId', '==', hospitalData.uid)
+        where('hospitalId', '==', hId)
       );
       const snap = await getDocs(q);
       const thirtyDaysAgo = new Date();
@@ -259,11 +286,8 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
         const data = tokenDoc.data();
         const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || 0);
         if (createdAt < thirtyDaysAgo) {
-          if (saveToArchive) {
-            // Save to internal reports/archive if needed, but here we just follow user intent
-          }
           batch.delete(tokenDoc.ref);
-          batch.delete(doc(db, 'hospitals', hospitalData.uid, 'tokens', tokenDoc.id));
+          batch.delete(doc(db, 'hospitals', hId, 'tokens', tokenDoc.id));
         }
       });
       await batch.commit();
@@ -277,7 +301,8 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   // Auto No-Show Detection Timer
   useEffect(() => {
-    if (!hospitalData?.uid) return;
+    const hId = hospitalData?.uid || hospitalData?.id;
+    if (!hId) return;
     
     const checkNoShows = async () => {
       const settings = hospitalData.settings || {};
@@ -311,14 +336,10 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       if (expiredTokens.length > 0) {
         const batch = writeBatch(db);
         for (const token of expiredTokens) {
-          // If alert is on, we don't auto-mark here, ReceptionMode will handle it 
-          // but "Auto Detection" usually means automated marking. 
-          // The requirement says "Auto mark" in Part 1, but "Alert before auto mark" in Part 8.
-          // We'll auto-mark if the alert setting is off.
           if (settings.alertBeforeAutoMark === false) {
             const updateData = { status: 'not-arrived', updatedAt: serverTimestamp() };
             batch.update(doc(db, 'tokens', token.id), updateData);
-            batch.update(doc(db, 'hospitals', hospitalData.uid, 'tokens', token.id), updateData);
+            batch.update(doc(db, 'hospitals', hId, 'tokens', token.id), updateData);
             if (token.patientId) {
               batch.update(doc(db, 'users', token.patientId, 'bookings', token.id), updateData);
               batch.update(doc(db, 'users', token.patientId), {
@@ -326,7 +347,6 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
               });
             }
             
-            // Add notification
             toast.warning(`${token.tokenNumber} ${token.patientName} ko automatically Not Arrived mark kar diya gaya`);
           }
         }
@@ -336,41 +356,37 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       }
     };
 
-    // Run once on load and then every 60s
     checkNoShows();
     const interval = setInterval(checkNoShows, 60000);
     return () => clearInterval(interval);
-  }, [hospitalData?.uid, hospitalData?.settings, tokens]);
+  }, [hospitalData?.uid, hospitalData?.id, hospitalData?.settings, tokens]);
 
-  // Listen to tokens
+  // Listen to ALL tokens for this hospital
   useEffect(() => {
     let isMounted = true;
-    if (!initialHospitalData?.uid) return;
+    const hId = initialHospitalData?.uid || initialHospitalData?.id || auth.currentUser?.uid;
+    if (!hId) return;
     
     setIsSyncing(true);
-    // Listen for today's tokens specifically for real-time dashboard
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    console.log('Fetching tokens for Hospital ID:', hId);
 
+    // FIX: Fetch ALL tokens for this hospital to calculate both today and total stats
     const q = query(
       collection(db, 'tokens'), 
-      where('hospitalId', '==', initialHospitalData.uid),
-      where('appointmentDate', '==', todayStr)
+      where('hospitalId', '==', hId),
+      orderBy('createdAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (isMounted) {
         const newTokens = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('Tokens found:', newTokens.length);
         
-        // Check for new tokens to highlight and notify
+        // Notification for new tokens
         snapshot.docChanges().forEach(change => {
           if (change.type === 'added' && !snapshot.metadata.hasPendingWrites) {
-            const data = change.doc.data();
-            // Only notify for fresh additions, not initial load
             if (Date.now() - lastNotificationTime > 2000) {
               setNewTokenId(change.doc.id);
-              // Simple sound or vibration could go here in a real mobile app
               setTimeout(() => setNewTokenId(null), 8000);
             }
           }
@@ -382,6 +398,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       }
     }, (error) => {
       if (isMounted) {
+        console.error("Tokens Fetch Error:", error);
         handleFirestoreError(error, OperationType.LIST, 'tokens');
         setIsLoading(false);
         setIsSyncing(false);
@@ -392,7 +409,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       isMounted = false;
       unsubscribe();
     };
-  }, [initialHospitalData?.uid]);
+  }, [initialHospitalData?.uid, initialHospitalData?.id]);
 
   const updateTokenStatus = async (tokenId: string, status: string, patientId?: string) => {
     // Optimistic Update
@@ -466,18 +483,14 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   const renderDashboardHome = () => {
     const today = new Date().toISOString().split('T')[0];
-    const todaysTokens = tokens.filter(t => t.appointmentDate === today);
+    const todaysTokens = tokens.filter(t => 
+      t.appointmentDate === today || 
+      (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] === today : false)
+    );
     
     const inProgressTokens = todaysTokens.filter(t => t.status === 'in-progress');
     const waitingTokens = todaysTokens.filter(t => t.status === 'waiting');
     
-    // Stats calculation
-    const completedToday = todaysTokens.filter(t => t.status === 'completed').length;
-    const waitingNow = waitingTokens.length;
-    const revenueToday = todaysTokens
-      .filter(t => t.status === 'completed')
-      .reduce((sum, t) => sum + (Number(t.consultationFee || t.fee) || 0), 0);
-
     if (isLoading) {
       return <DashboardSkeleton />;
     }
@@ -556,10 +569,10 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
         {/* Global Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: d.tokensToday, val: todaysTokens.length, color: 'text-primary', icon: Ticket, sub: 'Issued' },
-            { label: d.waitingNow, val: waitingNow, color: 'text-amber-500', icon: Clock, sub: 'In Queue' },
-            { label: d.completedToday, val: completedToday, color: 'text-emerald-500', icon: CheckCircle2, sub: 'Done' },
-            { label: d.revenueToday, val: `Rs. ${revenueToday}`, color: 'text-health-teal', icon: Wallet, sub: 'Collected' },
+            { label: d.tokensToday, val: dashboardStats.tokensToday, color: 'text-primary', icon: Ticket, sub: 'Issued' },
+            { label: d.waitingNow, val: dashboardStats.waiting, color: 'text-amber-500', icon: Clock, sub: 'In Queue' },
+            { label: d.completedToday, val: dashboardStats.completedToday, color: 'text-emerald-500', icon: CheckCircle2, sub: 'Done' },
+            { label: d.revenueToday, val: `Rs. ${dashboardStats.revenueToday}`, color: 'text-health-teal', icon: Wallet, sub: 'Collected' },
           ].map((stat, idx) => (
             <div key={idx} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden group">
                <div className="flex items-center justify-between mb-4">
@@ -633,10 +646,17 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                     <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest ml-4">{t.patient.booking.waitingList}</p>
                     {waitingTokens.length === 0 ? (
                       <div className="py-2">
-                        <EmptyState 
-                          type="no_waiting" 
-                          onAction={() => setShowReceptionMode(true)} 
-                        />
+                        <div className="p-12 text-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] space-y-4">
+                          <Ticket size={48} className="mx-auto text-slate-300" />
+                          <h4 className="text-lg font-bold text-slate-900">🎫 Aaj koi token nahi aaya.</h4>
+                          <p className="text-slate-500 text-sm font-medium">Patients aane ka intezaar hai!</p>
+                          <button 
+                            onClick={() => setShowReceptionMode(true)}
+                            className="px-6 py-3 bg-white text-primary border-2 border-primary rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+                          >
+                            Open Reception Mode
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       waitingTokens.map(token => (
@@ -682,32 +702,30 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                     <div className="space-y-8 relative">
                        <div>
                           <p className="text-[10px] font-bold text-primary uppercase tracking-[0.4em] mb-2">{t.patient.booking.revenue}</p>
-                          <h2 className="text-5xl font-black tracking-tighter">Rs. {revenueToday}</h2>
+                          <h2 className="text-5xl font-black tracking-tighter">Rs. {dashboardStats.revenueToday}</h2>
                        </div>
                        
                        <div className="space-y-6 pt-8 border-t border-white/10">
                           <div className="flex items-center justify-between">
-                             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.patient.booking.completed}</span>
-                             <span className="text-xl font-black text-health-teal">{completedToday}</span>
+                             <div className="flex flex-col">
+                               <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t.patient.booking.completed}</span>
+                               <span className="text-white text-[10px] font-bold uppercase tracking-widest opacity-50">Today / Total</span>
+                             </div>
+                             <span className="text-xl font-black text-health-teal">{dashboardStats.completedToday} / {dashboardStats.totalCompleted}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.patient.booking.notArrived}</span>
-                             <span className="text-xl font-black text-red-500">{todaysTokens.filter(t => t.status === 'not-arrived').length}</span>
+                             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.patient.booking.notArrived} (Total)</span>
+                             <span className="text-xl font-black text-red-500">{dashboardStats.totalNotArrived}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.patient.booking.cancelled}</span>
-                             <span className="text-xl font-black text-slate-600">{todaysTokens.filter(t => t.status === 'cancelled').length}</span>
+                             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.patient.booking.cancelled} (Total)</span>
+                             <span className="text-xl font-black text-slate-600">{dashboardStats.totalCancelled}</span>
                           </div>
                        </div>
 
-                       <div className="pt-8 border-t border-white/10 flex items-center gap-4">
-                          <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-primary">
-                             <TrendingUp size={24} />
-                          </div>
-                          <div>
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hospital Efficiency</p>
-                             <p className="text-sm font-bold text-white">Top Rated Service</p>
-                          </div>
+                       <div className="pt-8 border-t border-white/10 flex flex-col gap-4">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Revenue (All Time)</p>
+                          <h3 className="text-2xl font-black text-health-teal">Rs. {dashboardStats.totalRevenue}</h3>
                        </div>
                     </div>
                  </div>
@@ -812,10 +830,10 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   const renderPatientsData = () => {
     const statsData = [
-      { id: 1, label: d.completed, val: tokens.filter(t => t.status === 'Completed').length, icon: CheckCircle2, color: 'text-health-teal', bg: 'bg-health-teal/10' },
-      { id: 2, label: d.pending, val: tokens.filter(t => t.status === 'Waiting' || t.status === 'In Progress').length, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100' },
-      { id: 3, label: d.notArrived, val: tokens.filter(t => t.status === 'Not Arrived').length, icon: X, color: 'text-red-500', bg: 'bg-red-50' },
-      { id: 4, label: d.totalToday, val: tokens.length, icon: Users, color: 'text-primary', bg: 'bg-primary/10' }
+      { id: 1, label: d.completed, val: dashboardStats.totalCompleted, icon: CheckCircle2, color: 'text-health-teal', bg: 'bg-health-teal/10' },
+      { id: 2, label: d.pending, val: dashboardStats.waiting, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100' },
+      { id: 3, label: d.notArrived, val: dashboardStats.totalNotArrived, icon: X, color: 'text-red-500', bg: 'bg-red-50' },
+      { id: 4, label: d.totalToday, val: dashboardStats.tokensToday, icon: Users, color: 'text-primary', bg: 'bg-primary/10' }
     ];
 
     return (
@@ -839,12 +857,12 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
              <div className="flex justify-between items-center">
                 <h3 className="text-xl font-black text-slate-900">{t.patient.booking.noShowsToday}</h3>
                 <span className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-xs font-black">
-                  {tokens.filter(t => t.status === 'not-arrived' && t.appointmentDate === new Date().toISOString().split('T')[0]).length}
+                  {tokens.filter(t => t.status === 'not-arrived' && (t.appointmentDate === new Date().toISOString().split('T')[0] || (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] === new Date().toISOString().split('T')[0] : false))).length}
                 </span>
              </div>
              <div className="space-y-3">
                {tokens
-                 .filter(t => t.status === 'not-arrived' && t.appointmentDate === new Date().toISOString().split('T')[0])
+                 .filter(t => t.status === 'not-arrived' && (t.appointmentDate === new Date().toISOString().split('T')[0] || (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] === new Date().toISOString().split('T')[0] : false)))
                  .slice(0, 5)
                  .map(t => (
                  <div key={t.id} className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between">
@@ -855,7 +873,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                    <X size={16} className="text-red-300" />
                  </div>
                ))}
-               {tokens.filter(t => t.status === 'not-arrived' && t.appointmentDate === new Date().toISOString().split('T')[0]).length === 0 && (
+               {tokens.filter(t => t.status === 'not-arrived' && (t.appointmentDate === new Date().toISOString().split('T')[0] || (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] === new Date().toISOString().split('T')[0] : false))).length === 0 && (
                  <div className="py-12 text-center text-slate-300 font-bold tracking-widest text-[10px]">NO MISSES YET</div>
                )}
              </div>
@@ -1498,10 +1516,9 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
         <AnimatePresence>
           {showReceptionMode && (
             <ReceptionMode 
-              isOpen={showReceptionMode}
+              hospitalData={hospitalData}
               onClose={() => setShowReceptionMode(false)}
               tokens={tokens}
-              hospitalName={hospitalData?.hospitalName || 'Xdoc'}
               updateTokenStatus={updateTokenStatus}
               doctors={doctors}
             />
