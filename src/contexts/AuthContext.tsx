@@ -5,7 +5,7 @@ import {
   signOut as firebaseSignOut 
 } from 'firebase/auth';
 import { auth, db } from '../firebase';
-import { doc, getDoc, getDocFromServer, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 
 interface AuthContextType {
@@ -24,58 +24,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let isMounted = true;
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Fetch additional user data from Firestore using server-only fetch to bypass local cache issues
-        try {
-          const userDoc = await getDocFromServer(doc(db, 'users', user.uid));
-          if (!isMounted) return;
-          
-          if (userDoc.exists()) {
-            setUserData(userDoc.data());
-          } else {
-            // Create user doc if it doesn't exist
-            const newUserData = {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName || 'User',
-              role: 'patient', // Default role
-              createdAt: serverTimestamp() // Use serverTimestamp for consistency
-            };
-            try {
-              await setDoc(doc(db, 'users', user.uid), newUserData);
-              if (isMounted) setUserData({ ...newUserData, createdAt: new Date().toISOString() }); // Local fallback for immediate use
-            } catch (createErr) {
-              console.error("Failed to create user document:", createErr);
-              // Don't throw here, just set minimal user data
-              if (isMounted) setUserData(newUserData);
-            }
-          }
-        } catch (error: any) {
-          const errorMessage = error.message || String(error);
-          console.error("Error fetching user data:", error);
-          if (!isMounted) return;
+    let unsubDoc: (() => void) | null = null;
 
-          if (error.code === 'permission-denied' || errorMessage.toLowerCase().includes('permission')) {
-             // If permission denied, we still want the app to load, maybe with a warning
-             setUserData({ uid: user.uid, email: user.email, role: 'patient', permissionError: true });
-          } else {
-             handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
-          }
-        }
-      } else {
-        if (isMounted) setUserData(null);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      // Clean up previous doc listener if any
+      if (unsubDoc) {
+        unsubDoc();
+        unsubDoc = null;
       }
-      
-      if (isMounted) {
-        setCurrentUser(user);
-        setLoading(false);
+
+      if (user) {
+        // Real-time listener for user document to handle race conditions and updates
+        const userDocRef = doc(db, 'users', user.uid);
+        unsubDoc = onSnapshot(userDocRef, (docSnap) => {
+          if (!isMounted) return;
+          if (docSnap.exists()) {
+            setUserData(docSnap.data());
+          } else {
+            // Default to patient if doc doesn't exist yet (signup in progress)
+            setUserData({ uid: user.uid, email: user.email, role: 'patient', isNew: true });
+          }
+          setCurrentUser(user);
+          setLoading(false);
+        }, (error) => {
+          console.error("User doc listener error:", error);
+          if (isMounted) {
+            setCurrentUser(user);
+            setLoading(false);
+          }
+        });
+      } else {
+        if (isMounted) {
+          setUserData(null);
+          setCurrentUser(null);
+          setLoading(false);
+        }
       }
     });
 
     return () => {
       isMounted = false;
       unsubscribe();
+      if (unsubDoc) unsubDoc();
     };
   }, []);
 

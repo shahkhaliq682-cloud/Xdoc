@@ -840,7 +840,7 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
   </div>
 );
 
-const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
+const PatientRegistration = ({ onComplete, onLoginClick }: { onComplete: () => void, onLoginClick: () => void }) => {
   const { language, t } = useLanguage();
   const { toast } = useToast();
   const isUrdu = language === 'UR';
@@ -902,7 +902,20 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
       let errorMsg = isUrdu ? "رجسٹریشن میں غلطی ہوئی۔ دوبارہ کوشش کریں۔" : "Registration failed. Please try again.";
 
       if (code === 'auth/email-already-in-use' || message.includes('email-already-in-use')) {
-        errorMsg = t.auth.emailAlreadyInUse;
+        errorMsg = (
+          <span>
+            {t.auth.emailAlreadyInUse}. {' '}
+            <button 
+              onClick={() => {
+                onLoginClick();
+                toast.dismiss();
+              }}
+              className="underline font-bold"
+            >
+              {isUrdu ? "لاگ ان کریں" : "Login instead"}
+            </button>
+          </span>
+        );
       } else if (code === 'auth/weak-password' || message.includes('weak-password')) {
         errorMsg = t.errors.weakPassword || (isUrdu ? "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے۔" : "Password should be at least 6 characters.");
       } else if (code === 'auth/invalid-email' || message.includes('invalid-email')) {
@@ -2185,9 +2198,18 @@ export default function App() {
           </div>
         );
       case 'hospital_reg':
-        return <HospitalRegistration onComplete={() => setViewState('admin_dashboard')} />;
+        return (
+          <HospitalRegistration 
+            onComplete={() => setViewState('login')} 
+          />
+        );
       case 'patient_reg':
-        return <PatientRegistration onComplete={() => setViewState('patient_home')} />;
+        return (
+          <PatientRegistration 
+            onComplete={() => setViewState('patient_home')} 
+            onLoginClick={() => setViewState('login')}
+          />
+        );
       case 'admin_dashboard':
         return (
           <HospitalDashboard 

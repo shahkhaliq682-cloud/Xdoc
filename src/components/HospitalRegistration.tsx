@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Building2, MapPin, Clock, Stethoscope, Users, 
-  CheckCircle2, XSide, Plus, Check, AlertTriangle, Activity, 
+  CheckCircle2, X, Plus, Check, AlertTriangle, Activity, 
   Eye, EyeOff, LayoutDashboard, User, Mail, Phone, Lock, ArrowRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -111,7 +111,20 @@ const HospitalRegistration: React.FC<HospitalRegistrationProps> = ({ onComplete 
       let errorMsg = isUrdu ? "رجسٹریشن میں غلطی ہوئی۔ دوبارہ کوشش کریں۔" : "Registration failed. Please try again.";
 
       if (code === 'auth/email-already-in-use' || message.includes('email-already-in-use')) {
-        errorMsg = t.auth.emailAlreadyInUse;
+        errorMsg = (
+          <span>
+            {t.auth.emailAlreadyInUse}. {' '}
+            <button 
+              onClick={() => {
+                onComplete(); // This goes back to login usually in this context
+                toast.dismiss();
+              }}
+              className="underline font-bold"
+            >
+              {isUrdu ? "لاگ ان کریں" : "Login instead"}
+            </button>
+          </span>
+        );
       } else if (code === 'auth/weak-password' || message.includes('weak-password')) {
         errorMsg = t.errors.weakPassword || (isUrdu ? "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے۔" : "Password should be at least 6 characters.");
       } else if (code === 'auth/invalid-email' || message.includes('invalid-email')) {
