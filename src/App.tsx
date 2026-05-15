@@ -497,16 +497,21 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email' || err.code === 'auth/invalid-credential') {
+      const code = err.code || '';
+      const message = err.message || '';
+      
+      if (code === 'auth/user-not-found' || code === 'auth/invalid-email' || code === 'auth/invalid-credential' || message.includes('invalid-credential')) {
         setError({ general: t.auth.invalidCredential });
-      } else if (err.code === 'auth/wrong-password') {
+      } else if (code === 'auth/email-already-in-use' || message.includes('email-already-in-use')) {
+        setError({ general: t.auth.emailAlreadyInUse });
+      } else if (code === 'auth/wrong-password' || message.includes('wrong-password')) {
         setError({ password: t.auth.incorrectPassword });
-      } else if (err.code === 'auth/network-request-failed') {
+      } else if (code === 'auth/network-request-failed' || message.includes('network-request-failed')) {
         setError({ general: t.auth.networkError });
-      } else if (err.code === 'auth/too-many-requests') {
+      } else if (code === 'auth/too-many-requests' || message.includes('too-many-requests')) {
         setError({ general: t.auth.tooManyRequests });
       } else {
-        setError({ general: err.message || 'Login failed. Please check your credentials.' });
+        setError({ general: message || 'Login failed. Please check your credentials.' });
       }
     } finally {
       setLoading(false);
@@ -836,8 +841,10 @@ const SignUpChoice = ({ onSelect }: { onSelect: (type: 'Hospital' | 'Patient') =
 );
 
 const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { toast } = useToast();
+  const isUrdu = language === 'UR';
+
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -846,28 +853,21 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
     gender: 'Male',
     city: 'Karachi'
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad'];
+  const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Peshawar', 'Quetta', 'Multan', 'Faisalabad', 'Hyderabad', 'Other'];
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.fullName) newErrors.fullName = t.signup.errors.required;
-    if (!formData.phone) newErrors.phone = t.signup.errors.required;
-    if (!formData.email) newErrors.email = t.signup.errors.required;
-    if (!formData.password) newErrors.password = t.signup.errors.required;
-    else if (formData.password.length < 6) newErrors.password = t.signup.errors.passwordTooShort;
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!formData.fullName || !formData.phone || !formData.email || !formData.password) {
+      toast.error(isUrdu ? "برائے مہربانی تمام فیلڈز پُر کریں۔" : "Please fill all fields");
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -891,1080 +891,154 @@ const PatientRegistration = ({ onComplete }: { onComplete: () => void }) => {
       };
 
       await setDoc(doc(db, 'users', user.uid), patientData);
-      toast.success("Welcome to Xdoc!");
-      setIsSubmitted(true);
+      toast.success(isUrdu ? "میرا اکاؤنٹ بنایا گیا!" : "Account Created Successfully!");
       setTimeout(() => onComplete(), 1500);
     } catch (err: any) {
       console.error(err);
-      let errorMsg = err.message || 'Registration failed. Please try again.';
-      if (err.code === 'auth/email-already-in-use') {
-        errorMsg = t.auth?.emailAlreadyInUse || 'This email is already in use by another account.';
+      const code = err.code || '';
+      const message = err.message || '';
+      
+      // Default generic message
+      let errorMsg = isUrdu ? "رجسٹریشن میں غلطی ہوئی۔ دوبارہ کوشش کریں۔" : "Registration failed. Please try again.";
+
+      if (code === 'auth/email-already-in-use' || message.includes('email-already-in-use')) {
+        errorMsg = t.auth.emailAlreadyInUse;
+      } else if (code === 'auth/weak-password' || message.includes('weak-password')) {
+        errorMsg = t.errors.weakPassword || (isUrdu ? "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے۔" : "Password should be at least 6 characters.");
+      } else if (code === 'auth/invalid-email' || message.includes('invalid-email')) {
+        errorMsg = t.auth.invalidEmail;
+      } else if (code === 'auth/network-request-failed' || message.includes('network-request-failed')) {
+        errorMsg = t.auth.networkError;
+      } else if (message) {
+        // Fallback to raw message if it's not a known auth error but exists
+        errorMsg = message;
       }
-      setErrors({ general: errorMsg });
+      
       toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-12 rounded-[40px] shadow-xl text-center max-w-md w-full">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check size={40} />
-          </div>
-          <h2 className="text-3xl font-bold mb-4">Welcome to Xdoc!</h2>
-          <p className="text-slate-500">Your account is ready. Redirecting...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 pt-32 pb-20 px-6">
-      <div className="max-w-xl mx-auto">
-        <div className="text-center mb-10">
-          <h2 className="text-4xl font-extrabold text-slate-900 mb-2">{t.signup.patientTitle}</h2>
-          <p className="text-slate-500 font-medium">Join Pakistan's largest healthcare network</p>
-        </div>
+    <div className="min-h-screen bg-[#F8FAFC] py-12 px-6 font-sans">
+      <div className="max-w-[500px] mx-auto text-center">
+        <h1 className="text-3xl font-bold text-[#0B1D35] mb-2 tracking-tight">
+          {isUrdu ? 'نیا اکاؤنٹ بنائیں' : 'Create My Account'}
+        </h1>
+        <p className="text-[#64748B] font-medium mb-10">
+          {isUrdu ? 'ہیلتھ کیئر آپ کی انگلیوں پر' : 'Healthcare at your fingertips'}
+        </p>
 
-        <form onSubmit={handleSubmit} className="bg-white p-8 md:p-10 rounded-[40px] shadow-xl border border-slate-100 space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">{t.signup.labels.fullName} *</label>
-            <input 
-              type="text" 
-              placeholder="Full Name" 
-              value={formData.fullName}
-              onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
-            />
-            {errors.fullName && <p className="text-red-500 text-xs font-bold pl-2">{errors.fullName}</p>}
-          </div>
+        <div className="bg-white rounded-[16px] shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-8 text-left">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block font-medium text-[13px] text-[#374151] mb-1.5">{isUrdu ? 'پورا نام' : 'Full Name'}</label>
+              <input 
+                type="text" 
+                placeholder="John Doe"
+                required
+                value={formData.fullName}
+                onChange={e => handleChange('fullName', e.target.value)}
+                className="w-full h-12 border-[1.5px] border-[#E2E8F0] rounded-lg px-4 text-sm focus:outline-none focus:border-[#0B5FFF]" 
+              />
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">{t.signup.labels.phone} *</label>
+            <div>
+              <label className="block font-medium text-[13px] text-[#374151] mb-1.5">{isUrdu ? 'فون نمبر' : 'Phone Number'}</label>
               <input 
                 type="tel" 
-                placeholder="Phone Number" 
+                placeholder="03XX-XXXXXXX"
+                required
                 value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
+                onChange={e => handleChange('phone', e.target.value)}
+                className="w-full h-12 border-[1.5px] border-[#E2E8F0] rounded-lg px-4 text-sm focus:outline-none focus:border-[#0B5FFF]" 
               />
-              {errors.phone && <p className="text-red-500 text-xs font-bold pl-2">{errors.phone}</p>}
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">{t.signup.labels.city} *</label>
+
+            <div>
+              <label className="block font-medium text-[13px] text-[#374151] mb-1.5">{isUrdu ? 'ای میل' : 'Email Address'}</label>
+              <input 
+                type="email" 
+                placeholder="email@example.com"
+                required
+                value={formData.email}
+                onChange={e => handleChange('email', e.target.value)}
+                className="w-full h-12 border-[1.5px] border-[#E2E8F0] rounded-lg px-4 text-sm focus:outline-none focus:border-[#0B5FFF]" 
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium text-[13px] text-[#374151] mb-1.5">{isUrdu ? 'پاس ورڈ' : 'Password'}</label>
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Min 6 characters"
+                  required
+                  value={formData.password}
+                  onChange={e => handleChange('password', e.target.value)}
+                  className="w-full h-12 border-[1.5px] border-[#E2E8F0] rounded-lg px-4 text-sm focus:outline-none focus:border-[#0B5FFF]" 
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -track-y-1/2 text-slate-400 p-1 mt-[-10px]">
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-medium text-[13px] text-[#374151] mb-1.5">{isUrdu ? 'صنف' : 'Gender'}</label>
+              <div className="flex gap-4">
+                {['Male', 'Female'].map(g => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => handleChange('gender', g)}
+                    className={`flex-1 h-12 rounded-lg font-bold transition-all border-2 ${
+                      formData.gender === g ? 'bg-[#0B5FFF]/5 border-[#0B5FFF] text-[#0B5FFF]' : 'bg-white border-[#E2E8F0] text-slate-500'
+                    }`}
+                  >
+                    {isUrdu ? (g === 'Male' ? 'مرد' : 'عورت') : g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-medium text-[13px] text-[#374151] mb-1.5">{isUrdu ? 'شہر' : 'City'}</label>
               <select 
                 value={formData.city}
-                onChange={(e) => setFormData({...formData, city: e.target.value})}
-                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold appearance-none"
+                onChange={e => handleChange('city', e.target.value)}
+                className="w-full h-12 border-[1.5px] border-[#E2E8F0] rounded-lg px-4 text-sm focus:outline-none focus:border-[#0B5FFF] bg-white appearance-none cursor-pointer"
               >
                 {cities.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">{t.signup.labels.email} *</label>
-            <input 
-              type="email" 
-              placeholder="Email Address" 
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
-            />
-            {errors.email && <p className="text-red-500 text-xs font-bold pl-2">{errors.email}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">{t.signup.labels.password} *</label>
-            <div className="relative">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
-              />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            {errors.password && <p className="text-red-500 text-xs font-bold pl-2">{errors.password}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">{t.signup.labels.gender} *</label>
-            <div className="flex gap-4">
-              {['Male', 'Female'].map(g => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setFormData({...formData, gender: g})}
-                  className={`flex-1 py-4 rounded-2xl font-bold transition-all border-2 ${
-                    formData.gender === g ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-50 border-transparent text-slate-500'
-                  }`}
-                >
-                  {g === 'Male' ? 'Male' : 'Female'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="w-full py-5 bg-[#0B5FFF] text-white font-bold text-xl rounded-2xl shadow-xl hover:bg-blue-600 transition-all disabled:opacity-70 mt-4"
-          >
-            {isSubmitting ? 'Creating Account...' : t.signup.labels.createAccount}
-          </button>
-
-          {errors.general && <p className="text-red-500 text-center text-sm font-bold">{errors.general}</p>}
-
-          <p className="text-center text-slate-500 font-medium pt-4">
-            {(t.signup?.labels?.alreadyHaveAccount || "Already have an account? Login").split('?')[0]}? <span className="text-primary font-bold cursor-pointer transition-all" onClick={() => onComplete()}>{(t.signup?.labels?.alreadyHaveAccount || "Already have an account? Login").split('?')[1] || 'Login'}</span>
-          </p>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const OldHospitalRegistration = ({ onComplete }: { onComplete: () => void }) => {
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    name: '', 
-    type: 'Private Hospital', 
-    ownerName: '', 
-    email: '', 
-    password: '',
-    city: '', 
-    address: '', 
-    area: '', 
-    phone: '',
-    opdFee: '',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
-  const [step, setStep] = useState(1);
-  const totalSteps = 8;
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
-  const [isEmergency, setIsEmergency] = useState(false);
-  const [quickSelect, setQuickSelect] = useState<'Mon-Fri' | 'Mon-Sat' | 'All' | null>('Mon-Sat');
-  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
-  const [staffCounts, setStaffCounts] = useState({ doctors: 0, nurses: 0, receptionists: 0, support: 0 });
-  const [individualStaff, setIndividualStaff] = useState<any[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
-  const [media, setMedia] = useState({ logo: null, photos: [] as any[], about: '' });
-
-  const facilityGroups = {
-    "Medical Facilities": ["Emergency Ward", "ICU", "Operation Theater (OT)", "Labour Room"],
-    "Diagnostic Facilities": ["Pathology Lab", "X-Ray", "Ultrasound"],
-    "Support Facilities": ["Pharmacy", "Ambulance Service"],
-    "Patient Comfort": ["Private Rooms", "General Ward", "Waiting Area"],
-    "Digital Services": ["Online Appointment", "Telemedicine"]
-  };
-  const allFacilities = Object.values(facilityGroups).flat();
-
-  const handleQuickSelect = (type: 'Mon-Fri' | 'Mon-Sat' | 'All') => {
-    setQuickSelect(type);
-    if (type === 'Mon-Fri') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-    else if (type === 'Mon-Sat') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
-    else if (type === 'All') setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
-  };
-
-  const toggleDay = (day: string) => {
-    setQuickSelect(null);
-    setSelectedDays(prev => 
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-    );
-  };
-
-  const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
-  const prevStep = () => setStep(s => Math.max(s - 1, 1));
-
-  const allSpecs = [
-    'General Physician', 'Cardiology', 'Neurology', 'Orthopedic', 'Gynecology', 
-    'Pediatrics', 'Dentistry', 'Dermatology (Skin)', 'Ophthalmology (Eye)', 
-    'ENT Specialist', 'Psychiatry', 'Urology', 'Gastroenterology', 'Pulmonology', 
-    'Endocrinology', 'Nephrology', 'Oncology', 'Rheumatology', 'Hematology', 
-    'Physiotherapy', 'Nutritionist', 'Emergency Medicine'
-  ];
-
-  const cities = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad'];
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.name) newErrors.name = t.signup.errors.required;
-    if (!formData.ownerName) newErrors.ownerName = t.signup.errors.required;
-    if (!formData.email) newErrors.email = t.signup.errors.required;
-    if (!formData.password) newErrors.password = t.signup.errors.required;
-    else if (formData.password.length < 6) newErrors.password = t.signup.errors.passwordTooShort;
-    if (!formData.city) newErrors.city = t.signup.errors.required;
-    if (!formData.address) newErrors.address = t.signup.errors.required;
-    if (!formData.area) newErrors.area = t.signup.errors.required;
-    if (!formData.phone) newErrors.phone = t.signup.errors.required;
-    if (!formData.opdFee) newErrors.opdFee = t.signup.errors.required;
-    if (selectedSpecs.length === 0) newErrors.specs = t.signup.errors.atLeastOneSpec;
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const toggleSpec = (spec: string) => {
-    setSelectedSpecs(prev => 
-      prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec]
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    
-    setIsSubmitting(true);
-    setErrors({});
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
-
-      const hospitalData = {
-        hospitalName: formData.name,
-        ownerName: formData.ownerName,
-        email: formData.email,
-        phone: formData.phone,
-        city: formData.city,
-        address: formData.address,
-        area: formData.area,
-        type: formData.type,
-        specializations: selectedSpecs,
-        opdFee: formData.opdFee,
-        status: "active",
-        createdAt: serverTimestamp(),
-        approved: true,
-        uid: user.uid
-      };
-
-      await setDoc(doc(db, 'hospitals', user.uid), hospitalData);
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        email: formData.email,
-        role: 'hospital_admin',
-        createdAt: serverTimestamp()
-      });
-      
-      toast.success("Registration Successful!");
-      setIsSubmitted(true);
-      setTimeout(() => onComplete(), 2000);
-    } catch (err: any) {
-      console.error(err);
-      let errorMsg = err.message || 'Failed to register hospital.';
-      if (err.code === 'auth/email-already-in-use') errorMsg = t.auth?.emailAlreadyInUse || 'Email already in use';
-      setErrors({ general: errorMsg });
-      toast.error(errorMsg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-12 rounded-[40px] shadow-xl text-center max-w-md w-full">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check size={40} />
-          </div>
-          <h2 className="text-3xl font-bold mb-4">Registration Successful!</h2>
-          <p className="text-slate-500 font-medium">Your hospital is now live on Xdoc. Redirecting to your dashboard...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  const sections = [
-    t.signup.hospitalTitle,
-    t.signup.sections.location,
-    t.signup.sections.timings,
-    t.signup.sections.services,
-    t.signup.sections.staff,
-    t.signup.sections.pricing,
-    t.signup.sections.media,
-    t.signup.sections.review
-  ];
-
-  return (
-    <div className="min-h-screen bg-slate-50 px-6 py-20 pb-40">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h2 className="text-4xl font-bold text-slate-900">{t.signup.hospitalTitle}</h2>
-            <p className="text-slate-500 font-medium mt-1">Section {step}: {sections[step-1]}</p>
-          </div>
-          <div className="flex gap-1.5">
-            {Array.from({ length: totalSteps }).map((_, i) => (
-              <div 
-                key={i} 
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  i + 1 === step ? 'w-10 bg-primary' : 
-                  i + 1 < step ? 'w-4 bg-health-teal' : 'w-4 bg-slate-200'
-                }`} 
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white p-10 rounded-[40px] shadow-2xl border border-slate-100">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
-            >
-              {step === 1 && (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">{t.signup.labels.name} *</label>
-                    <input 
-                      type="text" 
-                      name="name"
-                      placeholder="e.g. City Care Clinic" 
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.name ? 'ring-2 ring-red-500' : ''}`} 
-                    />
-                    {errors.name && <p className="text-red-500 text-xs font-bold pl-2">{errors.name}</p>}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.type} *</label>
-                      <select 
-                        value={formData.type}
-                        onChange={(e) => setFormData({...formData, type: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium"
-                      >
-                        <option>Private Hospital</option>
-                        <option>Private Clinic</option>
-                        <option>Government Hospital</option>
-                        <option>Government Clinic</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.ownerName} *</label>
-                      <input 
-                        type="text" 
-                        name="ownerName"
-                        placeholder="Owner Full Name" 
-                        value={formData.ownerName}
-                        onChange={(e) => setFormData({...formData, ownerName: e.target.value})}
-                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.ownerName ? 'ring-2 ring-red-500' : ''}`} 
-                      />
-                      {errors.ownerName && <p className="text-red-500 text-xs font-bold pl-2">{errors.ownerName}</p>}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">{t.signup.labels.email} *</label>
-                    <input 
-                      type="email" 
-                      name="email"
-                      placeholder="contact@hospital.com" 
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.email ? 'ring-2 ring-red-500' : ''}`} 
-                    />
-                    {errors.email && <p className="text-red-500 text-xs font-bold pl-2">{errors.email}</p>}
-                  </div>
-                  <div className="space-y-4">
-                    <input 
-                      type="password" 
-                      name="password"
-                      placeholder={t.signup.labels.password + " *"} 
-                      value={formData.password}
-                      onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.password ? 'ring-2 ring-red-500' : ''}`} 
-                    />
-                    {errors.password && <p className="text-red-500 text-xs font-bold pl-2">{errors.password}</p>}
-                  </div>
-                </>
-              )}
-
-              {step === 2 && (
-                <>
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.signup.labels.address} *</label>
-                      <input 
-                        type="text" 
-                        placeholder="Complete Street Address" 
-                        value={formData.address}
-                        onChange={(e) => setFormData({...formData, address: e.target.value})}
-                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.address ? 'ring-2 ring-red-500' : ''}`} 
-                      />
-                      {errors.address && <p className="text-red-500 text-xs font-bold pl-2">{errors.address}</p>}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.signup.labels.area} *</label>
-                      <input 
-                        type="text" 
-                        placeholder="Town / Area / Sector" 
-                        value={formData.area}
-                        onChange={(e) => setFormData({...formData, area: e.target.value})}
-                        className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.area ? 'ring-2 ring-red-500' : ''}`} 
-                      />
-                      {errors.area && <p className="text-red-500 text-xs font-bold pl-2">{errors.area}</p>}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.signup.labels.city} *</label>
-                        <select 
-                          value={formData.city}
-                          onChange={(e) => setFormData({...formData, city: e.target.value})}
-                          className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.city ? 'ring-2 ring-red-500' : ''}`}
-                        >
-                          <option value="">Select City</option>
-                          <option>Karachi</option>
-                          <option>Lahore</option>
-                          <option>Islamabad</option>
-                          <option>Faisalabad</option>
-                          <option>Rawalpindi</option>
-                          <option>Multan</option>
-                          <option>Peshawar</option>
-                          <option>Quetta</option>
-                        </select>
-                        {errors.city && <p className="text-red-500 text-xs font-bold pl-2">{errors.city}</p>}
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.signup.labels.phone} *</label>
-                        <input 
-                          type="tel" 
-                          name="phone"
-                          placeholder="03XX-XXXXXXX" 
-                          value={formData.phone}
-                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                          className={`w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium ${errors.phone ? 'ring-2 ring-red-500' : ''}`} 
-                        />
-                        {errors.phone && <p className="text-red-500 text-xs font-bold pl-2">{errors.phone}</p>}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {step === 3 && (
-                <>
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Opening Time *</label>
-                      <input 
-                        type="time" 
-                        value={formData.openingTime}
-                        onChange={(e) => setFormData({...formData, openingTime: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Closing Time *</label>
-                      <input 
-                        type="time" 
-                        value={formData.closingTime}
-                        onChange={(e) => setFormData({...formData, closingTime: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium" 
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <label className="text-sm font-bold text-slate-700">Open Days *</label>
-                      <div className="flex gap-2">
-                        {[
-                          { id: 'Mon-Fri', label: 'Mon - Fri' },
-                          { id: 'Mon-Sat', label: 'Mon - Sat' },
-                          { id: 'All', label: 'All 7 Days' }
-                        ].map(btn => (
-                          <button
-                            key={btn.id}
-                            type="button"
-                            onClick={() => handleQuickSelect(btn.id as any)}
-                            className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                              quickSelect === btn.id 
-                                ? 'bg-primary border-primary text-white shadow-md shadow-primary/20' 
-                                : 'bg-transparent border-slate-200 text-slate-500 hover:border-primary'
-                            }`}
-                          >
-                            {btn.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
-                        const isSelected = selectedDays.includes(day);
-                        return (
-                          <div 
-                            key={day} 
-                            onClick={() => toggleDay(day)}
-                            className={`flex flex-col items-center gap-3 p-3 rounded-2xl border-2 transition-all cursor-pointer ${
-                              isSelected 
-                                ? 'bg-primary/5 border-primary shadow-sm' 
-                                : 'bg-slate-50 border-transparent hover:border-slate-200'
-                            }`}
-                          >
-                            <span className={`text-[10px] font-bold uppercase tracking-widest ${
-                              isSelected ? 'text-primary' : 'text-slate-400'
-                            }`}>{day}</span>
-                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                              isSelected ? 'bg-primary scale-110' : 'bg-white border-2 border-slate-200'
-                            }`}>
-                              {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {errors.days && <p className="text-red-500 text-xs font-bold pl-2">{errors.days}</p>}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className={`flex items-center justify-between p-6 rounded-[32px] border-2 transition-all duration-500 ${
-                      isEmergency 
-                        ? 'bg-[#00C9B1]/5 border-[#00C9B1] shadow-lg shadow-[#00C9B1]/10' 
-                        : 'bg-slate-50 border-transparent'
-                    }`}>
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-                          isEmergency ? 'bg-[#00C9B1] text-white rotate-6' : 'bg-slate-200 text-slate-400'
-                        }`}>
-                          <AlertTriangle size={32} />
-                        </div>
-                        <div>
-                          <p className={`font-bold text-lg leading-tight transition-colors ${
-                            isEmergency ? 'text-[#00C9B1]' : 'text-slate-900'
-                          }`}>24/7 Emergency Service</p>
-                          <p className="text-sm text-slate-500 font-medium">Do you offer round the clock emergency?</p>
-                        </div>
-                      </div>
-                      <div 
-                        onClick={() => setIsEmergency(!isEmergency)}
-                        className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${
-                          isEmergency ? 'bg-[#00C9B1]' : 'bg-slate-200'
-                        }`}
-                      >
-                        <motion.div 
-                          animate={{ x: isEmergency ? 24 : 0 }}
-                          className="w-6 h-6 bg-white rounded-full shadow-sm" 
-                        />
-                      </div>
-                    </div>
-                    {isEmergency && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-3 px-6 py-4 bg-[#00C9B1]/10 rounded-2xl text-[#005046] border border-[#00C9B1]/20"
-                      >
-                        <CheckCircle2 size={18} />
-                        <p className="text-xs font-bold uppercase tracking-widest">Your hospital will be listed as 24/7 Emergency Available</p>
-                      </motion.div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {step === 4 && (
-                <>
-                  <div className="space-y-6">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <label className="text-sm font-bold text-slate-700">Specializations *</label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSpecs(allSpecs)}
-                          className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border border-slate-200 text-slate-500 hover:border-primary hover:text-primary"
-                        >
-                          Select All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSpecs([])}
-                          className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border border-slate-200 text-slate-500 hover:border-emergency-red hover:text-emergency-red"
-                        >
-                          Clear All
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {allSpecs.map(spec => {
-                        const isSelected = selectedSpecs.includes(spec);
-                        return (
-                          <button 
-                            key={spec} 
-                            type="button"
-                            onClick={() => setSelectedSpecs(prev => isSelected ? prev.filter(s => s !== spec) : [...prev, spec])}
-                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all border shadow-sm ${
-                              isSelected 
-                                ? 'bg-primary border-primary text-white shadow-md shadow-primary/20 scale-105' 
-                                : 'bg-white border-[#0B5FFF] text-[#0B5FFF] hover:bg-primary/5 active:scale-95'
-                            }`}
-                          >
-                            {spec}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {errors.specs && <p className="text-red-500 text-xs font-bold pl-2">{errors.specs}</p>}
-                  </div>
-
-                  <div className="space-y-8 pt-8 border-t border-slate-100">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <label className="text-sm font-bold text-slate-700">Available Facilities</label>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFacilities(allFacilities)}
-                        className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border border-slate-200 text-slate-500 hover:border-primary hover:text-primary"
-                      >
-                        Select All
-                      </button>
-                    </div>
-
-                    <div className="space-y-8">
-                      {Object.entries(facilityGroups).map(([category, facilities]) => (
-                        <div key={category} className="space-y-4">
-                          <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">{category}</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {facilities.map(fac => {
-                              const isSelected = selectedFacilities.includes(fac);
-                              return (
-                                <div 
-                                  key={fac} 
-                                  onClick={() => setSelectedFacilities(prev => isSelected ? prev.filter(f => f !== fac) : [...prev, fac])}
-                                  className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                                    isSelected 
-                                      ? 'bg-primary/5 border-primary' 
-                                      : 'bg-slate-50 border-transparent hover:border-slate-200'
-                                  }`}
-                                >
-                                  <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                                    isSelected ? 'bg-primary' : 'bg-white border-2 border-slate-200'
-                                  }`}>
-                                    {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
-                                  </div>
-                                  <span className={`text-[11px] font-bold ${
-                                    isSelected ? 'text-slate-900' : 'text-slate-500'
-                                  }`}>{fac}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {step === 5 && (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {[
-                      { id: 'doctors', label: 'Doctors', icon: UserPlus },
-                      { id: 'nurses', label: 'Nurses', icon: Users },
-                      { id: 'receptionists', label: 'Receptionists', icon: MessageSquare },
-                      { id: 'support', label: 'Support Staff', icon: Building2 }
-                    ].map(type => (
-                      <div key={type.id} className="space-y-2">
-                        <label className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">{type.label}</label>
-                        <div className="relative">
-                          <input 
-                            type="number" 
-                            value={staffCounts[type.id as keyof typeof staffCounts]}
-                            onChange={(e) => setStaffCounts({...staffCounts, [type.id]: parseInt(e.target.value) || 0})}
-                            className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
-                          />
-                          <type.icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-8 border-t border-slate-100">
-                    <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                      <h4 className="text-lg font-bold text-slate-900">Individual Staff Members</h4>
-                      <button 
-                        type="button"
-                        onClick={() => setIndividualStaff([...individualStaff, { id: Date.now(), name: '', role: 'Doctor', dept: '', shift: 'Morning', phone: '' }])}
-                        className="flex items-center gap-2 text-primary font-bold hover:bg-primary/5 px-4 py-2 rounded-xl transition-all"
-                      >
-                        <Plus size={20} /> Add Staff Member
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {individualStaff.map((staff, index) => (
-                        <div key={staff.id} className="p-6 bg-slate-50 rounded-3xl border border-transparent hover:border-slate-200 transition-all space-y-4 relative group">
-                          <button 
-                            type="button"
-                            onClick={() => setIndividualStaff(individualStaff.filter(s => s.id !== staff.id))}
-                            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-emergency-red transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input 
-                              placeholder="Full Name" 
-                              value={staff.name}
-                              onChange={(e) => {
-                                const newStaff = [...individualStaff];
-                                newStaff[index].name = e.target.value;
-                                setIndividualStaff(newStaff);
-                              }}
-                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm" 
-                            />
-                            <select 
-                              value={staff.role}
-                              onChange={(e) => {
-                                const newStaff = [...individualStaff];
-                                newStaff[index].role = e.target.value;
-                                setIndividualStaff(newStaff);
-                              }}
-                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm"
-                            >
-                              <option>Doctor</option>
-                              <option>Nurse</option>
-                              <option>Receptionist</option>
-                              <option>Admin</option>
-                            </select>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input 
-                              placeholder="Department" 
-                              value={staff.dept}
-                              onChange={(e) => {
-                                const newStaff = [...individualStaff];
-                                newStaff[index].dept = e.target.value;
-                                setIndividualStaff(newStaff);
-                              }}
-                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm" 
-                            />
-                            <select 
-                              value={staff.shift}
-                              onChange={(e) => {
-                                const newStaff = [...individualStaff];
-                                newStaff[index].shift = e.target.value;
-                                setIndividualStaff(newStaff);
-                              }}
-                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm"
-                            >
-                              <option>Morning</option>
-                              <option>Evening</option>
-                              <option>Night</option>
-                            </select>
-                            <input 
-                              placeholder="Phone" 
-                              value={staff.phone}
-                              onChange={(e) => {
-                                const newStaff = [...individualStaff];
-                                newStaff[index].phone = e.target.value;
-                                setIndividualStaff(newStaff);
-                              }}
-                              className="w-full px-6 py-3 rounded-xl bg-white border-transparent focus:ring-2 focus:ring-primary font-medium shadow-sm" 
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {step === 6 && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.opdFee || "General OPD Fee"}</label>
-                      <div className="relative">
-                        <input 
-                          type="number" 
-                          placeholder="Rs. 1,000" 
-                          value={formData.opd}
-                          onChange={(e) => setFormData({...formData, opd: e.target.value})}
-                          className={`w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold ${errors.opd ? 'ring-2 ring-red-500' : ''}`} 
-                        />
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rs.</span>
-                      </div>
-                      {errors.opd && <p className="text-red-500 text-xs font-bold pl-2">{errors.opd}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">{t.signup.labels.emergencyFee || "Emergency Consultation Fee"}</label>
-                      <div className="relative">
-                        <input 
-                          type="number" 
-                          placeholder="Rs. 2,000" 
-                          value={formData.emergency}
-                          onChange={(e) => setFormData({...formData, emergency: e.target.value})}
-                          className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-bold" 
-                        />
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rs.</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                        <Star />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900 leading-tight">Free Service Option</p>
-                        <p className="text-xs text-slate-500">Do you offer any services for free?</p>
-                      </div>
-                    </div>
-                    <div 
-                      onClick={() => setFormData({...formData, isFree: !formData.isFree})}
-                      className={`w-14 h-8 rounded-full relative p-1 cursor-pointer transition-colors duration-500 ${formData.isFree ? 'bg-health-teal' : 'bg-slate-200'}`}
-                    >
-                      <motion.div 
-                        animate={{ x: formData.isFree ? 24 : 0 }}
-                        className="w-6 h-6 bg-white rounded-full shadow-sm" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 pt-8 border-t border-slate-100">
-                    <label className="text-sm font-bold text-slate-700">Accepted Payment Methods *</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {['Cash', 'JazzCash', 'EasyPaisa', 'Bank Card', 'Sehat Card', 'Insurance'].map(method => {
-                        const isSelected = paymentMethods.includes(method);
-                        return (
-                          <div 
-                            key={method} 
-                            onClick={() => setPaymentMethods(prev => isSelected ? prev.filter(m => m !== method) : [...prev, method])}
-                            className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                              isSelected ? 'bg-primary/5 border-primary shadow-sm' : 'bg-slate-50 border-transparent hover:border-slate-200'
-                            }`}
-                          >
-                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-primary' : 'bg-white border-2 border-slate-200'}`}>
-                              {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
-                            </div>
-                            <span className="text-sm font-bold text-slate-700">{method}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {errors.paymentMethods && <p className="text-red-500 text-xs font-bold pl-2">{errors.paymentMethods}</p>}
-                  </div>
-                </>
-              )}
-
-              {step === 7 && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <label className="text-sm font-bold text-slate-700">Hospital Logo</label>
-                      <div className="w-full aspect-square md:aspect-video rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
-                        {media.logo ? (
-                          <img src={URL.createObjectURL(media.logo as any)} className="w-full h-full object-cover" />
-                        ) : (
-                          <>
-                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 shadow-sm">
-                              <Upload size={24} />
-                            </div>
-                            <div className="text-center">
-                              <p className="text-sm font-bold text-slate-900">Upload Logo</p>
-                              <p className="text-[10px] text-slate-500 font-medium">PNG, JPG up to 2MB</p>
-                            </div>
-                          </>
-                        )}
-                        <input 
-                          type="file" 
-                          className="absolute inset-0 opacity-0 cursor-pointer" 
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                              setMedia({...media, logo: e.target.files[0] as any});
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <label className="text-sm font-bold text-slate-700">Hospital Photos</label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="aspect-square rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 relative group hover:border-primary transition-colors cursor-pointer">
-                          <Plus size={24} className="text-slate-400" />
-                          <p className="text-[10px] text-slate-500 font-bold uppercase">Add Photo</p>
-                          <input 
-                            type="file" 
-                            multiple 
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={(e) => {
-                              if (e.target.files) {
-                                const files = Array.from(e.target.files);
-                                setMedia({...media, photos: [...media.photos, ...files].slice(0, 10)});
-                              }
-                            }}
-                          />
-                        </div>
-                        {media.photos.map((file, i) => (
-                          <div key={i} className="aspect-square rounded-3xl bg-slate-50 relative overflow-hidden group">
-                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
-                            <button 
-                              type="button"
-                              onClick={() => setMedia({...media, photos: media.photos.filter((_, idx) => idx !== i)})}
-                              className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-medium">Up to 10 photos, max 5MB each</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 pt-8 border-t border-slate-100">
-                    <label className="text-sm font-bold text-slate-700">About Hospital</label>
-                    <textarea 
-                      placeholder="Apne hospital ke baare mein likhen..." 
-                      value={media.about}
-                      onChange={(e) => setMedia({...media, about: e.target.value})}
-                      className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary font-medium min-h-[150px]" 
-                    />
-                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                      <span>Minimum 50 characters</span>
-                      <span className={media.about.length >= 50 ? 'text-health-teal' : 'text-slate-400'}>{media.about.length} / 50</span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {step === 8 && !isSubmitted && (
-                <div className="space-y-8">
-                  <div className="p-8 bg-primary/5 rounded-[40px] border border-primary/10">
-                    <div className="flex items-center gap-4 mb-8">
-                      <div className="w-14 h-14 bg-primary text-white rounded-3xl flex items-center justify-center shadow-lg shadow-primary/20">
-                        <ShieldCheck size={32} />
-                      </div>
-                      <div>
-                        <h4 className="text-2xl font-bold text-slate-900">Review Information</h4>
-                        <p className="text-slate-500">Please verify all details before submitting</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-4">
-                        <h5 className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-slate-400">Services & Staff</h5>
-                        <ul className="space-y-2">
-                          <li className="flex justify-between items-center">
-                            <span className="text-slate-500 font-medium text-sm">Specializations</span>
-                            <span className="text-slate-900 font-bold text-sm">{selectedSpecs.length} Selected</span>
-                          </li>
-                          <li className="flex justify-between items-center">
-                            <span className="text-slate-500 font-medium text-sm">Staff Members</span>
-                            <span className="text-slate-900 font-bold text-sm">{staffCounts.doctors + staffCounts.nurses + staffCounts.receptionists + staffCounts.support} Total</span>
-                          </li>
-                        </ul>
-                      </div>
-                      <div className="space-y-4">
-                        <h5 className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-slate-400">Fees & Policies</h5>
-                        <ul className="space-y-2">
-                          <li className="flex justify-between items-center">
-                            <span className="text-slate-500 font-medium text-sm">OPD Fee</span>
-                            <span className="text-slate-900 font-bold text-sm">Rs. {formData.opd || '0'}</span>
-                          </li>
-                          <li className="flex justify-between items-center">
-                            <span className="text-slate-500 font-medium text-sm">Emergency</span>
-                            <span className="text-slate-900 font-bold text-sm">{isEmergency ? 'Available' : 'No'}</span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                    {errors.general && <p className="text-red-500 text-xs font-bold text-center mt-4">{errors.general}</p>}
-                  </div>
-
-                  <div className="p-8 bg-slate-50 rounded-[40px] border border-slate-200">
-                    <button 
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={handleSubmit}
-                      className="w-full py-6 bg-health-teal text-white font-display font-bold text-xl rounded-3xl shadow-2xl shadow-health-teal/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-70 disabled:scale-100"
-                    >
-                      {isSubmitting ? (
-                        <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Account bana raha hai...</span>
-                        </div>
-                      ) : (
-                        <>Register Hospital <ArrowRight size={24} /></>
-                      )}
-                    </button>
-                    {errors.general && (
-                      <div className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center gap-2">
-                        <p className="text-red-500 text-xs font-bold">{errors.general}</p>
-                        <button 
-                          onClick={handleSubmit}
-                          className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline"
-                        >
-                          Retry Again
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {isSubmitted && (
-                <div className="text-center py-20">
-                  <div className="w-24 h-24 bg-success-green/10 text-success-green rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-                    <CheckCircle2 size={56} />
-                  </div>
-                  <h3 className="text-4xl font-display font-bold text-slate-900 mb-6 font-primary tracking-tight">Hospital Registered!</h3>
-                  <div className="max-w-md mx-auto space-y-6">
-                    <p className="text-slate-500 text-lg leading-relaxed font-medium">
-                      Hospital registered! Dashboard khul raha hai...
-                    </p>
-                    <div className="p-6 bg-white rounded-3xl border-2 border-slate-100 shadow-sm">
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-2">Registration Status</p>
-                      <p className="text-2xl font-mono font-bold text-primary italic uppercase">Active Now</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {!isSubmitted && (
-          <div className="flex items-center justify-between mt-12">
             <button 
-              onClick={prevStep}
-              disabled={step === 1}
-              className={`px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all ${
-                step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-500 hover:bg-slate-100'
-              }`}
+              type="submit" 
+              disabled={isSubmitting}
+              className="w-full h-[52px] bg-[#0B5FFF] text-white font-bold text-base rounded-[10px] shadow-lg shadow-blue-500/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:scale-100"
             >
-              <ArrowLeft size={20} /> Previous
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                isUrdu ? 'میرا اکاؤنٹ بنائیں' : 'Create My Account'
+              )}
             </button>
-            
-            {step < totalSteps && (
-              <button 
-                onClick={nextStep}
-                className="px-12 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-              >
-                {step === 7 ? 'Review & Submit' : 'Continue'}
-              </button>
-            )}
-          </div>
-        )}
+
+            <p className="text-center text-sm text-[#64748B] font-medium">
+              {isUrdu ? 'پہلے سے اکاؤنٹ ہے؟ ' : 'Already have an account? '} 
+              <span onClick={onComplete} className="text-[#0B5FFF] font-bold cursor-pointer hover:underline">
+                {isUrdu ? 'لاگ ان کریں' : 'Login here'}
+              </span>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
+
 
 // --- Pages ---
 
