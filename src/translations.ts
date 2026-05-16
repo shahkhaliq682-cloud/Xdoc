@@ -431,6 +431,12 @@ export const translations = {
         noShowRate: 'No-show rate'
       },
     },
+    common: {
+      cancel: 'Cancel',
+      save: 'Save',
+      back: 'Back',
+      confirm: 'Confirm',
+    },
     ux: {
         loading: 'Loading...',
         refreshing: 'Refreshing...',
@@ -985,6 +991,12 @@ export const translations = {
         saveSettings: 'سیٹنگز محفوظ کریں',
         noShowRate: 'نو شو ریٹ'
       },
+    },
+    common: {
+      cancel: 'منسوخ',
+      save: 'محفوظ کریں',
+      back: 'واپس',
+      confirm: 'تصدیق کریں',
     },
     ux: {
         loading: 'لوڈ ہو رہا ہے',

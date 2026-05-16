@@ -370,20 +370,39 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     setIsSyncing(true);
     console.log('Fetching tokens for Hospital ID:', hId);
 
-    // FIX: Fetch ALL tokens for this hospital to calculate both today and total stats
-    const q = query(
+    // FIX: Remove orderBy to avoid index requirement, sort client-side instead
+    const qMain = query(
       collection(db, 'tokens'), 
-      where('hospitalId', '==', hId),
-      orderBy('createdAt', 'desc')
+      where('hospitalId', '==', hId)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const qSub = query(
+      collection(db, 'hospitals', hId, 'tokens')
+    );
+
+    const handleSnapshot = (snapshot: any, source: string) => {
       if (isMounted) {
-        const newTokens = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Tokens found:', newTokens.length);
+        const fetchedTokens = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+        console.log(`Tokens from ${source}:`, fetchedTokens.length);
         
-        // Notification for new tokens
-        snapshot.docChanges().forEach(change => {
+        setTokens(prev => {
+          // Merge and avoid duplicates
+          const combined = [...prev];
+          fetchedTokens.forEach((t: any) => {
+            const exists = combined.findIndex(ex => ex.id === t.id);
+            if (exists === -1) combined.push(t);
+            else combined[exists] = t;
+          });
+          // Client-side sort by createdAt desc
+          return combined.sort((a: any, b: any) => {
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+            return timeB - timeA;
+          });
+        });
+        
+        // Notification logic
+        snapshot.docChanges().forEach((change: any) => {
           if (change.type === 'added' && !snapshot.metadata.hasPendingWrites) {
             if (Date.now() - lastNotificationTime > 2000) {
               setNewTokenId(change.doc.id);
@@ -392,22 +411,24 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           }
         });
 
-        setTokens(newTokens);
         setIsLoading(false);
         setIsSyncing(false);
       }
-    }, (error) => {
-      if (isMounted) {
-        console.error("Tokens Fetch Error:", error);
-        handleFirestoreError(error, OperationType.LIST, 'tokens');
-        setIsLoading(false);
-        setIsSyncing(false);
-      }
+    };
+
+    const unsubscribeMain = onSnapshot(qMain, (snap) => handleSnapshot(snap, 'main'), (err) => {
+      console.error("Main Collection Error:", err);
+      // If index error, it won't crash the whole app if caught
     });
 
-    return () => { 
+    const unsubscribeSub = onSnapshot(qSub, (snap) => handleSnapshot(snap, 'sub'), (err) => {
+      console.error("Sub Collection Error:", err);
+    });
+
+    return () => {
       isMounted = false;
-      unsubscribe();
+      unsubscribeMain();
+      unsubscribeSub();
     };
   }, [initialHospitalData?.uid, initialHospitalData?.id]);
 

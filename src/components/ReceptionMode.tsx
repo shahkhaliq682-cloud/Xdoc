@@ -56,7 +56,10 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
   // Filter today's tokens and sort them
   const todayStr = new Date().toISOString().split('T')[0];
   const todaysTokens = tokens
-    .filter(tok => tok.appointmentDate === todayStr)
+    .filter(t => 
+      t.appointmentDate === todayStr || 
+      (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] === todayStr : false)
+    )
     .sort((a, b) => {
       // Completed and Not-Arrived go to bottom
       const statusOrder: any = { 'in-progress': 0, 'waiting': 1, 'not-arrived': 2, 'completed': 3 };
