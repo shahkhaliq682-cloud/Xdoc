@@ -22,7 +22,9 @@ import {
   doc,
   writeBatch,
   query,
-  onSnapshot
+  onSnapshot,
+  where,
+  getDocs
 } from 'firebase/firestore';
 
 interface ReceptionModeProps {
@@ -197,36 +199,83 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
     }
   };
 
-  // Fetch doctors when modal opens
+  // Fetch doctors when modal opens - Combining doctors and staff subcollections
   useEffect(() => {
     if (showIssueModal) {
       const hId = hospitalData?.uid || hospitalData?.id || auth.currentUser?.uid;
       if (!hId) return;
 
       setDoctorsLoading(true);
-      const q = query(collection(db, `hospitals/${hId}/doctors`));
       
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Fetched doctors for dropdown:', docs);
-        setLocalDoctors(docs);
+      const qDocs = query(collection(db, `hospitals/${hId}/doctors`));
+      const qStaff = query(collection(db, `hospitals/${hId}/staff`), where('role', '==', 'Doctor'));
+      
+      let docsData: any[] = [];
+      let staffData: any[] = [];
+
+      const combineAndSet = () => {
+        const combined = [...docsData];
+        staffData.forEach(s => {
+          if (!combined.find(c => c.name === s.name)) {
+            combined.push(s);
+          }
+        });
+        setLocalDoctors(combined);
         setDoctorsLoading(false);
-      }, (error) => {
-        console.error("Error fetching doctors for dropdown:", error);
-        setDoctorsLoading(false);
+      };
+
+      const unsubscribeDocs = onSnapshot(qDocs, (snap) => {
+        docsData = snap.docs.map(d => ({ 
+          id: d.id, 
+          name: d.data().name, 
+          specialization: d.data().specialization || 'General'
+        }));
+        combineAndSet();
       });
 
-      return () => unsubscribe();
+      const unsubscribeStaff = onSnapshot(qStaff, (snap) => {
+        staffData = snap.docs.map(s => ({ 
+          id: s.id, 
+          name: s.data().name, 
+          specialization: s.data().department || 'General'
+        }));
+        combineAndSet();
+      });
+
+      return () => {
+        unsubscribeDocs();
+        unsubscribeStaff();
+      };
     }
   }, [showIssueModal, hospitalData?.uid, hospitalData?.id]);
 
+  const [showError, setShowError] = useState(false);
+
   const issueToken = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPatientName || !selectedDoctorId) return;
-
+    if (!newPatientName || !selectedDoctorId) {
+      setShowError(true);
+      return;
+    }
+    setShowError(false);
     setIssueLoading(true);
     try {
-      const doctor = localDoctors.find(d => d.id === selectedDoctorId);
+      let doctorName = 'General';
+      let doctorSpecialization = 'Clinic Walk-in';
+      let docId: any = selectedDoctorId;
+      
+      if (selectedDoctorId === 'walk-in') {
+        doctorName = 'Walk-in';
+        doctorSpecialization = 'No Specific Doctor';
+        docId = null;
+      } else {
+        const doctor = localDoctors.find(d => d.id === selectedDoctorId);
+        if (doctor) {
+          doctorName = doctor.name;
+          doctorSpecialization = doctor.specialization;
+        }
+      }
+
       const hospitalId = hospitalData?.uid || hospitalData?.id || auth.currentUser?.uid;
       if (!hospitalId) throw new Error("Hospital ID missing");
       const existingTokens = tokens.filter(t => t.appointmentDate === todayStr);
@@ -235,18 +284,20 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
 
       const newToken = {
         hospitalId,
-        doctorId: selectedDoctorId,
-        doctorName: doctor?.name || 'Unknown Doctor',
         patientName: newPatientName,
-        phone: newPatientPhone,
-        appointmentDate: todayStr,
-        appointmentTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        patientPhone: newPatientPhone || 'N/A',
+        doctorId: docId,
+        doctorName: doctorName,
+        doctorSpecialization: doctorSpecialization,
         tokenNumber,
         status: 'waiting',
-        type: 'walk-in',
-        fee: doctor?.fee || 0,
+        appointmentDate: todayStr,
+        appointmentTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        source: 'Reception',
+        type: 'walk-in',
+        fee: hospitalData?.opdFee || 0
       };
 
       const batch = writeBatch(db);
@@ -624,19 +675,26 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
                     <select 
                       required
                       disabled={doctorsLoading}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-10 text-white font-bold focus:border-teal-500 outline-none transition-colors appearance-none disabled:opacity-50"
+                      className={`w-full bg-white/5 border ${showError && !selectedDoctorId ? 'border-red-500' : 'border-white/10'} rounded-2xl py-4 pl-14 pr-10 text-white font-bold focus:border-teal-500 outline-none transition-colors appearance-none disabled:opacity-50`}
                       value={selectedDoctorId}
-                      onChange={(e) => setSelectedDoctorId(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedDoctorId(e.target.value);
+                        if (showError) setShowError(false);
+                      }}
                     >
                       <option value="" disabled className="bg-[#04111D]">
-                        {doctorsLoading ? 'Loading Doctors...' : 'Select Doctor'}
+                        {doctorsLoading ? 'Loading Doctors...' : t.patient.booking.selectDoctor}
                       </option>
+                      <option value="walk-in" className="bg-[#04111D]">{t.patient.booking.walkIn}</option>
                       {localDoctors.map(doc => (
                         <option key={doc.id} value={doc.id} className="bg-[#04111D]">
-                          Dr. {doc.name} — {doc.specialization}
+                          Dr. {doc.name} — ({doc.specialization})
                         </option>
                       ))}
                     </select>
+                    {showError && !selectedDoctorId && (
+                      <p className="text-red-500 text-[10px] font-bold mt-2 ml-4">{t.patient.booking.pleaseSelectDoctor}</p>
+                    )}
                     {doctorsLoading && (
                       <div className="absolute right-4 top-1/2 -translate-y-1/2">
                         <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
