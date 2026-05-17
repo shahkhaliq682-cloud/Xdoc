@@ -14,13 +14,15 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { 
   collection, 
   addDoc, 
   serverTimestamp,
   doc,
-  writeBatch
+  writeBatch,
+  query,
+  onSnapshot
 } from 'firebase/firestore';
 
 interface ReceptionModeProps {
@@ -45,6 +47,8 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
   const [newPatientName, setNewPatientName] = useState('');
   const [newPatientPhone, setNewPatientPhone] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [doctorsLoading, setDoctorsLoading] = useState(false);
+  const [localDoctors, setLocalDoctors] = useState<any[]>([]);
   const [lastNotification, setLastNotification] = useState<any>(null);
   const [screenEffect, setScreenEffect] = useState<'none' | 'green' | 'red'>('none');
   const [inProgressStartTime, setInProgressStartTime] = useState<number | null>(null);
@@ -193,14 +197,37 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
     }
   };
 
+  // Fetch doctors when modal opens
+  useEffect(() => {
+    if (showIssueModal) {
+      const hId = hospitalData?.uid || hospitalData?.id || auth.currentUser?.uid;
+      if (!hId) return;
+
+      setDoctorsLoading(true);
+      const q = query(collection(db, `hospitals/${hId}/doctors`));
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('Fetched doctors for dropdown:', docs);
+        setLocalDoctors(docs);
+        setDoctorsLoading(false);
+      }, (error) => {
+        console.error("Error fetching doctors for dropdown:", error);
+        setDoctorsLoading(false);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [showIssueModal, hospitalData?.uid, hospitalData?.id]);
+
   const issueToken = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPatientName || !selectedDoctorId) return;
 
     setIssueLoading(true);
     try {
-      const doctor = doctors.find(d => d.id === selectedDoctorId);
-      const hospitalId = hospitalData?.uid || hospitalData?.id;
+      const doctor = localDoctors.find(d => d.id === selectedDoctorId);
+      const hospitalId = hospitalData?.uid || hospitalData?.id || auth.currentUser?.uid;
       if (!hospitalId) throw new Error("Hospital ID missing");
       const existingTokens = tokens.filter(t => t.appointmentDate === todayStr);
       const nextNum = existingTokens.length + 1;
@@ -596,15 +623,25 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
                     <Stethoscope className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
                     <select 
                       required
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-10 text-white font-bold focus:border-teal-500 outline-none transition-colors appearance-none"
+                      disabled={doctorsLoading}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-10 text-white font-bold focus:border-teal-500 outline-none transition-colors appearance-none disabled:opacity-50"
                       value={selectedDoctorId}
                       onChange={(e) => setSelectedDoctorId(e.target.value)}
                     >
-                      <option value="" disabled className="bg-[#04111D]">Select Doctor</option>
-                      {doctors.map(doc => (
-                        <option key={doc.id} value={doc.id} className="bg-[#04111D]">{doc.name} ({doc.specialization})</option>
+                      <option value="" disabled className="bg-[#04111D]">
+                        {doctorsLoading ? 'Loading Doctors...' : 'Select Doctor'}
+                      </option>
+                      {localDoctors.map(doc => (
+                        <option key={doc.id} value={doc.id} className="bg-[#04111D]">
+                          Dr. {doc.name} — {doc.specialization}
+                        </option>
                       ))}
                     </select>
+                    {doctorsLoading && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                   </div>
                 </div>
 
