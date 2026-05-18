@@ -834,7 +834,10 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
               </button>
             </div>
             <p className="font-bold text-sm">Your token {expiredNotificationToken.tokenNumber} for {expiredNotificationToken.hospitalName} has expired.</p>
-            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Doctor: DR. {expiredNotificationToken.doctorName}</p>
+            <div className="flex gap-4">
+              <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Doctor: DR. {expiredNotificationToken.doctorName}</p>
+              <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Time: {expiredNotificationToken.appointmentTime}</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

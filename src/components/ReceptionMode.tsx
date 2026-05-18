@@ -57,6 +57,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
   const [newPatientName, setNewPatientName] = useState('');
   const [newPatientPhone, setNewPatientPhone] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState('');
   const [doctorsLoading, setDoctorsLoading] = useState(false);
   const [localDoctors, setLocalDoctors] = useState<any[]>([]);
   const [lastNotification, setLastNotification] = useState<any>(null);
@@ -160,21 +161,37 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
     return () => clearInterval(timer);
   }, [waitingTokens, showNoShowAlert, hospitalData?.settings]);
 
-  // Auto Expiry Logic (Every 30 minutes by default)
+  // Auto Expiry Logic (Checks if appointment time has passed)
   useEffect(() => {
     const checkExpiries = async () => {
-      const now = Date.now();
-      const expiryDuration = 30 * 60 * 1000; // 30 minutes in ms
+      const now = getKarachiTime(); // Current Karachi Time
       
       const tokensToExpire = tokens.filter(token => {
-        const status = (token.status || '').toLowerCase();
-        if (status !== 'waiting') return false;
+        const status = (token.status || token.tokenStatus || '').toLowerCase();
+        // Only expire 'waiting' or 'active' tokens
+        if (status !== 'waiting' && status !== 'active') return false;
         if (token.expired) return false;
         
-        const bookingTime = token.bookingTimestamp?.toMillis?.() || token.createdAt?.toMillis?.() || 0;
-        if (!bookingTime) return false;
+        const apptDate = token.appointmentDate || token.bookingDate;
+        const apptTime = token.appointmentTime || token.bookingTime;
         
-        return (now - bookingTime) > expiryDuration;
+        if (!apptDate || !apptTime) return false;
+
+        try {
+          const [timePart, period] = apptTime.split(' ');
+          let [hours, minutes] = timePart.split(':').map(Number);
+          if (period === 'PM' && hours !== 12) hours += 12;
+          if (period === 'AM' && hours === 12) hours = 0;
+
+          const targetTime = new Date(apptDate);
+          targetTime.setHours(hours, minutes, 0, 0);
+
+          // Expire if currently at least 15 minutes PAST the appointment time
+          // (Giving some grace period)
+          return now.getTime() > (targetTime.getTime() + (15 * 60 * 1000));
+        } catch (e) {
+          return false;
+        }
       });
 
       if (tokensToExpire.length > 0) {
@@ -191,18 +208,18 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
             updatedAt: serverTimestamp()
           };
           batch.update(doc(db, 'tokens', token.id), updateData);
-          if (hospitalData?.uid || hospitalData?.id) {
-            batch.update(doc(db, 'hospitals', hospitalData.uid || hospitalData.id, 'tokens', token.id), updateData);
+          if (token.hospitalId) {
+            batch.update(doc(db, 'hospitals', token.hospitalId, 'tokens', token.id), updateData);
           }
         });
         await batch.commit();
       }
     };
 
-    const interval = setInterval(checkExpiries, 60000); // Check every minute
-    checkExpiries(); // Initial check
+    const interval = setInterval(checkExpiries, 30000); // Check more frequently (30s)
+    checkExpiries();
     return () => clearInterval(interval);
-  }, [tokens, hospitalData]);
+  }, [tokens]);
 
   const getWaitMinutes = (token: any) => {
     try {
@@ -324,9 +341,26 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
 
   const [showError, setShowError] = useState(false);
 
+  // Generate and filter available slots
+  const allSlots = [
+    '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+    '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
+    '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM',
+    '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM', '08:30 PM', '09:00 PM'
+  ];
+
+  const getAvailableSlots = () => {
+    // Collect all booked slots for today and the selected doctor
+    const bookedSlots = todaysTokens
+      .filter(t => t.doctorId === selectedDoctorId && (t.status !== 'cancelled' && t.status !== 'expired'))
+      .map(t => t.appointmentTime || t.bookingTime);
+    
+    return allSlots.filter(slot => !bookedSlots.includes(slot));
+  };
+
   const issueToken = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPatientName || !selectedDoctorId) {
+    if (!newPatientName || !selectedDoctorId || (!selectedSlot && selectedDoctorId !== 'walk-in')) {
       setShowError(true);
       return;
     }
@@ -336,11 +370,13 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
       let doctorName = 'General';
       let doctorSpecialization = 'Clinic Walk-in';
       let docId: any = selectedDoctorId;
+      let finalSlot = selectedSlot;
       
       if (selectedDoctorId === 'walk-in') {
         doctorName = 'Walk-in';
         doctorSpecialization = 'No Specific Doctor';
         docId = null;
+        finalSlot = getKarachiTimeStr(getKarachiTime()); // Immediate
       } else {
         const doctor = localDoctors.find(d => d.id === selectedDoctorId);
         if (doctor) {
@@ -370,14 +406,14 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
         bookingTime,
         bookingDate,
         bookingTimestamp: serverTimestamp(),
-        tokenStatus: 'active', // Requested by user
-        status: 'waiting',     // For internal dashboard logic
+        tokenStatus: 'active',
+        status: 'waiting',
         expired: false,
         expiredAt: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        appointmentDate: bookingDate, // Support old logic
-        appointmentTime: bookingTime, // Support old logic
+        appointmentDate: bookingDate,
+        appointmentTime: finalSlot || bookingTime,
         source: 'Reception',
         type: 'walk-in',
         fee: hospitalData?.opdFee || 0,
@@ -624,6 +660,43 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
             </div>
           </div>
 
+          {/* SLOTS OVERVIEW */}
+          <div className="lg:col-span-3 mt-12 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <h3 className="text-teal-500 font-black uppercase tracking-[0.3em] text-xs">Today's Slots Overview</h3>
+              <div className="flex gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-teal-500 rounded-full" />
+                  <span className="text-[10px] font-bold text-slate-500">AVAILABLE</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                  <span className="text-[10px] font-bold text-slate-500">BOOKED</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {allSlots.map(slot => {
+                const booking = todaysTokens.find(t => (t.appointmentTime === slot || t.bookingTime === slot) && t.status !== 'cancelled' && t.status !== 'expired');
+                return (
+                  <div 
+                    key={slot}
+                    className={`px-4 py-2 rounded-xl border text-[10px] font-black transition-all ${
+                      booking 
+                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' 
+                        : 'bg-teal-500/5 border-teal-500/10 text-teal-400'
+                    }`}
+                  >
+                    {slot}
+                    {booking && (
+                      <span className="block text-[8px] opacity-70 mt-0.5 uppercase">{booking.patientName.split(' ')[0]}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* EXPIRED TOKENS */}
           <div className="lg:col-span-3 mt-12 space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
@@ -834,6 +907,35 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
                     )}
                   </div>
                 </div>
+
+                {selectedDoctorId && selectedDoctorId !== 'walk-in' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-4">Select Time Slot</label>
+                    <div className="relative">
+                      <Clock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
+                      <select 
+                        required
+                        className={`w-full bg-white/5 border ${showError && !selectedSlot ? 'border-red-500' : 'border-white/10'} rounded-2xl py-4 pl-14 pr-10 text-white font-bold focus:border-teal-500 outline-none transition-colors appearance-none`}
+                        value={selectedSlot}
+                        onChange={(e) => {
+                          setSelectedSlot(e.target.value);
+                          if (showError) setShowError(false);
+                        }}
+                      >
+                        <option value="" disabled className="bg-[#04111D]">Select Time Slot</option>
+                        {getAvailableSlots().map(slot => (
+                          <option key={slot} value={slot} className="bg-[#04111D]">{slot}</option>
+                        ))}
+                        {getAvailableSlots().length === 0 && (
+                          <option disabled className="bg-[#04111D]">No Slots Available</option>
+                        )}
+                      </select>
+                      {showError && !selectedSlot && (
+                        <p className="text-red-500 text-[10px] font-bold mt-2 ml-4">Please select an available slot</p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-4 pt-4">
                   <button 
