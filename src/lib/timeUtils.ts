@@ -9,9 +9,8 @@ export const getKarachiTime = () => {
 export const formatKarachiClock = (date: Date) => {
   return date.toLocaleTimeString('en-US', { 
     timeZone: 'Asia/Karachi',
-    hour: '2-digit', 
+    hour: 'numeric', 
     minute: '2-digit', 
-    second: '2-digit',
     hour12: true 
   });
 };

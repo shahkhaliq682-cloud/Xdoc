@@ -72,7 +72,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(getKarachiTime());
-    }, 1000);
+    }, 30000); // Update every 30 seconds for minute accuracy
     return () => clearInterval(timer);
   }, []);
 
@@ -472,10 +472,10 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
         </div>
 
         <div className="flex flex-col items-center">
-          <p className="text-3xl font-black tracking-tighter">
+          <p className="text-5xl font-black tracking-tighter text-white">
             {formatKarachiClock(currentTime)}
           </p>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">
+          <p className="text-xs font-black text-slate-500 uppercase tracking-[0.4em] mt-1">
             {formatKarachiDate(currentTime)}
           </p>
         </div>
