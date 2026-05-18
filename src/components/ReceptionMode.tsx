@@ -471,11 +471,11 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t.patient.booking.receptionMode}</p>
         </div>
 
-        <div className="flex flex-col items-center">
-          <p className="text-5xl font-black tracking-tighter text-white">
+        <div className="flex flex-col items-center text-center">
+          <p className="text-3xl md:text-4xl font-black tracking-tight text-white leading-none">
             {formatKarachiClock(currentTime)}
           </p>
-          <p className="text-xs font-black text-slate-500 uppercase tracking-[0.4em] mt-1">
+          <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">
             {formatKarachiDate(currentTime)}
           </p>
         </div>
