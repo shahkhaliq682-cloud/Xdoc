@@ -39,6 +39,11 @@ import {
   Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  getKarachiTime, 
+  getKarachiDateStr, 
+  formatKarachiClock 
+} from '../lib/timeUtils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { db, auth } from '../firebase';
 import { 
@@ -503,14 +508,18 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   ];
 
   const renderDashboardHome = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const todayStr = getKarachiDateStr(new Date());
     const todaysTokens = tokens.filter(t => 
-      t.appointmentDate === today || 
-      (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] === today : false)
+      t.appointmentDate === todayStr || 
+      t.bookingDate === todayStr ||
+      (t.createdAt?.toDate ? getKarachiDateStr(t.createdAt.toDate()) === todayStr : false)
     );
     
-    const inProgressTokens = todaysTokens.filter(t => t.status === 'in-progress');
-    const waitingTokens = todaysTokens.filter(t => t.status === 'waiting');
+    const inProgressTokens = todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'in-progress');
+    const waitingTokens = todaysTokens.filter(tok => {
+      const s = (tok.status || tok.tokenStatus || '').toLowerCase();
+      return s === 'waiting' || s === 'active';
+    });
     
     if (isLoading) {
       return <DashboardSkeleton />;

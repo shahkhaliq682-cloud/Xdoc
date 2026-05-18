@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, MapPin, Star, CheckCircle2, ShieldCheck, 
   Clock, Calendar, Home, User, Bell, ChevronRight, 
   Map as MapIcon, Hospital as HospitalIcon, 
-  ArrowRight, History, Info, AlertTriangle, Save, Trash2, LogOut, Mail, Phone, X, UserSquare2, Building2, Activity
+  ArrowRight, History, Info, AlertTriangle, Save, Trash2, LogOut, Mail, Phone, X, UserSquare2, Building2, Activity,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -13,7 +14,14 @@ import {
   updateDoc, deleteDoc, writeBatch 
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
+import { 
+  handleFirestoreError, OperationType 
+} from '../lib/firebaseUtils';
+import { 
+  getKarachiTime, 
+  getKarachiDateStr, 
+  formatKarachiClock 
+} from '../lib/timeUtils';
 import { ListSkeleton, StatSkeleton, HistorySkeleton } from './ui/Skeleton';
 import { SmartImage } from './ui/SmartImage';
 import EmptyState from './ui/EmptyState';
@@ -45,6 +53,8 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileForm, setEditProfileForm] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [expiredNotificationToken, setExpiredNotificationToken] = useState<any>(null);
+  const prevTokensRef = useRef<any[]>([]);
 
   // Pull to refresh simulation
   const handleRefresh = async () => {
@@ -126,6 +136,19 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
         const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
         return dateB.getTime() - dateA.getTime();
       });
+
+      // Check for newly expired tokens for notification
+      if (prevTokensRef.current.length > 0) {
+        tokenList.forEach(token => {
+          const prevToken = prevTokensRef.current.find(pt => pt.id === token.id);
+          if (token.expired && (!prevToken || !prevToken.expired)) {
+            setExpiredNotificationToken(token);
+            toast.error(`Your token ${token.tokenNumber} has expired!`, { duration: 6000 });
+            setTimeout(() => setExpiredNotificationToken(null), 10000);
+          }
+        });
+      }
+      prevTokensRef.current = tokenList;
 
       setPatientTokens(tokenList);
       setIsLoading(false);
@@ -610,25 +633,31 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     </div>
   );
 
-  const [historyFilter, setHistoryFilter] = useState<'All' | 'Upcoming' | 'Completed' | 'Not Arrived'>('All');
+  const [historyFilter, setHistoryFilter] = useState<'All' | 'Upcoming' | 'Completed' | 'Not Arrived' | 'Expired'>('All');
 
   const getFilteredTokens = () => {
     let filtered = [...patientTokens];
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getKarachiDateStr(new Date());
 
     if (historyFilter === 'Upcoming') {
-      filtered = filtered.filter(token => token.appointmentDate >= todayStr && token.status === 'waiting');
+      filtered = filtered.filter(token => {
+        const date = token.bookingDate || token.appointmentDate;
+        const status = (token.status || token.tokenStatus || '').toLowerCase();
+        return date >= todayStr && (status === 'waiting' || status === 'active');
+      });
     } else if (historyFilter === 'Completed') {
-      filtered = filtered.filter(token => token.status === 'completed');
+      filtered = filtered.filter(token => (token.status || '').toLowerCase() === 'completed');
     } else if (historyFilter === 'Not Arrived') {
-      filtered = filtered.filter(token => token.status === 'not-arrived');
+      filtered = filtered.filter(token => (token.status || '').toLowerCase() === 'not-arrived');
+    } else if (historyFilter === 'Expired') {
+      filtered = filtered.filter(token => token.status === 'expired' || token.tokenStatus === 'expired' || token.expired === true);
     }
     return filtered;
   };
 
   const renderHistoryView = () => {
     const filtered = getFilteredTokens();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getKarachiDateStr(new Date());
 
     if (isLoading) {
       return (
@@ -653,7 +682,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         {/* Filters */}
         <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
-          {(['All', 'Upcoming', 'Completed', 'Not Arrived'] as const).map((f) => (
+          {(['All', 'Upcoming', 'Completed', 'Not Arrived', 'Expired'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setHistoryFilter(f)}
@@ -666,6 +695,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
               {f === 'All' ? (language === 'UR' ? 'تمام' : 'All') :
                f === 'Upcoming' ? (language === 'UR' ? 'آنے والے' : 'Upcoming') :
                f === 'Completed' ? (language === 'UR' ? 'مکمل' : 'Completed') :
+               f === 'Expired' ? (language === 'UR' ? 'میعاد ختم' : 'Expired') :
                (language === 'UR' ? 'نہیں آئے' : 'Not Arrived')}
             </button>
           ))}
@@ -749,12 +779,14 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                       <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
                         token.status === 'completed' ? 'bg-emerald-100 text-emerald-600' :
                         token.status === 'in-progress' ? 'bg-blue-100 text-blue-600' :
+                        token.status === 'expired' ? 'bg-amber-100 text-amber-600' :
                         token.status === 'cancelled' || token.status === 'not-arrived' ? 'bg-red-100 text-red-600' :
                         'bg-amber-100 text-amber-600'
                       }`}>
                         {token.status === 'waiting' ? (language === 'UR' ? 'انتظار میں' : 'Waiting') : 
                          token.status === 'completed' ? (language === 'UR' ? 'مکمل' : 'Completed') :
                          token.status === 'not-arrived' ? (language === 'UR' ? 'نہیں آئے' : 'Not Arrived') :
+                         token.status === 'expired' ? (language === 'UR' ? 'میعاد ختم' : 'Expired') :
                          token.status === 'cancelled' ? (language === 'UR' ? 'منسوخ' : 'Cancelled') :
                          token.status === 'in-progress' ? (language === 'UR' ? 'جاری ہے' : 'In Progress') :
                          token.status}
@@ -783,6 +815,29 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   return (
     <div className="bg-[#faf8ff] min-h-screen pb-32">
       {renderHeader()}
+
+      <AnimatePresence>
+        {expiredNotificationToken && (
+          <motion.div 
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="fixed top-20 left-4 right-4 z-[1001] bg-amber-600 text-white p-6 rounded-[24px] shadow-2xl flex flex-col gap-2"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                 <AlertCircle size={20} />
+                 <h4 className="font-black uppercase tracking-widest text-[10px]">Token Expired</h4>
+              </div>
+              <button onClick={() => setExpiredNotificationToken(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <p className="font-bold text-sm">Your token {expiredNotificationToken.tokenNumber} for {expiredNotificationToken.hospitalName} has expired.</p>
+            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Doctor: DR. {expiredNotificationToken.doctorName}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence mode="wait">
         <motion.div

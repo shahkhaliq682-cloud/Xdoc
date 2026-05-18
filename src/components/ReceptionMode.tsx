@@ -10,11 +10,19 @@ import {
   User, 
   Stethoscope, 
   Phone,
-  Bell
+  Bell,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { db, auth } from '../firebase';
+import { 
+  getKarachiTime, 
+  formatKarachiClock, 
+  formatKarachiDate, 
+  getKarachiDateStr, 
+  getKarachiTimeStr 
+} from '../lib/timeUtils';
 import { 
   collection, 
   addDoc, 
@@ -43,7 +51,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
   doctors 
 }) => {
   const { t, language } = useLanguage();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(getKarachiTime());
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [issueLoading, setIssueLoading] = useState(false);
   const [newPatientName, setNewPatientName] = useState('');
@@ -59,18 +67,27 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
   
   const prevTokensRef = useRef<any[]>([]);
 
+  // Live Clock Update
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(getKarachiTime());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Filter today's tokens and sort them
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getKarachiDateStr(new Date());
   const todaysTokens = tokens
     .filter(t => 
       t.appointmentDate === todayStr || 
-      (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] === todayStr : false)
+      t.bookingDate === todayStr ||
+      (t.createdAt?.toDate ? getKarachiDateStr(t.createdAt.toDate()) === todayStr : false)
     )
     .sort((a, b) => {
-      // Completed and Not-Arrived go to bottom
-      const statusOrder: any = { 'in-progress': 0, 'waiting': 1, 'not-arrived': 2, 'completed': 3 };
-      const aStatus = (a.status || 'waiting').toLowerCase();
-      const bStatus = (b.status || 'waiting').toLowerCase();
+      // Completed, Not-Arrived, Expired go to bottom
+      const statusOrder: any = { 'in-progress': 0, 'waiting': 1, 'active': 1, 'not-arrived': 2, 'completed': 3, 'expired': 4 };
+      const aStatus = (a.status || a.tokenStatus || 'waiting').toLowerCase();
+      const bStatus = (b.status || b.tokenStatus || 'waiting').toLowerCase();
       if (statusOrder[aStatus] !== statusOrder[bStatus]) {
         return statusOrder[aStatus] - statusOrder[bStatus];
       }
@@ -79,16 +96,23 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
 
   const stats = {
     total: todaysTokens.length,
-    waiting: todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'waiting' || (tok.status || '').toLowerCase() === 'Waiting').length,
-    completed: todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'completed' || (tok.status || '').toLowerCase() === 'Completed').length,
+    waiting: todaysTokens.filter(tok => {
+      const s = (tok.status || tok.tokenStatus || '').toLowerCase();
+      return s === 'waiting' || s === 'active';
+    }).length,
+    completed: todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'completed').length,
     missed: todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'not-arrived').length
   };
 
   const inProgressToken = todaysTokens.find(tok => (tok.status || '').toLowerCase() === 'in-progress');
-  const waitingTokens = todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'waiting');
+  const waitingTokens = todaysTokens.filter(tok => {
+    const s = (tok.status || tok.tokenStatus || '').toLowerCase();
+    return s === 'waiting' || s === 'active';
+  });
   
   const missedToday = todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'not-arrived');
   const doneToday = todaysTokens.filter(tok => (tok.status || '').toLowerCase() === 'completed');
+  const expiredToday = todaysTokens.filter(tok => tok.status === 'expired' || tok.expired === true);
 
   const nextWaiting = waitingTokens.slice(0, 5);
 
@@ -136,8 +160,57 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
     return () => clearInterval(timer);
   }, [waitingTokens, showNoShowAlert, hospitalData?.settings]);
 
+  // Auto Expiry Logic (Every 30 minutes by default)
+  useEffect(() => {
+    const checkExpiries = async () => {
+      const now = Date.now();
+      const expiryDuration = 30 * 60 * 1000; // 30 minutes in ms
+      
+      const tokensToExpire = tokens.filter(token => {
+        const status = (token.status || '').toLowerCase();
+        if (status !== 'waiting') return false;
+        if (token.expired) return false;
+        
+        const bookingTime = token.bookingTimestamp?.toMillis?.() || token.createdAt?.toMillis?.() || 0;
+        if (!bookingTime) return false;
+        
+        return (now - bookingTime) > expiryDuration;
+      });
+
+      if (tokensToExpire.length > 0) {
+        const batch = writeBatch(db);
+        const kTime = getKarachiTime();
+        const expiredAtStr = formatKarachiClock(kTime);
+
+        tokensToExpire.forEach(token => {
+          const updateData = {
+            status: 'expired',
+            tokenStatus: 'expired',
+            expired: true,
+            expiredAt: expiredAtStr,
+            updatedAt: serverTimestamp()
+          };
+          batch.update(doc(db, 'tokens', token.id), updateData);
+          if (hospitalData?.uid || hospitalData?.id) {
+            batch.update(doc(db, 'hospitals', hospitalData.uid || hospitalData.id, 'tokens', token.id), updateData);
+          }
+        });
+        await batch.commit();
+      }
+    };
+
+    const interval = setInterval(checkExpiries, 60000); // Check every minute
+    checkExpiries(); // Initial check
+    return () => clearInterval(interval);
+  }, [tokens, hospitalData]);
+
   const getWaitMinutes = (token: any) => {
     try {
+      const bookingTime = token.bookingTimestamp?.toMillis?.() || token.createdAt?.toMillis?.();
+      if (bookingTime) {
+        return Math.floor((Date.now() - bookingTime) / (1000 * 60));
+      }
+
       const [time, period] = (token.appointmentTime || '').split(' ');
       let [hours, minutes] = time.split(':').map(Number);
       if (period === 'PM' && hours !== 12) hours += 12;
@@ -282,22 +355,33 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
       const nextNum = existingTokens.length + 1;
       const tokenNumber = `T-${nextNum.toString().padStart(3, '0')}`;
 
+      const kTime = getKarachiTime();
+      const bookingDate = getKarachiDateStr(kTime);
+      const bookingTime = getKarachiTimeStr(kTime);
+
       const newToken = {
-        hospitalId,
         patientName: newPatientName,
-        patientPhone: newPatientPhone || 'N/A',
+        phoneNumber: newPatientPhone || 'N/A',
         doctorId: docId,
         doctorName: doctorName,
-        doctorSpecialization: doctorSpecialization,
         tokenNumber,
-        status: 'waiting',
-        appointmentDate: todayStr,
-        appointmentTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        hospitalName: hospitalData?.hospitalName || 'Clinic',
+        hospitalId,
+        bookingTime,
+        bookingDate,
+        bookingTimestamp: serverTimestamp(),
+        tokenStatus: 'active', // Requested by user
+        status: 'waiting',     // For internal dashboard logic
+        expired: false,
+        expiredAt: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        appointmentDate: bookingDate, // Support old logic
+        appointmentTime: bookingTime, // Support old logic
         source: 'Reception',
         type: 'walk-in',
-        fee: hospitalData?.opdFee || 0
+        fee: hospitalData?.opdFee || 0,
+        doctorSpecialization: doctorSpecialization
       };
 
       const batch = writeBatch(db);
@@ -353,10 +437,10 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
 
         <div className="flex flex-col items-center">
           <p className="text-3xl font-black tracking-tighter">
-            {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {formatKarachiClock(currentTime)}
           </p>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">
-            {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {formatKarachiDate(currentTime)}
           </p>
         </div>
 
@@ -538,6 +622,54 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
                ))}
                {missedToday.length === 0 && <p className="text-[10px] font-bold text-slate-700 text-center py-4 tracking-[0.2em]">ZERO NO-SHOWS</p>}
             </div>
+          </div>
+
+          {/* EXPIRED TOKENS */}
+          <div className="lg:col-span-3 mt-12 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <h3 className="text-amber-500 font-black uppercase tracking-[0.3em] text-xs">Expired Tokens (Auto)</h3>
+              <span className="px-3 py-1 bg-amber-500/10 text-amber-500 rounded-full text-[10px] font-black">{expiredToday.length} TOKENS</span>
+            </div>
+            {expiredToday.length === 0 ? (
+               <div className="py-12 text-center bg-white/2 rounded-[40px] border border-dashed border-white/5">
+                 <p className="text-slate-600 font-bold uppercase tracking-widest text-[10px]">No tokens expired yet</p>
+               </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {expiredToday.map(token => (
+                   <motion.div 
+                    layout
+                    key={token.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-6 bg-white/2 border border-amber-500/10 rounded-[32px] relative overflow-hidden group"
+                   >
+                     <div className="absolute top-0 right-0 p-4">
+                        <Trash2 size={16} className="text-amber-500/20" />
+                     </div>
+                     <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 font-dm-mono font-black border border-amber-500/5">
+                          {token.tokenNumber}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-white tracking-tight">{token.patientName}</h4>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">DR. {token.doctorName}</p>
+                        </div>
+                     </div>
+                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                        <div>
+                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Booked At</p>
+                          <p className="text-xs font-bold text-white">{token.bookingTime || token.appointmentTime}</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Expired At</p>
+                          <p className="text-xs font-bold text-amber-500">{token.expiredAt || 'Unknown'}</p>
+                        </div>
+                     </div>
+                   </motion.div>
+                 ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

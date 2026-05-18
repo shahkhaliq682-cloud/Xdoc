@@ -14,6 +14,11 @@ import {
   query, where, getDocs, doc, setDoc, getDoc, runTransaction,
   onSnapshot
 } from 'firebase/firestore';
+import { 
+  getKarachiTime, 
+  getKarachiDateStr, 
+  getKarachiTimeStr 
+} from '../lib/timeUtils';
 import LoadingButton from './ui/LoadingButton';
 
 interface BookingFlowProps {
@@ -34,7 +39,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
   const isWalkIn = !doctor;
 
   // Form State
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date()); // Default to today
+  const [selectedDate, setSelectedDate] = useState<Date | null>(getKarachiTime()); // Default to today in Karachi
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [patientName, setPatientName] = useState(userData?.fullName || userData?.name || userData?.displayName || '');
   const [patientPhone, setPatientPhone] = useState(userData?.phone || userData?.phoneFull || '');
@@ -86,7 +91,7 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
   }, [selectedDate, doctor?.id]);
 
   const dates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
+    const d = getKarachiTime();
     d.setDate(d.getDate() + i);
     return d;
   });
@@ -96,13 +101,16 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
     setLoading(true);
 
     try {
+      const hospitalId = hospital.id || hospital.uid;
+      const kTime = getKarachiTime();
+      const bookingDate = getKarachiDateStr(kTime);
+      const bookingTime = getKarachiTimeStr(kTime);
+
       const year = selectedDate.getFullYear();
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-      const hospitalId = hospital.id || hospital.uid;
-
       const result = await runTransaction(db, async (transaction) => {
         const counterRef = doc(db, 'hospitals', hospitalId, 'counters', dateStr);
         const counterDoc = await transaction.get(counterRef);
@@ -130,6 +138,12 @@ const BookingFlow: React.FC<BookingFlowProps> = ({ hospital, doctor, onClose, on
           patientNote: note,
           appointmentDate: dateStr,
           appointmentTime: selectedSlot,
+          bookingDate,
+          bookingTime,
+          bookingTimestamp: serverTimestamp(),
+          tokenStatus: 'active', // Requested by user
+          expired: false,
+          expiredAt: null,
           consultationFee: Number(doctor?.fee || hospital.opdFee || 0),
           fee: Number(doctor?.fee || hospital.opdFee || 0),
           status: 'waiting',
