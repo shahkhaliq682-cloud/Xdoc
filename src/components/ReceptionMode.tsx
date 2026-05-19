@@ -465,137 +465,152 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
       </AnimatePresence>
 
       {/* Top Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 items-center px-6 md:px-10 py-5 md:py-6 border-b border-white/5 bg-white/2 backdrop-blur-md z-10 gap-4 md:gap-6">
-        <div className="flex flex-col items-center md:items-start order-2 md:order-1">
-          <h1 className="text-xs font-black uppercase tracking-[0.2em] text-teal-400 truncate max-w-[250px]">{hospitalData?.hospitalName}</h1>
-          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{t.patient.booking.receptionMode}</p>
-        </div>
+      <div className="w-full border-b border-white/5 bg-[#0a1622]/80 backdrop-blur-md sticky top-0 z-40 select-none">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-4 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-2">
+          
+          {/* Left Section: Branding */}
+          <div className="flex flex-col items-center md:items-start min-w-0 md:w-1/3 md:flex-initial">
+            <h1 className="text-sm md:text-xs lg:text-sm font-black uppercase tracking-[0.15em] text-teal-400 truncate max-w-[280px] text-center md:text-left">
+              {hospitalData?.hospitalName || 'Health Center'}
+            </h1>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse inline-block" />
+              <p className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest leading-none">
+                {t.patient.booking.receptionMode}
+              </p>
+            </div>
+          </div>
 
-        <div className="flex flex-col items-center text-center order-1 md:order-2">
-          <p className="text-2xl md:text-3xl font-black tracking-tight text-white leading-none">
-            {formatKarachiClock(currentTime)}
-          </p>
-          <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1.5 whitespace-nowrap">
-            {formatKarachiDate(currentTime)}
-          </p>
-        </div>
+          {/* Center Section: Modern Balanced Clock */}
+          <div className="flex flex-col items-center text-center md:w-1/3 md:flex-initial">
+            <p className="text-xl md:text-lg lg:text-2xl font-black tracking-tight text-white leading-none">
+              {formatKarachiClock(currentTime)}
+            </p>
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.25em] mt-1 md:mt-1.5 whitespace-nowrap">
+              {formatKarachiDate(currentTime)}
+            </p>
+          </div>
 
-        <div className="flex items-center justify-center md:justify-end gap-3 order-3">
-          <button 
-            type="button"
-            onClick={() => setShowIssueModal(true)}
-            className="flex items-center justify-center gap-2 h-9 sm:h-10 px-4 sm:px-5 bg-teal-500 text-[#04111D] rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md shadow-teal-500/10 whitespace-nowrap"
-          >
-            <Plus size={14} strokeWidth={3} /> {t.patient.booking.issueNewToken}
-          </button>
-          <button 
-            type="button"
-            onClick={onClose}
-            className="flex items-center justify-center gap-2 h-9 sm:h-10 px-4 sm:px-5 bg-white/5 border border-white/10 rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white active:scale-95 transition-all text-slate-300 whitespace-nowrap"
-          >
-            <X size={14} strokeWidth={3} /> {t.patient.booking.exitReceptionMode}
-          </button>
+          {/* Right Section: Button Group */}
+          <div className="flex flex-col sm:flex-row items-center justify-center md:justify-end gap-2 w-full md:w-1/3 md:flex-initial">
+            <button 
+              type="button"
+              onClick={() => setShowIssueModal(true)}
+              className="flex items-center justify-center gap-2 h-9 px-4 bg-teal-500 text-[#04111D] rounded-xl font-bold text-[10px] uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-md shadow-teal-500/10 cursor-pointer whitespace-nowrap w-full sm:w-auto text-center justify-center"
+            >
+              <Plus size={14} strokeWidth={3} /> {t.patient.booking.issueNewToken}
+            </button>
+            <button 
+              type="button"
+              onClick={onClose}
+              className="flex items-center justify-center gap-2 h-9 px-4 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-white/10 hover:text-white active:scale-95 transition-all text-slate-300 cursor-pointer whitespace-nowrap w-full sm:w-auto text-center justify-center"
+            >
+              <X size={14} strokeWidth={3} /> {t.patient.booking.exitReceptionMode}
+            </button>
+          </div>
+
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-10 overflow-y-auto no-scrollbar relative">
-        <AnimatePresence mode="wait">
-          {!inProgressToken ? (
-            <motion.div 
-              key="empty"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="text-center space-y-6"
-            >
-              <div className="w-32 h-32 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-8">
-                <span className="text-6xl">😊</span>
-              </div>
-              <h2 className="text-3xl font-black">{t.patient.booking.noPatients}</h2>
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">{t.patient.booking.noPatientsSub}</p>
-              {waitingTokens.length > 0 && (
-                <button 
-                  onClick={() => handleAction('start')}
-                  className="mt-8 px-12 py-6 bg-teal-500 text-[#04111D] rounded-[32px] font-black text-xl uppercase tracking-[0.2em] shadow-2xl shadow-teal-500/20 hover:scale-105 transition-all"
-                >
-                  {t.patient.booking.startNow} {waitingTokens[0].tokenNumber}
-                </button>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div 
-              key={inProgressToken.id}
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -100 }}
-              className="w-full max-w-4xl flex flex-col items-center space-y-12"
-            >
-              <div className="text-center space-y-2">
-                <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-xs">{t.patient.booking.nowServing}</p>
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-teal-400/20 blur-[80px] rounded-full group-hover:bg-teal-400/40 transition-all duration-1000" />
-                  <h1 className="text-[12rem] font-dm-mono font-black text-teal-400 tracking-tighter leading-none relative drop-shadow-[0_0_30px_rgba(45,212,191,0.5)]">
-                    {inProgressToken.tokenNumber}
-                  </h1>
+      <div className="flex-1 overflow-y-auto no-scrollbar py-6 md:py-12 px-4 sm:px-6 lg:px-10 z-10 w-full relative">
+        <div className="max-w-6xl mx-auto flex flex-col items-center justify-start min-h-full">
+          <AnimatePresence mode="wait">
+            {!inProgressToken ? (
+              <motion.div 
+                key="empty"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="text-center space-y-6 py-12 md:py-20 my-auto"
+              >
+                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-4xl sm:text-6xl">😊</span>
                 </div>
-                <div className="space-y-1">
-                  <h2 className="text-5xl font-black tracking-tight">{inProgressToken.patientName}</h2>
-                  <p className="text-xl font-bold text-slate-400">{inProgressToken.doctorName} — {inProgressToken.specialization || 'General'}</p>
+                <h2 className="text-2xl sm:text-3xl font-black">{t.patient.booking.noPatients}</h2>
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs sm:text-sm">{t.patient.booking.noPatientsSub}</p>
+                {waitingTokens.length > 0 && (
+                  <button 
+                    onClick={() => handleAction('start')}
+                    className="mt-6 md:mt-8 px-8 py-4 sm:px-12 sm:py-6 bg-teal-500 text-[#04111D] rounded-2xl sm:rounded-[32px] font-black text-base sm:text-xl uppercase tracking-[0.15em] sm:tracking-[0.2em] shadow-2xl shadow-teal-500/20 hover:scale-105 transition-all"
+                  >
+                    {t.patient.booking.startNow} {waitingTokens[0].tokenNumber}
+                  </button>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div 
+                key={inProgressToken.id}
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                className="w-full max-w-4xl flex flex-col items-center space-y-8 sm:space-y-12"
+              >
+                <div className="text-center space-y-2 select-none">
+                  <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px] sm:text-xs">{t.patient.booking.nowServing}</p>
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-teal-400/20 blur-[60px] sm:blur-[80px] rounded-full group-hover:bg-teal-400/40 transition-all duration-1000" />
+                    <h1 className="text-6xl sm:text-8xl md:text-[10rem] lg:text-[12rem] font-dm-mono font-black text-teal-400 tracking-tighter leading-none relative drop-shadow-[0_0_30px_rgba(45,212,191,0.5)]">
+                      {inProgressToken.tokenNumber}
+                    </h1>
+                  </div>
+                  <div className="space-y-1">
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight">{inProgressToken.patientName}</h2>
+                    <p className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-slate-400">{inProgressToken.doctorName} — {inProgressToken.specialization || 'General'}</p>
+                  </div>
+                  
+                  {/* Consultation timer */}
+                  <div className="mt-6 sm:mt-8 flex flex-col items-center gap-3 sm:gap-4">
+                     <div className="flex items-center gap-2.5 sm:gap-3 px-4 py-2 sm:px-6 sm:py-3 bg-white/5 rounded-xl sm:rounded-2xl border border-white/10">
+                        <Clock size={16} className="text-slate-400" />
+                        <span className="text-lg sm:text-2xl font-black font-mono">
+                          {Math.floor(consultationTime / 60).toString().padStart(2, '0')}:
+                          {(consultationTime % 60).toString().padStart(2, '0')}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">{t.patient.booking.consultationTime}</span>
+                     </div>
+                     <div className="w-48 sm:w-64 h-1.5 sm:h-2 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min((consultationTime / 900) * 100, 100)}%` }}
+                          className={`h-full transition-colors duration-500 ${consultationTime > 900 ? 'bg-red-500' : 'bg-teal-500'}`}
+                        />
+                     </div>
+                  </div>
                 </div>
-                
-                {/* Consultation timer */}
-                <div className="mt-8 flex flex-col items-center gap-4">
-                   <div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-2xl border border-white/10">
-                      <Clock size={16} className="text-slate-400" />
-                      <span className="text-2xl font-black font-mono">
-                        {Math.floor(consultationTime / 60).toString().padStart(2, '0')}:
-                        {(consultationTime % 60).toString().padStart(2, '0')}
-                      </span>
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t.patient.booking.consultationTime}</span>
-                   </div>
-                   <div className="w-64 h-2 bg-white/5 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((consultationTime / 900) * 100, 100)}%` }}
-                        className={`h-full transition-colors duration-500 ${consultationTime > 900 ? 'bg-red-500' : 'bg-teal-500'}`}
-                      />
-                   </div>
-                </div>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-3 gap-6 w-full max-w-3xl">
-                <button 
-                  onClick={() => handleAction('done')}
-                  className="flex flex-col items-center justify-center p-8 bg-emerald-500 text-white rounded-[40px] shadow-2xl shadow-emerald-500/20 hover:scale-105 transition-all group"
-                >
-                  <CheckCircle2 size={40} className="mb-4" />
-                  <span className="font-black text-sm uppercase tracking-widest leading-none">{t.patient.booking.markDone}</span>
-                </button>
-                <button 
-                  onClick={() => handleAction('missed')}
-                  className="flex flex-col items-center justify-center p-8 bg-red-500 text-white rounded-[40px] shadow-2xl shadow-red-500/20 hover:scale-105 transition-all group"
-                >
-                  <AlertCircle size={40} className="mb-4" />
-                  <span className="font-black text-sm uppercase tracking-widest leading-none">{t.patient.booking.absent}</span>
-                </button>
-                <button 
-                  onClick={handleNext}
-                  className="flex flex-col items-center justify-center p-8 bg-amber-500 text-[#04111D] rounded-[40px] shadow-2xl shadow-amber-500/20 hover:scale-105 transition-all group"
-                >
-                  <ChevronRight size={40} className="mb-4" />
-                  <span className="font-black text-sm uppercase tracking-widest leading-none">{t.patient.booking.continue}</span>
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                {/* Action Buttons */}
+                <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 w-full max-w-3xl">
+                  <button 
+                    onClick={() => handleAction('done')}
+                    className="flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 bg-emerald-500 text-white rounded-2xl sm:rounded-3xl md:rounded-[40px] shadow-2xl shadow-emerald-500/20 hover:scale-105 transition-all group cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 mb-2 sm:mb-3 md:mb-4 text-white" />
+                    <span className="font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-widest leading-none">{t.patient.booking.markDone}</span>
+                  </button>
+                  <button 
+                    onClick={() => handleAction('missed')}
+                    className="flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 bg-red-500 text-white rounded-2xl sm:rounded-3xl md:rounded-[40px] shadow-2xl shadow-red-500/20 hover:scale-105 transition-all group cursor-pointer"
+                  >
+                    <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 mb-2 sm:mb-3 md:mb-4 text-white" />
+                    <span className="font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-widest leading-none">{t.patient.booking.absent}</span>
+                  </button>
+                  <button 
+                    onClick={handleNext}
+                    className="flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 bg-amber-500 text-[#04111D] rounded-2xl sm:rounded-3xl md:rounded-[40px] shadow-2xl shadow-amber-500/20 hover:scale-105 transition-all group cursor-pointer"
+                  >
+                    <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 mb-2 sm:mb-3 md:mb-4 text-[#04111D]" />
+                    <span className="font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-widest leading-none">{t.patient.booking.continue}</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        {/* Segmented Queue */}
-        <div className="w-full max-w-6xl mt-24 grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Segmented Queue */}
+          <div className="w-full max-w-6xl mt-12 sm:mt-16 md:mt-20 lg:mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
           {/* NEXT UP */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="space-y-6">
             <div className="flex items-center justify-between px-4">
               <h3 className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">{t.patient.booking.nextUp}</h3>
               <span className="text-teal-400 font-black text-[10px] uppercase tracking-widest">{waitingTokens.length}</span>
@@ -663,7 +678,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
           </div>
 
           {/* SLOTS OVERVIEW */}
-          <div className="lg:col-span-3 mt-12 space-y-6">
+          <div className="md:col-span-2 lg:col-span-3 mt-12 space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
               <h3 className="text-teal-500 font-black uppercase tracking-[0.3em] text-xs">Today's Slots Overview</h3>
               <div className="flex gap-4">
@@ -700,7 +715,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
           </div>
 
           {/* EXPIRED TOKENS */}
-          <div className="lg:col-span-3 mt-12 space-y-6">
+          <div className="md:col-span-2 lg:col-span-3 mt-12 space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
               <h3 className="text-amber-500 font-black uppercase tracking-[0.3em] text-xs">Expired Tokens (Auto)</h3>
               <span className="px-3 py-1 bg-amber-500/10 text-amber-500 rounded-full text-[10px] font-black">{expiredToday.length} TOKENS</span>
@@ -746,6 +761,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
 
