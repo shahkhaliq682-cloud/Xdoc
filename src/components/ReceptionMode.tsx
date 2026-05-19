@@ -465,7 +465,7 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
       </AnimatePresence>
 
       {/* Top Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 items-center px-6 md:px-10 py-6 md:py-8 border-b border-white/5 bg-white/2 backdrop-blur-md z-10 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 items-center px-6 md:px-10 py-5 md:py-6 border-b border-white/5 bg-white/2 backdrop-blur-md z-10 gap-4 md:gap-6">
         <div className="flex flex-col items-center md:items-start order-2 md:order-1">
           <h1 className="text-xs font-black uppercase tracking-[0.2em] text-teal-400 truncate max-w-[250px]">{hospitalData?.hospitalName}</h1>
           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{t.patient.booking.receptionMode}</p>
@@ -475,23 +475,25 @@ const ReceptionMode: React.FC<ReceptionModeProps> = ({
           <p className="text-2xl md:text-3xl font-black tracking-tight text-white leading-none">
             {formatKarachiClock(currentTime)}
           </p>
-          <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] mt-2 whitespace-nowrap">
+          <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1.5 whitespace-nowrap">
             {formatKarachiDate(currentTime)}
           </p>
         </div>
 
         <div className="flex items-center justify-center md:justify-end gap-3 order-3">
           <button 
+            type="button"
             onClick={() => setShowIssueModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-teal-500 text-[#04111D] rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-teal-500/20 whitespace-nowrap"
+            className="flex items-center justify-center gap-2 h-9 sm:h-10 px-4 sm:px-5 bg-teal-500 text-[#04111D] rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md shadow-teal-500/10 whitespace-nowrap"
           >
-            <Plus size={16} strokeWidth={3} /> {t.patient.booking.issueNewToken}
+            <Plus size={14} strokeWidth={3} /> {t.patient.booking.issueNewToken}
           </button>
           <button 
+            type="button"
             onClick={onClose}
-            className="flex items-center justify-center w-10 h-10 md:w-auto md:px-5 md:py-2.5 bg-white/5 border border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all text-slate-400"
+            className="flex items-center justify-center gap-2 h-9 sm:h-10 px-4 sm:px-5 bg-white/5 border border-white/10 rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white active:scale-95 transition-all text-slate-300 whitespace-nowrap"
           >
-            <X size={16} strokeWidth={3} /> <span className="hidden md:inline ml-2">{t.patient.booking.exitReceptionMode}</span>
+            <X size={14} strokeWidth={3} /> {t.patient.booking.exitReceptionMode}
           </button>
         </div>
       </div>
