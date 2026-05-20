@@ -1952,7 +1952,7 @@ const GlobalStatsScreen = () => {
 // --- Main App Component ---
 
 export default function App() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const { currentUser, userData, logout } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
@@ -2483,24 +2483,44 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button for Testing Roles */}
-      <div className="fixed bottom-24 right-10 z-[100] flex flex-col gap-4">
-        {viewState !== 'super_admin' && (
+      {/* WhatsApp Floating Support Button */}
+      <div 
+        className={`fixed z-[9999] flex flex-col items-center justify-center transition-all duration-300 ${
+          (viewState === 'patient_home' || viewState === 'admin_dashboard')
+            ? 'bottom-[80px] lg:bottom-[20px] right-[16px] md:right-[20px]' 
+            : 'bottom-[16px] md:bottom-[20px] right-[16px] md:right-[20px]'
+        }`}
+      >
+        <div className="relative group flex flex-col items-center justify-center">
+          {/* Tooltip on Hover */}
+          <div className="absolute bottom-[115%] mb-2.5 hidden group-hover:flex flex-col items-center transition-all duration-300 pointer-events-none whitespace-nowrap z-[10000]">
+            <div className="bg-slate-900/95 text-white text-[11px] font-bold px-3 py-2 rounded-xl shadow-xl flex items-center justify-center font-sans tracking-wide">
+              {language === 'UR' ? 'مدد چاہیے؟ واٹس ایپ کریں!' : 'Madad chahiye? WhatsApp karein!'}
+            </div>
+            <div className="w-2 h-2 bg-slate-900/95 rotate-45 -mt-1" />
+          </div>
+
+          {/* Branded Pulsing WhatsApp Button */}
           <button 
-            onClick={() => setViewState('super_admin')}
-            className="w-16 h-16 rounded-3xl bg-slate-900 border border-white/10 text-blue-400 shadow-2xl flex items-center justify-center hover:scale-110 transition-all group"
+            onClick={() => {
+              window.open(
+                "https://wa.me/923152328605?text=Assalam%20o%20Alaikum!%20%F0%9F%8F%A5%0A%0AMain%20Xdoc%20app%20use%20kar%20raha%20hun%20aur%20mujhe%20madad%20chahiye.%0A%0AApp%20URL%3A%20https%3A%2F%2Fxdoc.pages.dev%2F",
+                "_blank",
+                "noopener,noreferrer"
+              );
+            }}
+            title={language === 'UR' ? 'مدد چاہیے؟ واٹس ایپ کریں!' : 'Madad chahiye? WhatsApp karein!'}
+            aria-label="Contact support on WhatsApp"
+            className="whatsapp-pulse-button w-[52px] h-[52px] md:w-[56px] md:h-[56px] rounded-full bg-[#25D366] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer outline-none select-none"
           >
-            <ShieldAlert size={28} className="group-hover:rotate-12 transition-transform" />
+            <MessageCircle className="w-6 h-6 md:w-[26px] md:h-[26px]" fill="currentColor" />
           </button>
-        )}
-        {viewState === 'super_admin' && (
-          <button 
-            onClick={() => setViewState('hero')}
-            className="w-16 h-16 rounded-3xl bg-primary text-white shadow-2xl flex items-center justify-center hover:scale-110 transition-all"
-          >
-             <Home size={28} />
-          </button>
-        )}
+        </div>
+
+        {/* Small White Label Below Button */}
+        <span className="text-[10px] text-white font-extrabold select-none text-center pointer-events-none mt-1 uppercase tracking-widest font-sans drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.8)]">
+          {language === 'UR' ? 'سپورٹ' : 'Support'}
+        </span>
       </div>
     </div>
   );

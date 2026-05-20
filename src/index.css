@@ -71,4 +71,20 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  @keyframes whatsapp-pulse-ring {
+    0% {
+      box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4), 0 0 0 0 rgba(37, 211, 102, 0.7);
+    }
+    70% {
+      box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4), 0 0 0 10px rgba(37, 211, 102, 0);
+    }
+    100% {
+      box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4), 0 0 0 0 rgba(37, 211, 102, 0);
+    }
+  }
+
+  .whatsapp-pulse-button {
+    animation: whatsapp-pulse-ring 2s infinite;
+  }
 }
