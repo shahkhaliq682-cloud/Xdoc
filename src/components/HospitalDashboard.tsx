@@ -36,7 +36,10 @@ import {
   AlertTriangle,
   ArrowRight,
   Play,
-  Info
+  Info,
+  ArrowLeft,
+  Copy,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -92,7 +95,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const { t, language, setLanguage } = useLanguage();
   const { toast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'data' | 'staff' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'doctors' | 'search' | 'data' | 'staff' | 'profile'>('home');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [hospitalData, setHospitalData] = useState(initialHospitalData);
   const [doctors, setDoctors] = useState<any[]>([]);
@@ -107,6 +110,36 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [showReceptionMode, setShowReceptionMode] = useState(false);
   const [isLive, setIsLive] = useState(true);
+
+  // Doctors & Walk-in systems states
+  const [activeDoctorConsoleId, setActiveDoctorConsoleId] = useState<string | null>(null);
+  const [selectedDoctorForConsole, setSelectedDoctorForConsole] = useState<any | null>(null);
+  const [showAddDoctorModal, setShowAddDoctorModal] = useState(false);
+  const [editingDoctorId, setEditingDoctorId] = useState<string | null>(null);
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [walkInLoading, setWalkInLoading] = useState(false);
+  const [walkInSuccessToken, setWalkInSuccessToken] = useState<any | null>(null);
+  const [walkInForm, setWalkInForm] = useState({
+    patientName: '',
+    patientPhone: '',
+    doctorId: '',
+    appointmentSlot: ''
+  });
+
+  const [newDoctor, setNewDoctor] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    specialization: 'General Physician',
+    days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+    startTime: '09:00 AM',
+    endTime: '05:00 PM',
+    fee: 1500,
+    consultationTime: 12,
+    pmdcId: '',
+    status: 'Active',
+    gender: 'Male'
+  });
 
   // Firestore connection tracking
   useEffect(() => {
@@ -501,6 +534,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   const navItems = [
     { id: 'home', icon: LayoutDashboard, label: t.dashboard.nav.dashboard || 'DASHBOARD' },
+    { id: 'doctors', icon: Stethoscope, label: 'DOCTORS • ڈاکٹرز' },
     { id: 'search', icon: Search, label: t.dashboard.search || 'SEARCH' },
     { id: 'data', icon: Activity, label: t.patient.booking.patients || 'PATIENTS' },
     { id: 'staff', icon: Users, label: t.dashboard.nav.staff || 'STAFF' },
@@ -948,6 +982,460 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     joiningDate: new Date().toISOString().split('T')[0]
   });
 
+  // Generate and filter available slots for walk-ins
+  const getWalkInAvailableSlots = (docId: string) => {
+    const todayStr = getKarachiDateStr(new Date());
+    const bookedSlots = tokens
+      .filter(t => t.doctorId === docId && t.appointmentDate === todayStr && (t.status !== 'cancelled' && t.status !== 'expired'))
+      .map(t => t.appointmentTime || t.bookingTime);
+    
+    const allSlots = [
+      '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+      '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
+      '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM',
+      '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM', '08:30 PM', '09:00 PM'
+    ];
+    return allSlots.filter(slot => !bookedSlots.includes(slot));
+  };
+
+  // --- DOCTOR MANAGEMENT SYSTEM CORE ---
+  const renderDoctorsTab = () => {
+    // If a doctor desk is active, render the console workspace instead
+    if (activeDoctorConsoleId) {
+      const activeDocData = doctors.find(d => d.id === activeDoctorConsoleId);
+      if (!activeDocData) {
+        setActiveDoctorConsoleId(null);
+        return null;
+      }
+
+      // Filter today's tokens for this doctor
+      const todayStr = getKarachiDateStr(new Date());
+      const docTokens = tokens.filter(t => t.doctorId === activeDoctorConsoleId && t.appointmentDate === todayStr);
+      
+      const currentPatient = docTokens.find(t => t.status === 'In Progress' || t.status === 'in-progress');
+      const docQueue = docTokens.filter(t => t.status === 'Waiting' || t.status === 'waiting')
+        .sort((a, b) => {
+          const numA = parseInt(a.tokenNumber?.replace(/\D/g, '') || '0');
+          const numB = parseInt(b.tokenNumber?.replace(/\D/g, '') || '0');
+          return numA - numB;
+        });
+      const servicedToday = docTokens.filter(t => t.status === 'Completed' || t.status === 'completed');
+
+      const updateDoctorLiveStatus = async (newLiveStatus: string) => {
+        try {
+          await updateDoc(doc(db, `hospitals/${hospitalData.uid}/doctors`, activeDoctorConsoleId), {
+            liveStatus: newLiveStatus
+          });
+          toast.success(`Doctor status changed to: ${newLiveStatus}`);
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
+      const handleCallNext = async () => {
+        try {
+          const batch = writeBatch(db);
+          
+          // 1. Mark previous active patient (if any) as completed
+          if (currentPatient) {
+            batch.update(doc(db, 'tokens', currentPatient.id), {
+              status: 'completed',
+              completedAt: serverTimestamp()
+            });
+            // Update patient aggregated totals
+            if (currentPatient.patientId) {
+              batch.update(doc(db, 'users', currentPatient.patientId), {
+                completedBookings: increment(1)
+              });
+            }
+          }
+
+          // 2. Take first patient in queue and set to in-progress
+          if (docQueue.length > 0) {
+            const nextInLine = docQueue[0];
+            batch.update(doc(db, 'tokens', nextInLine.id), {
+              status: 'in-progress',
+              calledAt: serverTimestamp()
+            });
+            toast.success(`Calling Patient: ${nextInLine.patientName} (${nextInLine.tokenNumber})`);
+            confetti({
+              particleCount: 80,
+              spread: 60,
+              origin: { y: 0.7 }
+            });
+          } else {
+            toast.info("No more patients waiting in queue.");
+          }
+
+          await batch.commit();
+        } catch (err) {
+          console.error(err);
+          toast.error("Unable to update doctor queue states");
+        }
+      };
+
+      const handleMarkNoShow = async () => {
+        if (!currentPatient) {
+          toast.warning("No active patient is currently called to mark as absent.");
+          return;
+        }
+
+        try {
+          const batch = writeBatch(db);
+          
+          // Mark current as expired (requirement 4)
+          batch.update(doc(db, 'tokens', currentPatient.id), {
+            status: 'expired',
+            tokenStatus: 'expired',
+            expired: true,
+            expiredAt: serverTimestamp()
+          });
+
+          if (currentPatient.patientId) {
+            batch.update(doc(db, 'users', currentPatient.patientId), {
+              missedBookings: increment(1)
+            });
+          }
+
+          toast.warning(`Token ${currentPatient.tokenNumber} marked as expired due to absence`);
+
+          // Automatically call next patient (requirement 4)
+          if (docQueue.length > 0) {
+            const nextInLine = docQueue[0];
+            batch.update(doc(db, 'tokens', nextInLine.id), {
+              status: 'in-progress',
+              calledAt: serverTimestamp()
+            });
+            toast.success(`Line advanced. Calling next: ${nextInLine.patientName}`);
+          }
+
+          await batch.commit();
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to mark patient as absent");
+        }
+      };
+
+      return (
+        <div className="p-6 space-y-8 animate-in fade-in duration-300 max-w-7xl pb-32">
+          {/* Console Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-6">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setActiveDoctorConsoleId(null)}
+                className="p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl text-slate-500 transition-colors"
+                title="Back to Directory"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 leading-tight">Dr. {activeDocData.name} Desk</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  {activeDocData.specialization} • Practice Desk Console
+                </p>
+              </div>
+            </div>
+
+            {/* Live Status selector */}
+            <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm shrink-0">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">DR. STATUS:</span>
+              <div className="flex gap-2.5">
+                {['Active', 'On-break', 'Off-duty'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => updateDoctorLiveStatus(st)}
+                    className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors ${
+                      (activeDocData.liveStatus || 'Active') === st 
+                        ? st === 'Active' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                          : st === 'On-break' ? 'bg-amber-400 text-slate-900' 
+                          : 'bg-red-500 text-white'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Workspace: serving area */}
+            <div className="lg:col-span-8 flex flex-col gap-6">
+              
+              {/* CURRENT ACTIVE PATIENT PANEL */}
+              <div className="bg-gradient-to-br from-slate-900 to-[#12223c] rounded-[40px] p-8 sm:p-10 text-white relative overflow-hidden shadow-xl border border-white/5">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
+                
+                <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping" />
+                    <span className="text-[10px] font-black tracking-widest text-emerald-400 uppercase">IN CLINIC RIGHT NOW</span>
+                  </div>
+                  <span className="text-[9px] font-bold text-white/40 tracking-widest border border-white/10 px-2.5 py-1 rounded-xl">STAGE 01</span>
+                </div>
+
+                <div className="flex flex-col items-center justify-center text-center py-6">
+                  {currentPatient ? (
+                    <div className="space-y-6 w-full">
+                      <div className="inline-flex items-center justify-center bg-primary/20 border-2 border-primary/40 px-8 py-5 rounded-3xl mb-2">
+                        <span className="text-7xl font-mono font-black text-sky-400 leading-none">
+                          {currentPatient.tokenNumber}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h4 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">{currentPatient.patientName}</h4>
+                        <p className="text-xs text-sky-300 font-bold tracking-widest uppercase">
+                          Appt Slot: {currentPatient.appointmentTime}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-medium font-mono">
+                          Tracking ID: {currentPatient.id}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 py-8 text-center text-slate-400">
+                      <Activity size={48} className="mx-auto text-slate-600 animate-pulse" />
+                      <div>
+                        <p className="font-bold text-lg text-slate-200">No Patient is Currently Called</p>
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mt-1">Click Call Next Patient below to start</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Desk controls panel */}
+                <div className="grid grid-cols-2 gap-4 mt-10 pt-8 border-t border-white/5">
+                  <button
+                    onClick={handleCallNext}
+                    disabled={docQueue.length === 0 && !currentPatient}
+                    className="py-4 px-6 bg-health-teal hover:bg-teal-600 font-bold rounded-2xl flex items-center justify-center gap-2 active:scale-98 transition-all shadow-lg text-xs tracking-wider uppercase"
+                  >
+                    <Play size={16} /> Call Next Patient
+                  </button>
+                  <button
+                    onClick={handleMarkNoShow}
+                    disabled={!currentPatient}
+                    className="py-4 px-6 bg-red-600 hover:bg-red-700 disabled:opacity-40 font-bold rounded-2xl flex items-center justify-center gap-2 active:scale-98 transition-all shadow-lg text-xs tracking-wider uppercase text-white"
+                  >
+                    <AlertTriangle size={16} /> Mark No-Show / Expire
+                  </button>
+                </div>
+              </div>
+
+              {/* SERVICED LIST TODAY */}
+              <div className="bg-white rounded-[32px] border border-slate-100 p-6 shadow-sm">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 px-2">Serviced Today ({servicedToday.length})</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[220px] overflow-y-auto pr-1">
+                  {servicedToday.map(tok => (
+                    <div key={tok.id} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
+                      <div>
+                        <p className="text-xs font-black text-slate-700 uppercase">{tok.patientName}</p>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase">{tok.appointmentTime}</span>
+                      </div>
+                      <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded-lg uppercase">
+                        #{tok.tokenNumber} • DONE
+                      </span>
+                    </div>
+                  ))}
+                  {servicedToday.length === 0 && (
+                    <div className="col-span-1 md:col-span-2 py-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+                      No patients processed yet today.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Sidebar: Active Queue */}
+            <div className="lg:col-span-4 flex flex-col">
+              <div className="bg-white rounded-[36px] border border-slate-100 p-6 flex-1 flex flex-col shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Waiting List ({docQueue.length})</h3>
+                  <span className="px-2.5 py-1 bg-sky-50 text-sky-600 rounded-lg text-[9px] font-black uppercase">LIVE QUEUE</span>
+                </div>
+
+                <div className="flex-1 space-y-3 overflow-y-auto max-h-[460px] pr-1">
+                  {docQueue.map((tok, index) => (
+                    <div key={tok.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center font-mono font-bold text-xs text-slate-600 shadow-sm">
+                          {tok.tokenNumber}
+                        </span>
+                        <div>
+                          <p className="text-xs font-bold text-slate-700 uppercase max-w-[140px] truncate">{tok.patientName}</p>
+                          <p className="text-[8px] text-slate-400 font-bold uppercase">Time: {tok.appointmentTime}</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-black text-slate-400">#{index + 1} waiting</span>
+                    </div>
+                  ))}
+                  {docQueue.length === 0 && (
+                    <div className="py-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs">
+                      Queue is Empty
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-6 space-y-10 pb-32 animate-in fade-in duration-500">
+        
+        {/* Doctors Stats top grid */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Physician Directory</h2>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Manage doctors, schedules & live practice desks</p>
+          </div>
+          <button 
+            onClick={() => {
+              setEditingDoctorId(null);
+              setNewDoctor({
+                name: '', phone: '', email: '', specialization: 'General Physician',
+                days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], startTime: '09:00 AM', endTime: '05:00 PM',
+                fee: 1500, consultationTime: 12, pmdcId: '', status: 'Active', gender: 'Male'
+              });
+              setShowAddDoctorModal(true);
+            }}
+            className="px-6 py-3 bg-health-teal text-white font-bold rounded-2xl flex items-center gap-2 hover:scale-[1.02] transition-transform active:scale-95 shadow-lg shadow-health-teal/15 text-xs tracking-wider uppercase shrink-0"
+          >
+            <Plus size={18} /> Register New Doctor
+          </button>
+        </div>
+
+        {/* Directory Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {doctors.map(docData => {
+            const statusColor = (docData.liveStatus || 'Active') === 'Active' ? 'bg-emerald-500' : (docData.liveStatus === 'On-break' ? 'bg-amber-400' : 'bg-red-500');
+            const placeholderAvatar = `https://images.unsplash.com/photo-${docData.gender === 'Female' ? '1559839734-2b71ea197ec2' : '1622253692010-333f2da6031d'}?q=80&w=300&auto=format&fit=crop`;
+            
+            return (
+              <div key={docData.id} className="bg-white border border-slate-100 rounded-[32px] p-6 shadow-sm flex flex-col justify-between group hover:border-primary/10 transition-all hover:shadow-md relative">
+                
+                {/* PMDC badge */}
+                {docData.pmdcId && (
+                  <div className="absolute top-4 right-4 flex items-center gap-1 bg-sky-50 border border-sky-100 px-2.5 py-1 rounded-xl" title={`PMDC ID: ${docData.pmdcId}`}>
+                    <ShieldCheck size={12} className="text-sky-500" />
+                    <span className="text-[8px] font-black uppercase text-sky-600 tracking-wider">PMDC Verified</span>
+                  </div>
+                )}
+
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <img 
+                      src={placeholderAvatar} 
+                      alt={docData.name} 
+                      referrerPolicy="no-referrer"
+                      className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-100 shrink-0"
+                    />
+                    <div className="truncate">
+                      <h4 className="font-black text-slate-800 text-lg truncate leading-snug">Dr. {docData.name}</h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{docData.specialization}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3.5 border-t border-slate-50 pt-4 mb-6">
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><Clock size={14} className="text-slate-400" /> Schedule:</span>
+                      <span className="font-bold text-slate-700 truncate max-w-[140px] uppercase text-[10px] bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-lg">{docData.days?.join(', ')}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><Clock size={14} className="text-slate-400" /> Clinic Hours:</span>
+                      <span className="font-bold text-slate-700 text-[10px] font-mono">{docData.startTime} - {docData.endTime}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><Users size={14} className="text-slate-400" /> Consultation:</span>
+                      <span className="font-bold text-slate-700 text-[10px] uppercase">{docData.consultationTime} min / case</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><Wallet size={14} className="text-slate-400" /> Clinic Fee:</span>
+                      <span className="font-black text-emerald-600 text-xs font-mono">PKR {Number(docData.fee || 1500).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><Activity size={14} className="text-slate-400" /> Live Status:</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${statusColor}`} />
+                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">{docData.liveStatus || 'Active'}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card actions */}
+                <div className="grid grid-cols-1 gap-2 border-t border-slate-100 pt-4">
+                  <button
+                    onClick={() => {
+                      setActiveDoctorConsoleId(docData.id);
+                    }}
+                    className="w-full py-3 bg-primary text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-600 active:scale-98 transition-all text-[11px] tracking-wider uppercase shadow-sm shadow-primary/10"
+                  >
+                    <LayoutDashboard size={14} /> Launch Desk Console
+                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingDoctorId(docData.id);
+                        setNewDoctor({
+                          name: docData.name || '',
+                          phone: docData.phone || '',
+                          email: docData.email || '',
+                          specialization: docData.specialization || 'General Physician',
+                          days: docData.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                          startTime: docData.startTime || '09:00 AM',
+                          endTime: docData.endTime || '05:00 PM',
+                          fee: Number(docData.fee || 1500),
+                          consultationTime: Number(docData.consultationTime || 12),
+                          pmdcId: docData.pmdcId || '',
+                          status: docData.status || 'Active',
+                          gender: docData.gender || 'Male'
+                        });
+                        setShowAddDoctorModal(true);
+                      }}
+                      className="py-2 bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold rounded-xl text-[10px] tracking-wider uppercase text-center border border-slate-100 flex items-center justify-center gap-1.5"
+                    >
+                      <Edit size={12} /> Edit
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (confirm(`Are you sure you want to delete Dr. ${docData.name}?`)) {
+                          try {
+                            await deleteDoc(doc(db, `hospitals/${hospitalData.uid}/doctors`, docData.id));
+                            toast.success("Doctor deleted successfully.");
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }
+                      }}
+                      className="py-2 bg-red-50 hover:bg-red-100 text-red-500 font-bold rounded-xl text-[10px] tracking-wider uppercase text-center border border-red-100/30 flex items-center justify-center gap-1.5"
+                    >
+                      <Trash2 size={12} /> Remove
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            );
+          })}
+          {doctors.length === 0 && (
+            <div className="col-span-1 md:col-span-3 py-24 bg-white border border-slate-100 rounded-[44px] text-center space-y-4">
+              <Stethoscope size={56} className="mx-auto text-slate-300" />
+              <p className="text-lg font-bold text-slate-600">No Doctors Registered Yet</p>
+              <p className="text-xs text-slate-400 uppercase tracking-widest max-w-sm mx-auto">Click "Register New Doctor" above to bootstrap your medical staff roster.</p>
+            </div>
+          )}
+        </div>
+
+      </div>
+    );
+  };
+
   const renderStaffList = () => (
     <div className="p-6 space-y-10 pb-32">
       <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
@@ -1103,27 +1591,19 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const renderTokens = () => (
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-slate-900">Token Management</h2>
+        <h2 className="text-3xl font-bold text-slate-900 font-display">Token Management</h2>
         <button 
-          onClick={async () => {
-            const name = prompt("Patient Name:");
-            const docName = doctors.length > 0 ? doctors[0].name : "General Physician";
-            if (name) {
-              const tokenNum = tokens.length + 1;
-              await addDoc(collection(db, 'tokens'), {
-                hospitalId: hospitalData.uid,
-                hospitalName: hospitalData.hospitalName,
-                hospitalOwnerUid: hospitalData.uid, // Explicitly add owner UID for security rules
-                patientName: name,
-                doctorName: docName,
-                tokenNumber: tokenNum.toString().padStart(3, '0'),
-                status: 'Waiting',
-                fee: '1500',
-                createdAt: serverTimestamp()
-              });
-            }
+          onClick={() => {
+            setWalkInSuccessToken(null);
+            setWalkInForm({
+              patientName: '',
+              patientPhone: '',
+              doctorId: doctors.length > 0 ? doctors[0].id : '',
+              appointmentSlot: ''
+            });
+            setShowWalkInModal(true);
           }}
-          className="px-6 py-3 bg-health-teal text-white font-bold rounded-2xl flex items-center gap-2"
+          className="px-6 py-3 bg-health-teal text-white font-bold rounded-2xl flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-lg"
         >
           <Plus size={20} /> Issue Walk-in Token
         </button>
@@ -1172,6 +1652,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'home': return renderDashboardHome();
+      case 'doctors': return renderDoctorsTab();
       case 'search': return renderSearch();
       case 'data': return renderPatientsData();
       case 'staff': return renderStaffList();
@@ -1552,6 +2033,504 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
               updateTokenStatus={updateTokenStatus}
               doctors={doctors}
             />
+          )}
+        </AnimatePresence>
+
+        {/* --- REGISTER / EDIT DOCTOR MODAL --- */}
+        <AnimatePresence>
+          {showAddDoctorModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 30 }}
+                className="bg-white rounded-[36px] border border-slate-100 p-8 max-w-2xl w-full shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">{editingDoctorId ? 'Modify Doctor Credentials' : 'Register New Medical Specialist'}</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Credentials verified in real-time under PMDC registries</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowAddDoctorModal(false)}
+                    className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Name */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Doctor's Full Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Dr. Muhammad Asif"
+                      value={newDoctor.name}
+                      onChange={e => setNewDoctor({ ...newDoctor, name: e.target.value })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                    />
+                  </div>
+
+                  {/* Specialization */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Clinic Department / Speciality</label>
+                    <select 
+                      value={newDoctor.specialization}
+                      onChange={e => setNewDoctor({ ...newDoctor, specialization: e.target.value })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                    >
+                      {['General Physician', 'Cardiologist', 'Pediatrician', 'Gynecologist', 'Dermatologist', 'Orthopedic Surgeon', 'Neurologist', 'ENT Specialist', 'Dentist', 'Psychiatrist', 'Urologist', 'Other'].map(sp => (
+                        <option key={sp} value={sp}>{sp}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Contact Phone Number</label>
+                    <input 
+                      type="tel" 
+                      placeholder="e.g. 03001234567"
+                      value={newDoctor.phone}
+                      onChange={e => setNewDoctor({ ...newDoctor, phone: e.target.value })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Email Address</label>
+                    <input 
+                      type="email" 
+                      placeholder="e.g. asif@xdoc.com"
+                      value={newDoctor.email}
+                      onChange={e => setNewDoctor({ ...newDoctor, email: e.target.value })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                    />
+                  </div>
+
+                  {/* PMDC ID */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">PMDC Registry Number (*)</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 94819-P"
+                      value={newDoctor.pmdcId}
+                      onChange={e => setNewDoctor({ ...newDoctor, pmdcId: e.target.value })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all font-mono"
+                    />
+                  </div>
+
+                  {/* Gender selection */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Gender (for avatar generation)</label>
+                    <select 
+                      value={newDoctor.gender}
+                      onChange={e => setNewDoctor({ ...newDoctor, gender: e.target.value })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all animate-none"
+                    >
+                      <option value="Male">Male Specialist</option>
+                      <option value="Female">Female Specialist</option>
+                    </select>
+                  </div>
+
+                  {/* Clinic Timings */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">OPD Start Time</label>
+                    <select 
+                      value={newDoctor.startTime}
+                      onChange={e => setNewDoctor({ ...newDoctor, startTime: e.target.value })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                    >
+                      {['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM'].map(tStr => (
+                        <option key={tStr} value={tStr}>{tStr}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">OPD Closing Time</label>
+                    <select 
+                      value={newDoctor.endTime}
+                      onChange={e => setNewDoctor({ ...newDoctor, endTime: e.target.value })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                    >
+                      {['12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM', '10:00 PM', '11:00 PM'].map(tStr => (
+                        <option key={tStr} value={tStr}>{tStr}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* OPD Fee */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Consultation Fee (Rs.)</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 1500"
+                      value={newDoctor.fee}
+                      onChange={e => setNewDoctor({ ...newDoctor, fee: Number(e.target.value) })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                    />
+                  </div>
+
+                  {/* consultationTime limit */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Avg. Appt Booking Interval</label>
+                    <select 
+                      value={newDoctor.consultationTime}
+                      onChange={e => setNewDoctor({ ...newDoctor, consultationTime: Number(e.target.value) })}
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                    >
+                      {[5, 10, 12, 15, 20, 30].map(mins => (
+                        <option key={mins} value={mins}>{mins} Minutes</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Days checkboxes */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2 block">OPD Active Days of Practice</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+                      const isActive = newDoctor.days.includes(day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            const updatedDays = isActive 
+                              ? newDoctor.days.filter(d => d !== day) 
+                              : [...newDoctor.days, day];
+                            setNewDoctor({ ...newDoctor, days: updatedDays });
+                          }}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+                            isActive 
+                              ? 'bg-primary text-white border-primary shadow-md' 
+                              : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100'
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-4 border-t border-slate-100 pt-6">
+                  <button
+                    onClick={() => setShowAddDoctorModal(false)}
+                    className="flex-1 py-4 bg-slate-50 text-slate-400 hover:bg-slate-100 font-bold rounded-2xl text-xs tracking-wider uppercase transition-all"
+                  >
+                    Discard Changes
+                  </button>
+                  <LoadingButton
+                    isLoading={isSaving}
+                    loadingText="Archiving..."
+                    onClick={async () => {
+                      if (!newDoctor.name || !newDoctor.pmdcId) {
+                        toast.error("Doctor's PMDC number & Full Name cannot be empty.");
+                        return;
+                      }
+                      setIsSaving(true);
+                      try {
+                        if (editingDoctorId) {
+                          await updateDoc(doc(db, `hospitals/${hospitalData.uid}/doctors`, editingDoctorId), {
+                            ...newDoctor,
+                            updatedAt: serverTimestamp()
+                          });
+                          toast.success("Physician credentials updated successfully!");
+                        } else {
+                          await addDoc(collection(db, `hospitals/${hospitalData.uid}/doctors`), {
+                            ...newDoctor,
+                            liveStatus: 'Active',
+                            createdAt: serverTimestamp()
+                          });
+                          toast.success("Medical specialist registered in live database!");
+                        }
+                        setShowAddDoctorModal(false);
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("Error committing physician states");
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                    className="flex-1 py-4 bg-primary text-white hover:bg-indigo-600 font-bold rounded-2xl text-xs tracking-wider uppercase transition-all shadow-lg"
+                  >
+                    {editingDoctorId ? 'Apply Changes' : 'Confirm Registration'}
+                  </LoadingButton>
+                </div>
+
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* --- SMART WALK-IN RESERVATION WIZARD MODAL --- */}
+        <AnimatePresence>
+          {showWalkInModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 30 }}
+                className="bg-white rounded-[36px] border border-slate-100 p-8 max-w-xl w-full shadow-2xl space-y-6 my-8"
+              >
+                {!walkInSuccessToken ? (
+                  // STEP 1 & 2: Booking Form Layout
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900">Issue Walk-In Reservation</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Reserve a validated appointment slot dynamically</p>
+                      </div>
+                      <button 
+                        onClick={() => setShowWalkInModal(false)}
+                        className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl transition-colors"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Patient Name */}
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Patient full name</label>
+                        <input 
+                          type="text" 
+                          placeholder="Enter patient name..."
+                          value={walkInForm.patientName}
+                          onChange={e => setWalkInForm({ ...walkInForm, patientName: e.target.value })}
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                        />
+                      </div>
+
+                      {/* Patient Phone */}
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Patient WhatsApp phone (Optional)</label>
+                        <input 
+                          type="tel" 
+                          placeholder="e.g. 03001234567"
+                          value={walkInForm.patientPhone}
+                          onChange={e => setWalkInForm({ ...walkInForm, patientPhone: e.target.value })}
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all font-mono"
+                        />
+                      </div>
+
+                      {/* Doctor Select */}
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-2 block">Select doctor roster</label>
+                        <select 
+                          value={walkInForm.doctorId}
+                          onChange={e => setWalkInForm({ ...walkInForm, doctorId: e.target.value, appointmentSlot: '' })}
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all"
+                        >
+                          <option value="">-- Choose practicing doctor --</option>
+                          {doctors.map(docData => (
+                            <option key={docData.id} value={docData.id}>Dr. {docData.name} ({docData.specialization})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Smart Available Time Slots */}
+                      {walkInForm.doctorId && (
+                        <div className="space-y-3.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2 block">Smart available time slots</label>
+                          <div className="grid grid-cols-3 gap-2 max-h-[160px] overflow-y-auto p-1 bg-slate-50 rounded-2xl border border-slate-100">
+                            {getWalkInAvailableSlots(walkInForm.doctorId).map(slot => {
+                              const isSelected = walkInForm.appointmentSlot === slot;
+                              return (
+                                <button
+                                  key={slot}
+                                  type="button"
+                                  onClick={() => setWalkInForm({ ...walkInForm, appointmentSlot: slot })}
+                                  className={`py-2 px-3 rounded-xl text-[10px] font-bold transition-all border text-center ${
+                                    isSelected 
+                                      ? 'bg-primary text-white border-primary shadow-sm font-black' 
+                                      : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'
+                                  }`}
+                                >
+                                  {slot}
+                                </button>
+                              );
+                            })}
+                            {getWalkInAvailableSlots(walkInForm.doctorId).length === 0 && (
+                              <div className="col-span-3 py-6 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                                Clinic fully booked today!
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Form actions */}
+                    <div className="flex gap-4 border-t border-slate-100 pt-6">
+                      <button
+                        onClick={() => setShowWalkInModal(false)}
+                        className="flex-1 py-4 bg-slate-50 hover:bg-slate-100 text-slate-400 font-bold rounded-2xl text-xs tracking-wider uppercase transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <LoadingButton
+                        isLoading={walkInLoading}
+                        onClick={async () => {
+                          if (!walkInForm.patientName || !walkInForm.doctorId || !walkInForm.appointmentSlot) {
+                            toast.error("Please fill patient name, doctor, and chosen available time slot.");
+                            return;
+                          }
+                          setWalkInLoading(true);
+                          try {
+                            const todayStr = getKarachiDateStr(new Date());
+                            const selectedDocObj = doctors.find(d => d.id === walkInForm.doctorId);
+                            const docName = selectedDocObj ? selectedDocObj.name : 'General Physician';
+                            
+                            // Generate customized sequential code count
+                            const docTokensToday = tokens.filter(t => t.doctorId === walkInForm.doctorId && t.appointmentDate === todayStr);
+                            const tokenSequential = docTokensToday.length + 1;
+                            const docCode = selectedDocObj?.name?.split(' ').pop()?.substring(0,3)?.toUpperCase() || 'GEN';
+                            const finalTokenCode = `${docCode}-${tokenSequential.toString().padStart(3, '0')}`;
+
+                            const payload = {
+                              hospitalId: hospitalData.uid,
+                              hospitalOwnerUid: hospitalData.uid,
+                              hospitalName: hospitalData.hospitalName,
+                              patientName: walkInForm.patientName,
+                              patientPhone: walkInForm.patientPhone || '',
+                              doctorId: walkInForm.doctorId,
+                              doctorName: docName,
+                              doctorSpecialization: selectedDocObj?.specialization || 'General Practice',
+                              tokenNumber: finalTokenCode,
+                              status: 'Waiting',
+                              fee: selectedDocObj?.fee || 1500,
+                              appointmentDate: todayStr,
+                              appointmentTime: walkInForm.appointmentSlot,
+                              createdAt: serverTimestamp()
+                            };
+
+                            const docRef = await addDoc(collection(db, 'tokens'), payload);
+                            
+                            setWalkInSuccessToken({
+                              id: docRef.id,
+                              ...payload
+                            });
+
+                            toast.success("Walk-in token booking finalized!");
+                            confetti({
+                              particleCount: 100,
+                              spread: 70,
+                              origin: { y: 0.6 }
+                            });
+                          } catch (err) {
+                            console.error(err);
+                            toast.error(t.errors.standard);
+                          } finally {
+                            setWalkInLoading(false);
+                          }
+                        }}
+                        className="flex-1 py-4 bg-health-teal text-white font-bold rounded-2xl text-xs tracking-wider uppercase transition-all shadow-lg"
+                      >
+                        Issue Token
+                      </LoadingButton>
+                    </div>
+                  </div>
+                ) : (
+                  // SUCCESS & WHATSAPP SHARING SCREEN
+                  <div className="space-y-6 text-center py-4">
+                    <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mx-auto border border-emerald-100">
+                      <CheckCircle2 size={36} className="animate-bounce" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-black text-slate-900 leading-tight">Token Issued Successfully!</h3>
+                      <p className="text-xs text-slate-500 font-medium">Reservations details and live tracker URL registered</p>
+                    </div>
+
+                    {/* Receipt breakdown */}
+                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-4 text-left max-w-sm mx-auto">
+                      <div className="flex items-center justify-between border-b border-dashed border-slate-200 pb-3">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TICKET ID / ٹوکن نمبر</span>
+                        <span className="font-mono font-black text-primary text-lg">{walkInSuccessToken.tokenNumber}</span>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400 font-bold">Patient:</span>
+                          <span className="font-bold text-slate-800 uppercase">{walkInSuccessToken.patientName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400 font-bold">Specialist:</span>
+                          <span className="font-bold text-slate-700">Dr. {walkInSuccessToken.doctorName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400 font-bold">Timings Slot:</span>
+                          <span className="font-bold text-sky-600 bg-sky-50 px-2.5 py-0.5 rounded text-[10px] uppercase">{walkInSuccessToken.appointmentTime}</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-slate-800 border-t border-slate-200/60 pt-2.5">
+                          <span>OPD Fee Paid:</span>
+                          <span className="font-mono text-emerald-600">PKR {Number(walkInSuccessToken.fee).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sharing links buttons */}
+                    <div className="space-y-3.5">
+                      {/* WhatsApp branded link generator */}
+                      <button
+                        onClick={() => {
+                          const rawPhone = walkInSuccessToken.patientPhone || '';
+                          const trackerUrl = `https://xdoc.pages.dev/token/${walkInSuccessToken.id}`;
+                          
+                          // Elegant pre-packaged template with Karachi localized contexts
+                          const msg = `*Xdoc Appointment Confirmed!* 🏥\n\nAssalam-o-Alaikum, *${walkInSuccessToken.patientName}*! Your appointment at *${hospitalData.hospitalName}* has been confirmed.\n\n*Details:*\n🔹 *Token #:* ${walkInSuccessToken.tokenNumber}\n🔹 *Physician:* Dr. ${walkInSuccessToken.doctorName}\n🔹 *Timing:* ${walkInSuccessToken.appointmentTime}\n🔹 *Consultation Fee:* Rs. ${walkInSuccessToken.fee}\n\n📲 *Live Token tracking dashboard/link:*\n${trackerUrl}\n\n*معزز مریض، آپ کا اپوائنٹمنٹ ٹوکن جاری کر دیا گیا ہے۔ لائیو وزٹ اسٹیٹس مانیٹر کرنے کے لیے اوپر دیے گئے لنک پر کلک کریں۔*`;
+                          const encodedMsg = encodeURIComponent(msg);
+                          
+                          let waUrl = `https://api.whatsapp.com/send?text=${encodedMsg}`;
+                          if (rawPhone) {
+                            // Clean up international prefixes if Pakistani number format (e.g. convert 03 -> 923)
+                            let cleanPhone = rawPhone.replace(/\D/g, '');
+                            if (cleanPhone.startsWith('03')) {
+                              cleanPhone = '92' + cleanPhone.substring(1);
+                            }
+                            waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`;
+                          }
+                          window.open(waUrl, '_blank');
+                        }}
+                        className="w-full max-w-sm py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl flex items-center justify-center gap-2.5 text-xs tracking-wider uppercase transition-transform active:scale-95 mx-auto shadow-lg shadow-emerald-500/15"
+                      >
+                        Send WhatsApp Alert • واٹس ایپ بھیجیں
+                      </button>
+
+                      {/* Copy Tracking URL button */}
+                      <button
+                        onClick={() => {
+                          const trackerUrl = `https://xdoc.pages.dev/token/${walkInSuccessToken.id}`;
+                          navigator.clipboard.writeText(trackerUrl);
+                          toast.success("Tracking link copied to clipboard!");
+                        }}
+                        className="w-full max-w-sm py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl flex items-center justify-center gap-2 text-xs tracking-wider uppercase transition-all mx-auto"
+                      >
+                        <Copy size={14} /> Copy Tracker Url Link
+                      </button>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-4 max-w-sm mx-auto">
+                      <button
+                        onClick={() => {
+                          setShowWalkInModal(false);
+                          setWalkInSuccessToken(null);
+                        }}
+                        className="w-full py-4 bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold rounded-2xl text-xs tracking-wider uppercase transition-all"
+                      >
+                        Exit Wizard
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </main>

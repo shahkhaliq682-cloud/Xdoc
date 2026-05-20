@@ -81,6 +81,8 @@ import LoadingButton from './components/ui/LoadingButton';
 
 import HomeRedesign from './components/HomeRedesign';
 import HospitalRegistration from './components/HospitalRegistration';
+import TokenTrackingPage from './components/TokenTrackingPage';
+import HospitalLiveQueuePage from './components/HospitalLiveQueuePage';
 
 // --- Splash Screen ---
 const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
@@ -1962,6 +1964,23 @@ export default function App() {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   
+  const [deepLinkTokenId, setDeepLinkTokenId] = useState<string | null>(null);
+  const [deepLinkLiveHospitalId, setDeepLinkLiveHospitalId] = useState<string | null>(null);
+
+  // Path Checking deepLink parsing Effect on Initial Startup
+  useEffect(() => {
+    const path = window.location.pathname;
+    const tokenMatch = path.match(/^\/token\/([^/]+)/);
+    if (tokenMatch) {
+      setDeepLinkTokenId(tokenMatch[1]);
+    }
+    
+    const liveMatch = path.match(/^\/hospital\/([^/]+)\/live/);
+    if (liveMatch) {
+      setDeepLinkLiveHospitalId(liveMatch[1]);
+    }
+  }, []);
+  
   // Patient flow states
   const [selectedHospital, setSelectedHospital] = useState<Hospital | any | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | any | null>(null);
@@ -2163,6 +2182,31 @@ export default function App() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const renderCurrentView = () => {
+    if (deepLinkTokenId) {
+      return (
+        <TokenTrackingPage 
+          tokenId={deepLinkTokenId} 
+          onBack={() => {
+            setDeepLinkTokenId(null);
+            window.history.pushState(null, '', '/');
+            setViewState('hero');
+          }} 
+        />
+      );
+    }
+    if (deepLinkLiveHospitalId) {
+      return (
+        <HospitalLiveQueuePage 
+          hospitalId={deepLinkLiveHospitalId} 
+          onBack={() => {
+            setDeepLinkLiveHospitalId(null);
+            window.history.pushState(null, '', '/');
+            setViewState('hero');
+          }} 
+        />
+      );
+    }
+
     if (loginPrompt) {
       return (
         <div className="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-xl flex items-center justify-center p-6">

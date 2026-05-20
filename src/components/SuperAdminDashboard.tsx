@@ -432,8 +432,95 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
          {activeTab === 'hospitals' && renderHospitals()}
          {activeTab === 'monitor' && renderLiveMonitor()}
          {activeTab === 'approvals' && (
-           <div className="p-20 text-center text-slate-400 font-bold bg-white rounded-[40px] border border-slate-100">
-              New Hospital Approvals Feature Coming Soon
+           <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="p-8 border-b border-slate-100">
+               <h3 className="text-xl font-bold text-slate-900">Hospital Approvals Review Board</h3>
+               <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">Approve or Reject newly registered healthcare facilities</p>
+             </div>
+             <div className="overflow-x-auto">
+               <table className="w-full text-left">
+                 <thead className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                   <tr>
+                     <th className="px-8 py-5">Hospital Name</th>
+                     <th className="px-8 py-5">City / Area</th>
+                     <th className="px-8 py-5">Type</th>
+                     <th className="px-8 py-5">Submission Status</th>
+                     <th className="px-8 py-5 text-right">Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-slate-100">
+                   {hospitals.filter(h => h.status === 'Under Review' || !h.approved).length === 0 ? (
+                     <tr>
+                       <td colSpan={5} className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
+                         All submission reviews completed! No pending hospital approvals.
+                       </td>
+                     </tr>
+                   ) : (
+                     hospitals.filter(h => h.status === 'Under Review' || !h.approved).map(h => (
+                       <tr key={h.id} className="hover:bg-slate-50/50 transition-colors group">
+                         <td className="px-8 py-5">
+                           <div className="flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                               <Building2 size={20} />
+                             </div>
+                             <span className="font-bold text-slate-800">{h.hospitalName}</span>
+                           </div>
+                         </td>
+                         <td className="px-8 py-5 font-bold text-slate-700 text-sm">
+                           {h.city} <span className="text-slate-400 text-xs block font-medium">{h.area}</span>
+                         </td>
+                         <td className="px-8 py-5">
+                           <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-primary/5 text-primary">
+                             {h.type || 'Clinic'}
+                           </span>
+                         </td>
+                         <td className="px-8 py-5">
+                           <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100">
+                             {h.status || 'Under Review'}
+                           </span>
+                         </td>
+                         <td className="px-8 py-5 text-right">
+                           <div className="flex items-center justify-end gap-2">
+                             <button 
+                               onClick={async () => {
+                                 try {
+                                   await updateDoc(doc(db, 'hospitals', h.id), {
+                                     approved: true,
+                                     status: 'active'
+                                   });
+                                   toast.success(`${h.hospitalName} approved & authorized successfully!`);
+                                 } catch (err) {
+                                   toast.error("Failed to approve hospital.");
+                                 }
+                               }}
+                               className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/10 active:scale-95 transition-all uppercase tracking-wider"
+                             >
+                               Approve
+                             </button>
+                             <button 
+                               onClick={async () => {
+                                 try {
+                                   await updateDoc(doc(db, 'hospitals', h.id), {
+                                     approved: false,
+                                     status: 'rejected'
+                                   });
+                                   toast.warning(`${h.hospitalName} registration rejected.`);
+                                 } catch (err) {
+                                   toast.error("Error setting rejection status.");
+                                 }
+                               }}
+                               className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl text-xs font-bold active:scale-95 transition-all uppercase tracking-wider"
+                             >
+                               Reject
+                             </button>
+                           </div>
+                         </td>
+                       </tr>
+                     ))
+                   )}
+                 </tbody>
+               </table>
+             </div>
            </div>
          )}
       </main>
