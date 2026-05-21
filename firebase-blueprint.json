@@ -49,6 +49,18 @@
         "createdAt": { "type": "object" }
       },
       "required": ["hospitalId", "tokenNumber"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "User submit message details via support desk",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "object" }
+      },
+      "required": ["name", "email", "message"]
     }
   },
   "firestore": {
@@ -63,6 +75,10 @@
     "tokens": {
       "schema": "Token",
       "description": "Queue tokens for all hospitals"
+    },
+    "contact_messages": {
+      "schema": "ContactMessage",
+      "description": "User feedback and queries submitted from the public footer contact form"
     },
     "hospitals/{hospitalId}/doctors": {
       "schema": "object",

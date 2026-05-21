@@ -83,6 +83,7 @@ import HomeRedesign from './components/HomeRedesign';
 import HospitalRegistration from './components/HospitalRegistration';
 import TokenTrackingPage from './components/TokenTrackingPage';
 import HospitalLiveQueuePage from './components/HospitalLiveQueuePage';
+import FooterPages from './components/FooterPages';
 
 // --- Splash Screen ---
 const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
@@ -1957,7 +1958,7 @@ export default function App() {
   const { currentUser, userData, logout } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
-  const [viewState, setViewState] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin'>('hero');
+  const [viewState, setViewState] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin' | 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy'>('hero');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -1967,18 +1968,52 @@ export default function App() {
   const [deepLinkTokenId, setDeepLinkTokenId] = useState<string | null>(null);
   const [deepLinkLiveHospitalId, setDeepLinkLiveHospitalId] = useState<string | null>(null);
 
-  // Path Checking deepLink parsing Effect on Initial Startup
+  // Path Checking deepLink and legal routes on Initial Startup and History Changes
   useEffect(() => {
-    const path = window.location.pathname;
-    const tokenMatch = path.match(/^\/token\/([^/]+)/);
-    if (tokenMatch) {
-      setDeepLinkTokenId(tokenMatch[1]);
-    }
-    
-    const liveMatch = path.match(/^\/hospital\/([^/]+)\/live/);
-    if (liveMatch) {
-      setDeepLinkLiveHospitalId(liveMatch[1]);
-    }
+    const handleUrlRouting = () => {
+      const path = window.location.pathname;
+      const tokenMatch = path.match(/^\/token\/([^/]+)/);
+      if (tokenMatch) {
+        setDeepLinkTokenId(tokenMatch[1]);
+        return;
+      }
+      
+      const liveMatch = path.match(/^\/hospital\/([^/]+)\/live/);
+      if (liveMatch) {
+        setDeepLinkLiveHospitalId(liveMatch[1]);
+        return;
+      }
+
+      if (path === '/privacy-policy') {
+        setViewState('privacy');
+        setDeepLinkTokenId(null);
+        setDeepLinkLiveHospitalId(null);
+      } else if (path === '/terms') {
+        setViewState('terms');
+        setDeepLinkTokenId(null);
+        setDeepLinkLiveHospitalId(null);
+      } else if (path === '/contact') {
+        setViewState('contact');
+        setDeepLinkTokenId(null);
+        setDeepLinkLiveHospitalId(null);
+      } else if (path === '/about') {
+        setViewState('about');
+        setDeepLinkTokenId(null);
+        setDeepLinkLiveHospitalId(null);
+      } else if (path === '/content-policy') {
+        setViewState('content_policy');
+        setDeepLinkTokenId(null);
+        setDeepLinkLiveHospitalId(null);
+      } else if (path === '/') {
+        setViewState('hero');
+        setDeepLinkTokenId(null);
+        setDeepLinkLiveHospitalId(null);
+      }
+    };
+
+    handleUrlRouting();
+    window.addEventListener('popstate', handleUrlRouting);
+    return () => window.removeEventListener('popstate', handleUrlRouting);
   }, []);
   
   // Patient flow states
@@ -2149,12 +2184,14 @@ export default function App() {
         setShowOnboarding(true);
       }
 
-      if (userData?.role === 'Admin' || userData?.role === 'hospital_admin') {
-        setViewState('admin_dashboard');
-      } else if (userData?.role === 'SuperAdmin' || userData?.role === 'super_admin') {
-        setViewState('super_admin');
-      } else {
-        setViewState('patient_home');
+      if (['hero', 'login', 'auth_choice', 'hospital_reg', 'patient_reg'].includes(viewState)) {
+        if (userData?.role === 'Admin' || userData?.role === 'hospital_admin') {
+          setViewState('admin_dashboard');
+        } else if (userData?.role === 'SuperAdmin' || userData?.role === 'super_admin') {
+          setViewState('super_admin');
+        } else {
+          setViewState('patient_home');
+        }
       }
     } else if (!currentUser) {
       // Redirect to hero if logged out, but only if they were in a protected view
@@ -2262,6 +2299,11 @@ export default function App() {
                 console.log("Search query:", q);
               }}
               onHospitalClick={(h) => setSelectedHospital(h)}
+              onNavigate={(view, path) => {
+                window.history.pushState(null, '', path);
+                setViewState(view);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
           </div>
         );
@@ -2371,6 +2413,21 @@ export default function App() {
             hospitals={fetchedHospitals}
             onSignOut={() => handleLogoutAction()} 
             onHospitalClick={(h) => setSelectedHospital(h)}
+          />
+        );
+      case 'privacy':
+      case 'terms':
+      case 'contact':
+      case 'about':
+      case 'content_policy':
+        return (
+          <FooterPages 
+            activePage={viewState} 
+            onBack={() => {
+              window.history.pushState(null, '', '/');
+              const pathRoutingEvent = new PopStateEvent('popstate');
+              window.dispatchEvent(pathRoutingEvent);
+            }} 
           />
         );
       default:

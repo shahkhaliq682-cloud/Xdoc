@@ -66,5 +66,13 @@ service cloud.firestore {
       allow update: if request.auth != null 
         && request.auth.uid == resource.data.patientId;
     }
+
+    // Contact Us Message Submissions
+    match /contact_messages/{messageId} {
+      // Anyone can submit a contact message
+      allow create: if true;
+      // Nobody except database administrators can read or update submitted messages
+      allow read, update, delete: if false;
+    }
   }
 }

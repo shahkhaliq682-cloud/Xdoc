@@ -101,7 +101,7 @@ const Step = ({ number, title, desc, icon: Icon, isLast = false }: { number: num
   </div>
 );
 
-const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick }: { onSignUp: () => void, onLogin: () => void, onSearch: (q: string) => void, onHospitalClick?: (h: any) => void }) => {
+const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate }: { onSignUp: () => void, onLogin: () => void, onSearch: (q: string) => void, onHospitalClick?: (h: any) => void, onNavigate?: (view: 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy', path: string) => void }) => {
   const { t, language } = useLanguage();
   const [searchVal, setSearchVal] = useState('');
 
@@ -434,11 +434,53 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick }: { onSign
              </div>
 
              <div>
-                <h4 className="text-sm font-bold mb-6 text-white">{h.footer.company.title}</h4>
+                <h4 className="text-sm font-bold mb-6 text-white tracking-wider uppercase text-xs">{h.footer.company.title}</h4>
                 <ul className="space-y-4 text-slate-400 text-sm">
-                   <li><button className="hover:text-white transition-colors cursor-pointer text-left">Privacy Policy</button></li>
-                   <li><button className="hover:text-white transition-colors cursor-pointer text-left">Terms of Service</button></li>
-                   <li><a href="mailto:support@xdoc.pk" className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.company.contact}</a></li>
+                   <li>
+                     <button 
+                       onClick={() => onNavigate?.('privacy', '/privacy-policy')}
+                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full outline-all-none"
+                     >
+                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
+                       <span>{language === 'UR' ? 'پرائیویسی پالیسی' : 'Privacy Policy'}</span>
+                     </button>
+                   </li>
+                   <li>
+                     <button 
+                       onClick={() => onNavigate?.('terms', '/terms')}
+                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full outline-all-none"
+                     >
+                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
+                       <span>{language === 'UR' ? 'شرائط و ضوابط' : 'Terms of Service'}</span>
+                     </button>
+                   </li>
+                   <li>
+                     <button 
+                       onClick={() => onNavigate?.('content_policy', '/content-policy')}
+                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full"
+                     >
+                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
+                       <span>{language === 'UR' ? 'مواد کی پالیسی' : 'Content Policy'}</span>
+                     </button>
+                   </li>
+                   <li>
+                     <button 
+                       onClick={() => onNavigate?.('about', '/about')}
+                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full"
+                     >
+                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
+                       <span>{language === 'UR' ? 'ہمارے بارے میں' : 'About Us'}</span>
+                     </button>
+                   </li>
+                   <li>
+                     <button 
+                       onClick={() => onNavigate?.('contact', '/contact')}
+                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full"
+                     >
+                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
+                       <span>{language === 'UR' ? 'ہم سے رابطہ کریں' : 'Contact Us'}</span>
+                     </button>
+                   </li>
                 </ul>
              </div>
           </div>
