@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrandLogo } from './ui/BrandLogo';
 import { 
   Activity, 
   ArrowLeft, 
@@ -66,9 +67,7 @@ export default function FooterPages({ activePage, onBack }: FooterPagesProps) {
               <span className="hidden sm:inline">{language === 'UR' ? 'ہوم پیج' : 'Home'}</span>
             </button>
             <div className="flex items-center gap-2 cursor-pointer" onClick={onBack}>
-              <div className="w-9 h-9 bg-[#0B5FFF] rounded-xl flex items-center justify-center text-white">
-                <Activity size={20} />
-              </div>
+              <BrandLogo size={32} />
               <span className="text-xl font-black tracking-tight text-slate-900">Xdoc</span>
             </div>
           </div>
@@ -99,9 +98,7 @@ export default function FooterPages({ activePage, onBack }: FooterPagesProps) {
       <footer className="bg-slate-900 text-white py-12 px-6 border-t border-slate-800">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#0B5FFF] rounded-lg flex items-center justify-center text-white">
-              <Activity size={16} />
-            </div>
+            <BrandLogo size={28} />
             <span className="text-lg font-bold text-white tracking-tight">Xdoc</span>
           </div>
           <p className="text-xs text-slate-400 font-medium font-sans">

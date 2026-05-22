@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BrandLogo } from './components/ui/BrandLogo';
 import { 
   Search, 
   Map as MapIcon, 
@@ -99,11 +100,11 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
       className="fixed inset-0 z-[1000] bg-white flex flex-col items-center justify-center"
     >
       <motion.div 
-        animate={{ scale: [1, 1.1, 1] }} 
-        transition={{ repeat: Infinity, duration: 1.5 }}
-        className="w-24 h-24 rounded-3xl medical-cross-gradient flex items-center justify-center text-white shadow-2xl shadow-primary/30 mb-6"
+        animate={{ scale: [1, 1.05, 1] }} 
+        transition={{ repeat: Infinity, duration: 2 }}
+        className="mb-8 filter drop-shadow-xl"
       >
-        <Activity size={48} />
+        <BrandLogo size={96} />
       </motion.div>
       <h2 className="text-3xl font-display font-bold text-slate-900 tracking-tighter mb-2">Xdoc</h2>
       <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px]">Apna Doctor Dhundein</p>
@@ -167,9 +168,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
           <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex justify-between items-center">
             {/* Left: Logo */}
             <div onClick={onLogoClick} className="flex items-center gap-2 cursor-pointer group">
-              <div className="w-8 h-8 rounded-lg bg-[#0B5FFF] flex items-center justify-center text-white shadow-md shadow-primary/20 transition-transform group-hover:scale-110">
-                <Activity size={18} />
-              </div>
+              <BrandLogo size={32} className="transition-transform group-hover:scale-110" />
               <span className="text-xl font-bold tracking-tight text-[#0B1D35]">Xdoc</span>
             </div>
 
@@ -296,11 +295,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
     }`}>
       <div className="flex items-center gap-4">
         <div onClick={onLogoClick} className="flex items-center gap-3 cursor-pointer group">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white transition-transform group-hover:scale-110 ${
-            darkMode ? 'bg-primary shadow-lg shadow-primary/20' : 'medical-cross-gradient shadow-lg shadow-primary/10'
-          }`}>
-            <Activity size={22} />
-          </div>
+          <BrandLogo size={38} className="transition-transform group-hover:scale-110" />
           <h1 className="text-2xl font-bold tracking-tighter uppercase whitespace-nowrap">{hospitalName}</h1>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BrandLogo } from './ui/BrandLogo';
 import { 
   Search, 
   Activity, 
@@ -398,9 +399,7 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
              <div>
                 <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                   <div className="w-8 h-8 bg-[#0B5FFF] rounded-lg flex items-center justify-center text-white">
-                     <Activity size={18} />
-                   </div>
+                   <BrandLogo size={32} />
                    <span className="text-2xl font-bold tracking-tight">Xdoc</span>
                 </div>
                 <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-xs">{h.footer.desc}</p>
