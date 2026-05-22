@@ -449,17 +449,17 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
         console.log("User confirmation email sent");
 
         // Step 2.5 — Send separate Admin Notification Email:
-        // Admin template variables: user_name, user_email, user_message, timestamp
-        const ADMIN_TEMPLATE_ID = 'template_admin_notification';
+        const ADMIN_TEMPLATE_ID = 'template_q565fuo';
         try {
           await emailjs.send(
             SERVICE_ID,
             ADMIN_TEMPLATE_ID,
             {
-              user_name: trimmedName,
-              user_email: trimmedEmail,
+              to_name: trimmedName,
+              to_email: trimmedEmail,
               user_message: trimmedMessage,
-              timestamp: new Date().toLocaleString()
+              admin_email: 'xdoc.official@gmail.com',
+              date: new Date().toLocaleString('en-PK')
             },
             PUBLIC_KEY
           );
