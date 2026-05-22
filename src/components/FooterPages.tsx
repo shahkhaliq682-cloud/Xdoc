@@ -546,6 +546,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
                 </label>
                 <input 
                   type="text" 
+                  name="to_name"
                   placeholder={isUrdu ? 'مثال: محمد احمد' : 'e.g., Mohammad Ahmed'}
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -561,6 +562,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
                 </label>
                 <input 
                   type="email" 
+                  name="to_email"
                   placeholder="name@gmail.com"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
@@ -576,6 +578,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
                 </label>
                 <textarea 
                   rows={4}
+                  name="user_message"
                   placeholder={isUrdu ? 'اپنا سوال یا شکایت یہاں درج کریں...' : 'Write your details, hospital name or query details...'}
                   value={formData.message}
                   onChange={e => setFormData({ ...formData, message: e.target.value })}
