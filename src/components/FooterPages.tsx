@@ -440,7 +440,8 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
             to_name: trimmedName,
             to_email: trimmedEmail,
             user_message: trimmedMessage,
-            from_name: 'Xdoc Support Team'
+            from_name: 'Xdoc Support Team',
+            reply_to: 'xdoc.official@gmail.com'
           },
           PUBLIC_KEY
         );
@@ -464,7 +465,8 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
             to_name: trimmedName,
             to_email: trimmedEmail,
             user_message: trimmedMessage,
-            from_name: 'Xdoc Support Team'
+            from_name: 'Xdoc Support Team',
+            reply_to: 'xdoc.official@gmail.com'
           }
         });
 
