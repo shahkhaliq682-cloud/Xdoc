@@ -68,7 +68,7 @@ service cloud.firestore {
     }
 
     // Contact Us Message Submissions
-    match /contact_messages/{messageId} {
+    match /contactMessages/{messageId} {
       // Anyone can submit a contact message
       allow create: if true;
       // Nobody except database administrators can read or update submitted messages

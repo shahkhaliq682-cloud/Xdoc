@@ -23,6 +23,7 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
+import emailjs from '@emailjs/browser';
 
 interface FooterPagesProps {
   activePage: 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy';
@@ -369,7 +370,7 @@ function TermsOfServiceView({ language }: { language: 'EN' | 'UR' }) {
 }
 
 // ======================================
-// C. CONTACT US COMPONENT (with Firestore storage)
+// C. CONTACT US COMPONENT (with Firestore storage and EmailJS)
 // ======================================
 function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any }) {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
@@ -391,23 +392,70 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
     }
 
     setLoading(true);
+
+    let saveSucceeded = false;
     try {
-      // Save contact message block directly into Firestore database
-      await addDoc(collection(db, 'contact_messages'), {
-        name: formData.name,
+      // Step 1 — Save to Firestore:
+      // Save contact message block directly into Firestore database under 'contactMessages' collection
+      await addDoc(collection(db, 'contactMessages'), {
+        fullName: formData.name,
         email: formData.email,
         message: formData.message,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        status: "unread"
       });
-
-      toast.success(language === 'UR' ? "آپ کا پیغام موصول ہو چکا ہے!" : "Message transmitted! Our support desk will reach out.");
-      setSubmitted(true);
-      setFormData({ name: '', email: '', message: '' });
+      saveSucceeded = true;
     } catch (err) {
-      console.error(err);
+      console.error("Firestore save error:", err);
       toast.error(language === 'UR' ? "معذرت، پیغام بھیجنے میں خرابی پیش آئی۔ دوبارہ کوشش کریں۔" : "An error occurred while saving message to database.");
-    } finally {
       setLoading(false);
+      return;
+    }
+
+    if (saveSucceeded) {
+      // Step 2 — Send auto-reply using EmailJS:
+      const SERVICE_ID = 'your_emailjs_service_id';
+      const TEMPLATE_ID = 'your_emailjs_template_id';
+      const PUBLIC_KEY = 'your_emailjs_public_key';
+
+      try {
+        await emailjs.send(
+          SERVICE_ID,
+          TEMPLATE_ID,
+          {
+            to_name: formData.name,
+            to_email: formData.email,
+            user_message: formData.message,
+            from_name: 'Xdoc Support',
+            reply_to: 'xdoc.official@gmail.com'
+          },
+          PUBLIC_KEY
+        );
+
+        // Step 3 — Show success toast
+        toast.success(
+          language === 'UR'
+            ? "✓ پیغام بھیج دیا گیا! آپ کو ای میل تصدیق مل گئی ہوگی۔"
+            : "✓ Message bhej diya gaya! Aapko email confirmation mil gayi hogi."
+        );
+
+        // Step 4 — Clear form
+        setFormData({ name: '', email: '', message: '' });
+        setSubmitted(true);
+      } catch (emailErr) {
+        console.error("EmailJS sending error:", emailErr);
+        // Step 5 — Error handling if email fails
+        toast.error(
+          language === 'UR'
+            ? "پیغام محفوظ ہو گیا لیکن تصدیقی ای میل نہیں گئی۔ ہم پھر بھی رابطہ کریں گے!"
+            : "Message save hua lekin confirmation email nahi gayi. Hum phir bhi contact karenge!"
+        );
+        // Clear form fields even if only email failed, as message is already saved successfully in Step 1
+        setFormData({ name: '', email: '', message: '' });
+        setSubmitted(true);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -431,12 +479,14 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
 
         <div className="space-y-6">
           <div className="flex gap-4 items-start">
-            <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[#0B5FFF] shrink-0">
+            <a href="mailto:xdoc.official@gmail.com" className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[#0B5FFF] shrink-0 hover:bg-slate-100 transition-all">
               <Mail size={20} />
-            </div>
+            </a>
             <div>
               <h3 className="text-xs text-slate-400 font-bold uppercase tracking-widest">{isUrdu ? 'ای میل ایڈریس' : 'E-mail Support'}</h3>
-              <p className="font-bold text-slate-900 text-sm mt-1 sm:text-base font-mono">support@xdoc.pk</p>
+              <a href="mailto:xdoc.official@gmail.com" className="font-bold text-slate-900 text-sm mt-1 sm:text-base font-mono block hover:text-[#0B5FFF] transition-colors">
+                xdoc.official@gmail.com
+              </a>
             </div>
           </div>
 
@@ -447,18 +497,6 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
             <div>
               <h3 className="text-xs text-slate-400 font-bold uppercase tracking-widest">{isUrdu ? 'واٹس ایپ ہیلپ لائن' : 'WhatsApp Contact'}</h3>
               <p className="font-bold text-slate-900 text-sm mt-1 sm:text-base font-mono">+92 315 2328605</p>
-            </div>
-          </div>
-
-          <div className="flex gap-4 items-start">
-            <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[#0B5FFF] shrink-0">
-              <MapPin size={20} />
-            </div>
-            <div>
-              <h3 className="text-xs text-slate-400 font-bold uppercase tracking-widest">{isUrdu ? 'مرکزی دفتر' : 'Main Office Location'}</h3>
-              <p className="font-bold text-slate-700 text-sm mt-1 leading-relaxed">
-                {isUrdu ? 'شاہراہِ فیصل، کراچی، پاکستان' : 'Shahrah-e-Faisal, Karachi, Pakistan'}
-              </p>
             </div>
           </div>
         </div>
@@ -480,23 +518,23 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
               <CheckCircle className="animate-bounce" size={32} />
             </div>
             <h3 className="text-2xl font-black text-slate-900 leading-tight">
-              {isUrdu ? 'میسج کامیابی سے موصول ہوا!' : 'Message Stored Successfully!'}
+              {isUrdu ? 'پیغام بھیج دیا گیا!' : 'Message Sent!'}
             </h3>
             <p className="text-sm text-slate-500 max-w-sm mx-auto font-medium">
               {isUrdu 
-                ? 'فائر بیس کلاؤڈ میں ڈیٹا سٹور ہو چکا ہے، اور ہمارا مینیجر جلد ہی آپ کی فراہم کردہ ای میل پر رابطہ کرے گا۔' 
-                : 'Your submission has been cataloged in Firestore database. A support specialist will respond within 24 hours.'}
+                ? 'شکریہ! ہم جلد جواب دیں گے۔' 
+                : 'Thank you! We will reply soon.'}
             </p>
             <button
               onClick={() => setSubmitted(false)}
-              className="mt-6 px-6 py-3 bg-[#0B5FFF] text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.03] active:scale-95 transition-all shadow-lg"
+              className="mt-6 px-6 py-3 bg-[#0B5FFF] text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.03] active:scale-95 transition-all shadow-lg cursor-pointer"
             >
               {isUrdu ? 'نیا پیغام بھیجیں' : 'Submit Another Message'}
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmitMessage} className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-900 border-b border-secondary pb-3">
+            <h2 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-3">
               {isUrdu ? 'ہمیں لکھیں' : 'Write Us a Message'}
             </h2>
 
@@ -511,7 +549,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
                   placeholder={isUrdu ? 'مثال: محمد احمد' : 'e.g., Mohammad Ahmed'}
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all text-right uppercase"
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary font-bold text-slate-700 text-sm transition-all uppercase"
                   required
                 />
               </div>
@@ -556,7 +594,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" size={16} />
-                  <span>{isUrdu ? 'پیغام بھیجا جا رہا ہے...' : 'Transmitting message...'}</span>
+                  <span>{isUrdu ? 'بھیج رہا ہے...' : 'Bhej raha hai...'}</span>
                 </>
               ) : (
                 <>
