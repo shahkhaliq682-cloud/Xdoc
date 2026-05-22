@@ -446,6 +446,34 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
           PUBLIC_KEY
         );
 
+        // Step 2.5 — Send separate Admin Notification Email:
+        // Admin template variables: user_name, user_email, user_message
+        const ADMIN_TEMPLATE_ID = 'template_admin_notification';
+        try {
+          await emailjs.send(
+            SERVICE_ID,
+            ADMIN_TEMPLATE_ID,
+            {
+              user_name: trimmedName,
+              user_email: trimmedEmail,
+              user_message: trimmedMessage
+            },
+            PUBLIC_KEY
+          );
+          console.log("Admin notification email sent successfully.");
+        } catch (adminEmailErr) {
+          // If admin email fails: log exact error and do not break user auto-reply flow
+          console.error("Admin EmailJS Send Failed:", {
+            error: adminEmailErr,
+            statusCode: (adminEmailErr as any)?.status || (adminEmailErr as any)?.text || "Unknown status",
+            failedParameters: {
+              user_name: trimmedName,
+              user_email: trimmedEmail,
+              user_message: trimmedMessage
+            }
+          });
+        }
+
         // Step 3 — Show success toast
         toast.success(
           language === 'UR'
