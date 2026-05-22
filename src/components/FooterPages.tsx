@@ -419,6 +419,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
         status: "unread"
       });
       saveSucceeded = true;
+      console.log("Firestore message saved");
     } catch (err) {
       console.error("Firestore save error:", err);
       toast.error(language === 'UR' ? "معذرت، پیغام بھیجنے میں خرابی پیش آئی۔ دوبارہ کوشش کریں۔" : "Failed to send message. Please try again.");
@@ -445,9 +446,10 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
           },
           PUBLIC_KEY
         );
+        console.log("User confirmation email sent");
 
         // Step 2.5 — Send separate Admin Notification Email:
-        // Admin template variables: user_name, user_email, user_message
+        // Admin template variables: user_name, user_email, user_message, timestamp
         const ADMIN_TEMPLATE_ID = 'template_admin_notification';
         try {
           await emailjs.send(
@@ -456,22 +458,15 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
             {
               user_name: trimmedName,
               user_email: trimmedEmail,
-              user_message: trimmedMessage
+              user_message: trimmedMessage,
+              timestamp: new Date().toLocaleString()
             },
             PUBLIC_KEY
           );
-          console.log("Admin notification email sent successfully.");
+          console.log("Admin notification email sent");
         } catch (adminEmailErr) {
           // If admin email fails: log exact error and do not break user auto-reply flow
-          console.error("Admin EmailJS Send Failed:", {
-            error: adminEmailErr,
-            statusCode: (adminEmailErr as any)?.status || (adminEmailErr as any)?.text || "Unknown status",
-            failedParameters: {
-              user_name: trimmedName,
-              user_email: trimmedEmail,
-              user_message: trimmedMessage
-            }
-          });
+          console.error("Admin EmailJS Send Failed:", adminEmailErr);
         }
 
         // Step 3 — Show success toast
@@ -486,17 +481,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
         setSubmitted(true);
       } catch (emailErr) {
         // Step 5 — Add complete error debugging: Log EmailJS error, status code, and failed parameters
-        console.error("EmailJS Send Failed:", {
-          error: emailErr,
-          statusCode: (emailErr as any)?.status || (emailErr as any)?.text || "Unknown status",
-          failedParameters: {
-            to_name: trimmedName,
-            to_email: trimmedEmail,
-            user_message: trimmedMessage,
-            from_name: 'Xdoc Support Team',
-            reply_to: 'xdoc.official@gmail.com'
-          }
-        });
+        console.error("EmailJS Send Failed:", emailErr);
 
         // Step 8 — Error handling if email fails: Keep form values and show failure toast (do not reset form or show submitted check screen)
         toast.error(
