@@ -428,7 +428,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
 
     if (saveSucceeded) {
       // Step 2 — Send auto-reply using EmailJS:
-      const SERVICE_ID = 'service_sissfqn';
+      const SERVICE_ID = 'service_86pcyb9';
       const TEMPLATE_ID = 'template_imcre6f';
       const PUBLIC_KEY = 'SPj2aD9SHh20beaC4';
 
@@ -437,13 +437,10 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
           SERVICE_ID,
           TEMPLATE_ID,
           {
-            from_name: trimmedName,
-            from_email: trimmedEmail,
-            message: trimmedMessage,
             to_name: trimmedName,
             to_email: trimmedEmail,
             user_message: trimmedMessage,
-            reply_to: 'xdoc.official@gmail.com'
+            from_name: 'Xdoc Support Team'
           },
           PUBLIC_KEY
         );
@@ -459,16 +456,24 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
         setFormData({ name: '', email: '', message: '' });
         setSubmitted(true);
       } catch (emailErr) {
-        console.error("EmailJS sending error:", emailErr);
-        // Step 5 — Error handling if email fails
+        // Step 5 — Add complete error debugging: Log EmailJS error, status code, and failed parameters
+        console.error("EmailJS Send Failed:", {
+          error: emailErr,
+          statusCode: (emailErr as any)?.status || (emailErr as any)?.text || "Unknown status",
+          failedParameters: {
+            to_name: trimmedName,
+            to_email: trimmedEmail,
+            user_message: trimmedMessage,
+            from_name: 'Xdoc Support Team'
+          }
+        });
+
+        // Step 8 — Error handling if email fails: Keep form values and show failure toast (do not reset form or show submitted check screen)
         toast.error(
           language === 'UR'
-            ? "پیغام محفوظ ہو گیا لیکن تصدیقی ای میل نہیں گئی۔ ہم پھر بھی رابطہ کریں گے!"
-            : "Message save hua lekin confirmation email nahi gayi. Hum phir bhi contact karenge!"
+            ? "پیغام بھیجنے میں ناکامی۔ براہ کرم دوبارہ کوشش کریں۔"
+            : "Failed to send message. Please try again."
         );
-        // Clear form fields even if only email failed, as message is already saved successfully in Step 1
-        setFormData({ name: '', email: '', message: '' });
-        setSubmitted(true);
       } finally {
         setLoading(false);
       }
