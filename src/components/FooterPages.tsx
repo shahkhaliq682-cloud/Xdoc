@@ -379,15 +379,29 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
 
   const handleSubmitMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
-      toast.error(language === 'UR' ? "براہ کرم تمام فیلڈز کو پُر کریں!" : "Please fill in all layout field blocks before transmitting.");
+
+    const trimmedName = formData.name.trim();
+    const trimmedEmail = formData.email.trim();
+    const trimmedMessage = formData.message.trim();
+
+    // Verification step
+    if (!trimmedName || !trimmedEmail || !trimmedMessage) {
+      toast.error(language === 'UR' ? "براہ کرم تمام فیلڈز کو پُر کریں!" : "Please fill in all fields.");
       return;
     }
-    
-    // Simple email format verification
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email.trim())) {
-      toast.error(language === 'UR' ? "براہ کرم درست ای میل پتہ درج کریں!" : "Please specify a syntactically correct email address.");
+    if (!emailRegex.test(trimmedEmail)) {
+      toast.error(language === 'UR' ? "براہ کرم درست ای میل پتہ درج کریں!" : "Please enter a valid email address.");
+      return;
+    }
+
+    if (trimmedMessage.length < 10) {
+      toast.error(
+        language === 'UR'
+          ? "پیغام کم از کم 10 حروف پر مشتمل ہونا چاہیے!"
+          : "Message must be at least 10 characters long."
+      );
       return;
     }
 
@@ -398,35 +412,37 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
       // Step 1 — Save to Firestore:
       // Save contact message block directly into Firestore database under 'contactMessages' collection
       await addDoc(collection(db, 'contactMessages'), {
-        fullName: formData.name,
-        email: formData.email,
-        message: formData.message,
+        fullName: trimmedName,
+        email: trimmedEmail,
+        message: trimmedMessage,
         createdAt: serverTimestamp(),
         status: "unread"
       });
       saveSucceeded = true;
     } catch (err) {
       console.error("Firestore save error:", err);
-      toast.error(language === 'UR' ? "معذرت، پیغام بھیجنے میں خرابی پیش آئی۔ دوبارہ کوشش کریں۔" : "An error occurred while saving message to database.");
+      toast.error(language === 'UR' ? "معذرت، پیغام بھیجنے میں خرابی پیش آئی۔ دوبارہ کوشش کریں۔" : "Failed to send message. Please try again.");
       setLoading(false);
       return;
     }
 
     if (saveSucceeded) {
       // Step 2 — Send auto-reply using EmailJS:
-      const SERVICE_ID = 'your_emailjs_service_id';
-      const TEMPLATE_ID = 'your_emailjs_template_id';
-      const PUBLIC_KEY = 'your_emailjs_public_key';
+      const SERVICE_ID = 'service_sissfqn';
+      const TEMPLATE_ID = 'template_imcre6f';
+      const PUBLIC_KEY = 'SPj2aD9SHh20beaC4';
 
       try {
         await emailjs.send(
           SERVICE_ID,
           TEMPLATE_ID,
           {
-            to_name: formData.name,
-            to_email: formData.email,
-            user_message: formData.message,
-            from_name: 'Xdoc Support',
+            from_name: trimmedName,
+            from_email: trimmedEmail,
+            message: trimmedMessage,
+            to_name: trimmedName,
+            to_email: trimmedEmail,
+            user_message: trimmedMessage,
             reply_to: 'xdoc.official@gmail.com'
           },
           PUBLIC_KEY
@@ -436,7 +452,7 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
         toast.success(
           language === 'UR'
             ? "✓ پیغام بھیج دیا گیا! آپ کو ای میل تصدیق مل گئی ہوگی۔"
-            : "✓ Message bhej diya gaya! Aapko email confirmation mil gayi hogi."
+            : "Your message has been sent successfully."
         );
 
         // Step 4 — Clear form
