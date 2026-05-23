@@ -42,6 +42,7 @@ import {
   Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BrandLogo } from './ui/BrandLogo';
 import { 
   getKarachiTime, 
   getKarachiDateStr, 
@@ -1867,9 +1868,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       >
         <div className="flex flex-col h-full w-full">
           <div className="p-8 flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-2xl font-bold text-white">X</span>
-            </div>
+            <BrandLogo size={32} />
             <span className="text-xl font-bold tracking-tight">Xdoc Hospital</span>
           </div>
 

@@ -548,8 +548,8 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1]" />
          
          <div className="flex flex-col items-center mb-10 text-center">
-            <div className="w-20 h-20 rounded-[28px] medical-cross-gradient flex items-center justify-center text-white shadow-2xl shadow-primary/30 mb-6 group cursor-pointer">
-              <Activity size={40} className="group-hover:scale-110 transition-transform" />
+            <div className="mb-6 filter drop-shadow-xl cursor-pointer group">
+              <BrandLogo size={80} className="transition-transform group-hover:scale-105" />
             </div>
            <h2 className="text-4xl font-display font-bold text-slate-900 tracking-tight">{t.auth.loginTitle}</h2>
            <p className="text-slate-500 font-medium mt-3">{t.auth.loginSubTitle}</p>
@@ -1462,7 +1462,7 @@ const ConfirmationPage = ({ doctor, token }: { doctor: Doctor, token?: any }) =>
 
     <div className="bg-white rounded-[40px] p-10 border border-slate-100 shadow-2xl shadow-slate-200/50 relative overflow-hidden mb-10">
       <div className="absolute -top-10 -right-10 opacity-[0.03] rotate-12">
-        <Activity size={300} strokeWidth={1} />
+        <BrandLogo size={300} />
       </div>
 
       <div className="flex flex-col items-center">
@@ -1826,7 +1826,7 @@ const GlobalStatsScreen = () => {
 
       <section className="glass-card p-12 rounded-[56px] relative overflow-hidden bg-gradient-to-br from-primary/20 via-bg-dark to-slate-900 border-none shadow-2xl">
         <div className="absolute -right-20 -top-20 opacity-10">
-          <Activity size={400} strokeWidth={1} className="text-primary" />
+          <BrandLogo size={400} />
         </div>
         <div className="space-y-4 relative z-10">
           <p className="font-mono text-sm text-blue-400 uppercase tracking-[0.4em] font-bold">PLATFORM REVENUE (NET)</p>
@@ -1842,7 +1842,7 @@ const GlobalStatsScreen = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {[
-          { label: 'Total Hospitals', val: 482, icon: Activity, color: 'text-primary' },
+          { label: 'Total Hospitals', val: 482, icon: Building2, color: 'text-primary' },
           { label: 'Live Tokens Today', val: '24.2k', icon: History, color: 'text-health-teal' },
           { label: 'Active Patients', val: '185k', icon: Users, color: 'text-indigo-400' },
           { label: 'System Uptime', val: '99.9%', icon: ShieldCheck, color: 'text-success-green' }

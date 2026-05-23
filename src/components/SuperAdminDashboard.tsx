@@ -17,6 +17,7 @@ import { Hospital as HospitalIcon, LayoutDashboard as LayoutIcon } from 'lucide-
 import { ListSkeleton, StatSkeleton } from './ui/Skeleton';
 import EmptyState from './ui/EmptyState';
 import { useToast } from '../contexts/ToastContext';
+import { BrandLogo } from './ui/BrandLogo';
 
 interface SuperAdminDashboardProps {
   onSignOut: () => void;
@@ -392,9 +393,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
       {/* Sidebar / Top Nav */}
       <div className="bg-white border-b border-slate-100 flex items-center justify-between px-8 py-5 sticky top-0 z-50">
         <div className="flex items-center gap-5">
-           <div className="w-10 h-10 rounded-xl medical-cross-gradient flex items-center justify-center text-white shadow-xl shadow-primary/20">
-             <ShieldCheck size={24} />
-           </div>
+           <BrandLogo size={40} className="filter drop-shadow-md" />
            <div>
              <h1 className="text-xl font-bold tracking-tighter text-slate-900 leading-none mb-1">Xdoc Admin Panel</h1>
              <p className="text-[10px] text-primary font-bold uppercase tracking-[0.2em]">Super User Mode</p>

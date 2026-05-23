@@ -9,9 +9,65 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="apple-touch-icon" href="/favicon.svg">
     <meta name="theme-color" content="#0B5FFF">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/favicon.svg">
-<meta name="theme-color" content="#0B5FFF">
+
+    <script>
+      (function() {
+        const suppressList = [
+          'failed to connect to websocket',
+          'WebSocket connection to',
+          'connection lost'
+        ];
+        
+        const filterLog = (originalFn) => {
+          return function(...args) {
+            const message = args[0];
+            if (message && typeof message === 'string') {
+              const isSpam = suppressList.some(keyword => message.includes(keyword));
+              if (isSpam) return;
+            }
+            originalFn.apply(console, args);
+          };
+        };
+
+        console.error = filterLog(console.error);
+        console.warn = filterLog(console.warn);
+
+        // Auto-Recover and Fallback Reconnect Monitor
+        let checkInterval = null;
+        let isRecovering = false;
+
+        const startHealCheck = () => {
+          if (isRecovering) return;
+          isRecovering = true;
+          if (checkInterval) clearInterval(checkInterval);
+          
+          checkInterval = setInterval(async () => {
+            try {
+              const response = await fetch(window.location.origin + '/index.html', {
+                method: 'HEAD',
+                cache: 'no-store'
+              });
+              if (response.ok) {
+                clearInterval(checkInterval);
+                window.location.reload();
+              }
+            } catch (err) {
+              // Server is momentarily restarting, retry checking silently
+            }
+          }, 3000);
+        };
+
+        window.addEventListener('online', () => {
+          window.location.reload();
+        });
+
+        window.addEventListener('error', (event) => {
+          if (event && event.message && event.message.indexOf('WebSocket') !== -1) {
+            startHealCheck();
+          }
+        }, true);
+      })();
+    </script>
 
 <meta
   name="description"
