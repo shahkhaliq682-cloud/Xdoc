@@ -39,10 +39,13 @@ import {
   Info,
   ArrowLeft,
   Copy,
-  Check
+  Check,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from './ui/BrandLogo';
+import { InvoiceModal } from './ui/InvoiceModal';
+import { createOrGetInvoice } from '../lib/invoiceUtils';
 import { 
   getKarachiTime, 
   getKarachiDateStr, 
@@ -96,12 +99,18 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const { t, language, setLanguage } = useLanguage();
   const { toast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'doctors' | 'search' | 'data' | 'staff' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'doctors' | 'search' | 'data' | 'staff' | 'profile' | 'invoices'>('home');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [hospitalData, setHospitalData] = useState(initialHospitalData);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [tokens, setTokens] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [selectedInvoiceToken, setSelectedInvoiceToken] = useState<any>(null);
+  const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
+  const [invoiceDoctorFilter, setInvoiceDoctorFilter] = useState('All');
+  const [invoiceDateFilter, setInvoiceDateFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -301,6 +310,25 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       }
     };
     fetchStaff();
+    return () => { isMounted = false; };
+  }, [initialHospitalData?.uid, initialHospitalData?.id]);
+
+  // Listen to invoices in real-time
+  useEffect(() => {
+    let isMounted = true;
+    const hId = initialHospitalData?.uid || initialHospitalData?.id;
+    if (!hId) return;
+    try {
+      const q = query(collection(db, 'invoices'), where('hospitalId', '==', hId));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (isMounted) {
+          setInvoices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }
+      });
+      return () => unsubscribe();
+    } catch (error: any) {
+      console.error("Error fetching invoices:", error);
+    }
     return () => { isMounted = false; };
   }, [initialHospitalData?.uid, initialHospitalData?.id]);
 
@@ -522,6 +550,16 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           toast.warning(t.ux.toasts.patient_missed);
         }
       }
+
+      // Automatically generate invoice if status marked completed
+      if (newStatus === 'completed' && oldStatus !== 'completed') {
+        if (tokenSnap.exists()) {
+          const tData = { id: tokenSnap.id, ...tokenSnap.data() };
+          createOrGetInvoice(tData, hospitalData).catch(err => {
+            console.error("Auto invoice generation error:", err);
+          });
+        }
+      }
       
       await batch.commit();
     } catch (err) {
@@ -539,6 +577,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
     { id: 'search', icon: Search, label: t.dashboard.search || 'SEARCH' },
     { id: 'data', icon: Activity, label: t.patient.booking.patients || 'PATIENTS' },
     { id: 'staff', icon: Users, label: t.dashboard.nav.staff || 'STAFF' },
+    { id: 'invoices', icon: FileText, label: language === 'UR' ? 'انوائسز' : 'Invoices' },
     { id: 'profile', icon: UserSquare2, label: t.patient.booking.editProfile }
   ];
 
@@ -877,13 +916,23 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                      </p>
                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{token.doctorName}</p>
                   </div>
-                  <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
-                    token.status === 'completed' ? 'bg-health-teal/10 text-health-teal' : 
-                    token.status === 'not-arrived' ? 'bg-red-50 text-red-500' :
-                    'bg-slate-100 text-slate-500'
-                  }`}>
-                    {token.status === 'not-arrived' ? t.patient.booking.notArrived : token.status}
-                  </span>
+                  <div className="flex items-center gap-2 justify-end">
+                    <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
+                      token.status === 'completed' ? 'bg-health-teal/10 text-health-teal' : 
+                      token.status === 'not-arrived' ? 'bg-red-50 text-red-500' :
+                      'bg-slate-100 text-slate-500'
+                    }`}>
+                      {token.status === 'not-arrived' ? t.patient.booking.notArrived : token.status}
+                    </span>
+                    {token.status === 'completed' && (
+                      <button
+                        onClick={() => { setSelectedInvoiceToken(token); setIsInvoiceOpen(true); }}
+                        className="px-2.5 py-1 bg-[#0B5FFF] hover:scale-105 active:scale-95 text-white rounded-lg text-[9px] font-black tracking-wider uppercase cursor-pointer"
+                      >
+                        Ledger
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
@@ -1629,17 +1678,27 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                 <td className="px-8 py-4">
                   <select 
                     value={token.status}
-                    onChange={(e) => updateDoc(doc(db, 'tokens', token.id), { status: e.target.value })}
-                    className="bg-slate-50 border-none rounded-lg text-xs font-bold text-slate-600 focus:ring-primary"
+                    onChange={(e) => updateTokenStatus(token.id, e.target.value, token.patientId)}
+                    className="bg-slate-50 border-none rounded-lg text-xs font-bold text-slate-600 focus:ring-primary cursor-pointer"
                   >
-                    <option>Waiting</option>
-                    <option>In Progress</option>
-                    <option>Completed</option>
-                    <option>Cancelled</option>
+                    <option value="Waiting">Waiting</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
                   </select>
                 </td>
-                <td className="px-8 py-4">
-                  <button onClick={() => deleteDoc(doc(db, 'tokens', token.id))} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18} /></button>
+                <td className="px-8 py-4 flex items-center gap-2">
+                  <button onClick={() => deleteDoc(doc(db, 'tokens', token.id))} className="p-2 text-slate-300 hover:text-red-500 cursor-pointer" title="Delete Receipt"><Trash2 size={18} /></button>
+                  {token.status?.toLowerCase() === 'completed' && (
+                    <button 
+                      onClick={() => { setSelectedInvoiceToken(token); setIsInvoiceOpen(true); }}
+                      className="px-2.5 py-1.5 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1] hover:scale-105 active:scale-95 text-white rounded-lg transition-all text-[9px] font-black cursor-pointer uppercase flex items-center gap-1.5"
+                      title="View Invoice"
+                    >
+                      <FileText size={12} />
+                      <span>Invoice</span>
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -1650,6 +1709,171 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   );
 
 
+  const renderInvoices = () => {
+    // Unique list of doctors from invoices for the filter dropdown
+    const distinctDoctors = Array.from(new Set(invoices.map(inv => inv.doctorName)));
+
+    const filteredInvoices = invoices.filter(inv => {
+      // 1. Search filter: invoiceNumber or patientName
+      const matchesSearch = inv.invoiceNumber.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || 
+                            inv.patientName.toLowerCase().includes(invoiceSearchQuery.toLowerCase());
+                            
+      // 2. Doctor filter
+      const matchesDoctor = invoiceDoctorFilter === 'All' || inv.doctorName === invoiceDoctorFilter;
+      
+      // 3. Date filter (exact or match substrings)
+      const matchesDate = !invoiceDateFilter || inv.appointmentDate.includes(invoiceDateFilter);
+      
+      return matchesSearch && matchesDoctor && matchesDate;
+    });
+
+    const totalRevenue = filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+    const invoiceCount = filteredInvoices.length;
+
+    return (
+      <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+              {language === 'UR' ? 'انوائسز اور آمدنی' : 'Invoices & Revenue'}
+            </h2>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Real-time ledger and financial accounting summary</p>
+          </div>
+        </div>
+
+        {/* Financial KPI Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-3xl flex items-center justify-center font-black">
+              <Wallet size={28} />
+            </div>
+            <div>
+              <h4 className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">
+                {language === 'UR' ? 'کل آمدنی' : 'Total Revenue'}
+              </h4>
+              <p className="text-slate-900 font-black text-3xl leading-none">
+                Rs. {totalRevenue.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+            <div className="w-16 h-16 bg-teal-50 text-[#00C9B1] rounded-3xl flex items-center justify-center font-black">
+              <CheckCircle2 size={28} />
+            </div>
+            <div>
+              <h4 className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">
+                {language === 'UR' ? 'کل کنسلٹیشنز' : 'Total Appointments'}
+              </h4>
+              <p className="text-slate-900 font-black text-3xl leading-none">
+                {invoiceCount} {language === 'UR' ? 'انوائسز' : 'Invoices'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters Panel */}
+        <div className="bg-white rounded-[28px] border border-slate-100 p-6 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+          <div className="w-full md:w-1/3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Search Invoices</label>
+            <input 
+              type="text"
+              placeholder="Search by ID or name..."
+              value={invoiceSearchQuery}
+              onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-100 text-slate-700/80 rounded-2xl px-4 py-3 text-xs font-bold focus:ring-[#0B5FFF] focus:border-[#0B5FFF]"
+            />
+          </div>
+
+          <div className="w-full md:w-1/3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Filter by Doctor</label>
+            <select
+              value={invoiceDoctorFilter}
+              onChange={(e) => setInvoiceDoctorFilter(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-100 text-slate-700/80 rounded-2xl px-4 py-3 text-xs font-bold focus:ring-[#0B5FFF] focus:border-[#0B5FFF]"
+            >
+              <option value="All">{language === 'UR' ? 'تمام ڈاکٹرز' : 'All Doctors'}</option>
+              {distinctDoctors.map((doc, idx) => (
+                <option key={idx} value={doc}>Dr. {doc}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full md:w-1/3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Filter by Date</label>
+            <input 
+              type="date"
+              value={invoiceDateFilter}
+              onChange={(e) => setInvoiceDateFilter(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-100 text-slate-700/80 rounded-2xl px-4 py-3 text-xs font-bold focus:ring-[#0B5FFF] focus:border-[#0B5FFF]"
+            />
+          </div>
+        </div>
+
+        {/* Ledger Table */}
+        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+          {filteredInvoices.length === 0 ? (
+            <div className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
+              No matching invoices found in history
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-100">
+                  <tr>
+                    <th className="px-8 py-5">Invoice #</th>
+                    <th className="px-8 py-5">Date</th>
+                    <th className="px-5 py-5">Patient</th>
+                    <th className="px-5 py-5">Doctor</th>
+                    <th className="px-5 py-5">Fee</th>
+                    <th className="px-8 py-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-750">
+                  {filteredInvoices.map((inv) => (
+                    <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-8 py-5 font-mono font-black text-xs text-[#0B5FFF]">{inv.invoiceNumber}</td>
+                      <td className="px-8 py-5 text-xs font-bold text-slate-500">{inv.appointmentDate}</td>
+                      <td className="px-5 py-5 text-xs font-bold text-slate-900">{inv.patientName}</td>
+                      <td className="px-5 py-5 text-xs font-bold text-slate-600">Dr. {inv.doctorName}</td>
+                      <td className="px-5 py-5 text-xs font-black text-teal-600">Rs. {inv.totalAmount?.toLocaleString()}</td>
+                      <td className="px-8 py-5 text-right">
+                        <button 
+                          onClick={() => {
+                            // Fetch corresponding token parameters to pass to InvoiceModal
+                            const matchedTokenObj = tokens.find(t => t.id === inv.tokenId) || {
+                              id: inv.tokenId,
+                              tokenNumber: inv.tokenNumber,
+                              patientName: inv.patientName,
+                              patientPhone: inv.patientPhone,
+                              doctorName: inv.doctorName,
+                              appointmentDate: inv.appointmentDate,
+                              appointmentTime: inv.appointmentTime,
+                              fee: inv.consultationFee,
+                              paymentMethod: inv.paymentMethod,
+                              hospitalId: inv.hospitalId,
+                            };
+                            setSelectedInvoiceToken(matchedTokenObj);
+                            setIsInvoiceOpen(true);
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1] hover:bg-gradient-to-r hover:from-blue-600 hover:to-teal-500 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all shadow-md shadow-blue-500/10 cursor-pointer"
+                          title="View Invoice"
+                        >
+                          Invoice
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'home': return renderDashboardHome();
@@ -1658,6 +1882,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       case 'data': return renderPatientsData();
       case 'staff': return renderStaffList();
       case 'profile': return renderProfile();
+      case 'invoices': return renderInvoices();
       default: return renderDashboardHome();
     }
   };
@@ -2533,6 +2758,14 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           )}
         </AnimatePresence>
       </main>
+
+      {/* Global Invoice Viewer Modal */}
+      <InvoiceModal 
+        isOpen={isInvoiceOpen} 
+        onClose={() => { setIsInvoiceOpen(false); setSelectedInvoiceToken(null); }} 
+        token={selectedInvoiceToken} 
+        hospitalData={hospitalData} 
+      />
     </div>
   );
 };

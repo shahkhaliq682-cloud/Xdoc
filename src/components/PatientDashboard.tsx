@@ -26,6 +26,7 @@ import { ListSkeleton, StatSkeleton, HistorySkeleton } from './ui/Skeleton';
 import { SmartImage } from './ui/SmartImage';
 import EmptyState from './ui/EmptyState';
 import { useToast } from '../contexts/ToastContext';
+import { InvoiceModal } from './ui/InvoiceModal';
 
 interface PatientDashboardProps {
   userData: any;
@@ -54,6 +55,8 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [editProfileForm, setEditProfileForm] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [expiredNotificationToken, setExpiredNotificationToken] = useState<any>(null);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [selectedInvoiceToken, setSelectedInvoiceToken] = useState<any>(null);
   const prevTokensRef = useRef<any[]>([]);
 
   // Pull to refresh simulation
@@ -795,9 +798,18 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
                       {token.status === 'waiting' && (
                         <button 
                           onClick={() => cancelToken(token)}
-                          className="text-[10px] font-black text-red-500 hover:underline"
+                          className="text-[10px] font-black text-red-500 hover:underline cursor-pointer"
                         >
                           Cancel
+                        </button>
+                      )}
+
+                      {(token.status === 'completed' || token.status === 'Completed') && (
+                        <button 
+                          onClick={() => { setSelectedInvoiceToken(token); setIsInvoiceOpen(true); }}
+                          className="text-[10px] font-black text-primary hover:underline cursor-pointer"
+                        >
+                          {language === 'UR' ? 'انوائس دیکھیں' : 'Invoice'}
                         </button>
                       )}
                     </div>
@@ -898,6 +910,13 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Invoice Modal Integration */}
+      <InvoiceModal 
+        isOpen={isInvoiceOpen} 
+        onClose={() => { setIsInvoiceOpen(false); setSelectedInvoiceToken(null); }} 
+        token={selectedInvoiceToken} 
+      />
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 w-full z-[100] bg-white/80 backdrop-blur-xl border-t border-slate-100 flex justify-around py-4 pb-8">

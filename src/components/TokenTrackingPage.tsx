@@ -6,6 +6,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { InvoiceModal } from './ui/InvoiceModal';
 
 interface TokenTrackingProps {
   tokenId: string;
@@ -18,6 +19,7 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
   const [loading, setLoading] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isExpiredAlertShown, setIsExpiredAlertShown] = useState(false);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [language, setLanguage] = useState<'EN' | 'UR'>('EN');
 
   // Dynamic queue stats
@@ -243,6 +245,16 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
               <p className="text-slate-400 font-bold uppercase tracking-wide text-sm">
                 DR. {token.doctorName} • {token.doctorSpecialization}
               </p>
+              {(token.status === 'completed' || token.status === 'Completed') && (
+                <div className="pt-3">
+                  <button 
+                    onClick={() => setIsInvoiceOpen(true)}
+                    className="px-6 py-3 bg-[#0B5FFF] hover:bg-[#0B5FFF]/90 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-[#0B5FFF]/20 active:scale-95"
+                  >
+                    <span>🧾 {u ? 'انوائس حاصل کریں' : 'Get Invoice'}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col items-center justify-center w-36 h-36 bg-white/5 border border-white/10 rounded-[32px] shrink-0 shadow-lg relative group">
@@ -415,6 +427,13 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
         )}
 
       </main>
+
+      <InvoiceModal 
+        isOpen={isInvoiceOpen} 
+        onClose={() => setIsInvoiceOpen(false)} 
+        token={token} 
+        hospitalData={hospital} 
+      />
     </div>
   );
 }

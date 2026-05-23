@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircle2, Calendar, Clock, Stethoscope, 
   MapPin, User, ArrowRight, Download, Home,
-  Hospital as HospitalIcon, Wallet, Phone
+  Hospital as HospitalIcon, Wallet, Phone, FileText
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { InvoiceModal } from './ui/InvoiceModal';
 
 interface BookingSuccessProps {
   tokenData: any;
@@ -14,7 +15,8 @@ interface BookingSuccessProps {
 }
 
 const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onViewBookings }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 z-[120] bg-white flex flex-col items-center p-6 overflow-y-auto custom-scrollbar">
@@ -103,6 +105,12 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
              {t.patient.booking.meriBookings} <ArrowRight size={20} />
            </button>
            <button 
+             onClick={() => setIsInvoiceOpen(true)}
+             className="w-full py-5 bg-white border-2 border-primary text-primary font-black rounded-3xl hover:bg-primary/5 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+           >
+             <span>{language === 'UR' ? '🧾 انوائس دیکھیں' : '🧾 Invoice Dekhen'}</span>
+           </button>
+           <button 
              onClick={onHome}
              className="w-full py-5 bg-white border-2 border-slate-100 text-slate-400 font-black rounded-3xl hover:bg-slate-50 transition-all"
            >
@@ -110,6 +118,12 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
            </button>
         </div>
       </div>
+
+      <InvoiceModal 
+        isOpen={isInvoiceOpen} 
+        onClose={() => setIsInvoiceOpen(false)} 
+        token={tokenData} 
+      />
     </div>
   );
 };
