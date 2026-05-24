@@ -152,29 +152,38 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => setIsScrolled(window.scrollY > 15);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   
   if (isLanding) {
     return (
       <>
-        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-200 h-16 flex items-center border-b ${
+        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 h-20 flex items-center border-b ${
           isScrolled 
-            ? 'bg-white/95 backdrop-blur-md border-slate-200 shadow-sm' 
-            : 'bg-white border-transparent'
+            ? 'bg-white/60 backdrop-blur-xl border-slate-200/40 shadow-[0_8px_32px_0_rgba(148,163,184,0.06)] h-[72px]' 
+            : 'bg-transparent border-transparent'
         }`}>
-          <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex justify-between items-center">
+          <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex justify-between items-center gap-4">
             {/* Left: Logo */}
-            <div onClick={onLogoClick} className="flex items-center gap-2 cursor-pointer group">
-              <BrandLogo size={32} className="transition-transform group-hover:scale-110" />
-              <span className="text-xl font-bold tracking-tight text-[#0B1D35]">Xdoc</span>
+            <div onClick={onLogoClick} className="flex items-center gap-2.5 cursor-pointer group shrink-0">
+              <BrandLogo size={34} className="transition-transform group-hover:scale-105" />
+              <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 bg-clip-text text-transparent">Xdoc</span>
             </div>
 
-            {/* Center: Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-8">
-              <button onClick={() => { setViewState('hero'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.home}</button>
+            {/* Center: Desktop Nav - Premium floating pill */}
+            <nav className="hidden md:flex items-center gap-1.5 p-1 bg-slate-100/40 backdrop-blur-md rounded-full border border-slate-200/30">
+              <button 
+                onClick={() => { setViewState('hero'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                className={`px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all duration-200 rounded-full ${
+                  viewState === 'hero' 
+                    ? 'bg-white text-primary shadow-sm' 
+                    : 'text-slate-600 hover:text-primary'
+                }`}
+              >
+                {t.nav?.home}
+              </button>
               <button 
                 onClick={() => {
                   if (viewState !== 'hero') {
@@ -184,21 +193,30 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                     setViewState('auth_choice');
                   }
                 }} 
-                className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+                className={`px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all duration-200 rounded-full ${
+                  viewState === 'auth_choice' 
+                    ? 'bg-white text-primary shadow-sm' 
+                    : 'text-slate-600 hover:text-primary'
+                }`}
               >
                 {t.nav?.findHospital}
               </button>
-              <button onClick={() => {
-                if (viewState !== 'hero') setViewState('hero');
-                setTimeout(() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }), 100);
-              }} className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">{t.nav?.about}</button>
+              <button 
+                onClick={() => {
+                  if (viewState !== 'hero') setViewState('hero');
+                  setTimeout(() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                }} 
+                className="px-4 py-2 text-[11px] font-black uppercase tracking-wider text-slate-600 hover:text-primary transition-all duration-200 rounded-full"
+              >
+                {t.nav?.about}
+              </button>
             </nav>
             
             {/* Right: Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 shrink-0">
               <button 
                 onClick={() => setLanguage(language === 'EN' ? 'UR' : 'EN')}
-                className="hidden sm:flex px-3 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors uppercase tracking-wider"
+                className="hidden sm:flex px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 transition-all duration-200"
               >
                 {language === 'EN' ? 'اردو' : 'English'}
               </button>
@@ -207,19 +225,19 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                 <>
                   <button 
                     onClick={onLogin}
-                    className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+                    className="px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-600 hover:text-slate-900 active:scale-95 transition-all duration-200"
                   >
                     {t.nav?.login}
                   </button>
                   <button 
                     onClick={onSignUp}
-                    className="hidden sm:block px-5 py-2.5 rounded-lg bg-[#0B5FFF] text-white text-sm font-semibold shadow-sm hover:bg-blue-600 active:scale-95 transition-all"
+                    className="hidden sm:block px-5 py-2.5 rounded-2xl bg-[#0B5FFF] hover:bg-[#0B5FFF]/90 text-white text-[11px] font-black uppercase tracking-wider shadow-lg shadow-[#0B5FFF]/20 active:scale-95 transition-all duration-300"
                   >
                     {t.nav?.signUpFree}
                   </button>
                   <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="md:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                    className="md:hidden p-2 text-slate-600 hover:bg-slate-100/50 rounded-xl transition-colors"
                   >
                     {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                   </button>
@@ -227,15 +245,15 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
               ) : (
                 <div className="flex items-center gap-3">
                   <div className="hidden sm:block text-right">
-                    <p className="text-xs font-semibold text-slate-900">{userData.displayName}</p>
-                    <p className="text-[10px] text-slate-400 capitalize">{userData.role.replace('_', ' ')}</p>
+                    <p className="text-xs font-bold text-slate-900">{userData.displayName}</p>
+                    <p className="text-[10px] text-slate-400 capitalize font-medium mt-0.5">{userData.role.replace('_', ' ')}</p>
                   </div>
                   <button 
                     onClick={() => logout()}
-                    className="w-9 h-9 rounded-full border border-slate-200 overflow-hidden relative group"
+                    className="w-10 h-10 rounded-2xl border border-slate-200 overflow-hidden relative group"
                   >
                     <img src={userData.photoURL || "https://images.unsplash.com/photo-1559839734-2b71f1536783?auto=format&fit=crop&q=80&w=200"} alt="Profile" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
                       <LogOut size={14} className="text-white" />
                     </div>
                   </button>
@@ -245,36 +263,36 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
           </div>
         </header>
 
-        {/* Mobile Menu */}
+        {/* Floating Glassmobile Menu */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="fixed top-16 left-0 w-full z-[90] bg-white border-b border-slate-200 p-6 md:hidden shadow-xl"
+              className="fixed top-20 left-4 right-4 z-[90] bg-white/75 backdrop-blur-2xl border border-slate-200/40 p-6 md:hidden rounded-3xl shadow-[0_20px_50px_rgba(15,23,42,0.12)]"
             >
               <nav className="flex flex-col gap-1">
-                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-medium">{t.nav?.home}</a>
-                <a href="#" onClick={() => { setIsMobileMenuOpen(false); onLogoClick?.(); }} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-medium">{t.nav?.findHospital}</a>
-                <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-medium">{t.nav?.about}</a>
-                <div className="h-px bg-slate-100 my-4" />
+                <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-sm uppercase tracking-wider">{t.nav?.home}</a>
+                <a href="#" onClick={() => { setIsMobileMenuOpen(false); onLogoClick?.(); }} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-sm uppercase tracking-wider">{t.nav?.findHospital}</a>
+                <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-sm uppercase tracking-wider">{t.nav?.about}</a>
+                <div className="h-px bg-slate-200/40 my-3" />
                 <button 
                    onClick={() => { setLanguage(language === 'EN' ? 'UR' : 'EN'); setIsMobileMenuOpen(false); }}
-                   className="w-full text-left px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-medium"
+                   className="w-full text-left px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-sm uppercase tracking-wider"
                 >
                   {language === 'EN' ? 'Urdu Language' : 'انگریزی زبان'}
                 </button>
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <button 
                     onClick={() => { setIsMobileMenuOpen(false); onLogin?.(); }}
-                    className="py-3 rounded-xl font-semibold text-slate-900 bg-slate-100"
+                    className="py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider text-slate-700 bg-slate-100 hover:bg-slate-200/60 active:scale-95 transition-all"
                   >
                     {t.nav?.login}
                   </button>
                   <button 
                     onClick={() => { setIsMobileMenuOpen(false); onSignUp?.(); }}
-                    className="py-3 rounded-xl bg-primary text-white font-semibold shadow-lg shadow-primary/20"
+                    className="py-3.5 rounded-2xl bg-[#0B5FFF] text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-[#0B5FFF]/20 active:scale-95 transition-all"
                   >
                     {t.nav?.signUpFree}
                   </button>
@@ -288,30 +306,30 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
   }
 
   return (
-    <header className={`flex justify-between items-center w-full px-6 py-4 sticky top-0 z-[60] backdrop-blur-xl border-b transition-all duration-500 ${
+    <header className={`flex justify-between items-center w-full px-6 py-4 sticky top-0 z-[60] backdrop-blur-xl border-b transition-all duration-300 ${
       darkMode 
-        ? 'bg-bg-dark/90 border-white/10 text-white' 
-        : 'bg-white/80 border-slate-100 text-slate-900'
+        ? 'bg-[#0B1D35]/65 border-white/10 text-white' 
+        : 'bg-white/65 border-slate-200/40 text-slate-900 shadow-[0_4px_24px_rgba(0,0,0,0.02)]'
     }`}>
       <div className="flex items-center gap-4">
         <div onClick={onLogoClick} className="flex items-center gap-3 cursor-pointer group">
-          <BrandLogo size={38} className="transition-transform group-hover:scale-110" />
-          <h1 className="text-2xl font-bold tracking-tighter uppercase whitespace-nowrap">{hospitalName}</h1>
+          <BrandLogo size={34} className="transition-transform group-hover:scale-105" />
+          <h1 className="text-xl font-bold tracking-tight uppercase whitespace-nowrap">{hospitalName}</h1>
         </div>
       </div>
       
       <div className="flex items-center gap-3 md:gap-5">
-        <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 rounded-full border border-slate-200 dark:border-white/10">
+        <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100/60 dark:bg-white/5 rounded-full border border-slate-200/30 dark:border-white/10">
           <div className="w-2 h-2 rounded-full bg-success-green breathing-dot" />
           <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Live Status</span>
         </div>
         
-        <button className="relative p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+        <button className="relative p-2.5 rounded-xl hover:bg-slate-100/60 dark:hover:bg-white/5 transition-colors">
           <Bell size={20} className={darkMode ? 'text-slate-400' : 'text-slate-600'} />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-emergency-red rounded-full ring-2 ring-white dark:ring-bg-dark" />
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-emergency-red rounded-full ring-2 ring-white dark:ring-slate-900" />
         </button>
 
-        <div className={`flex items-center gap-3 pl-3 md:pl-5 border-l ${darkMode ? 'border-white/10' : 'border-slate-100'}`}>
+        <div className={`flex items-center gap-3 pl-3 md:pl-5 border-l ${darkMode ? 'border-white/10' : 'border-slate-200/40'}`}>
           <div className={`hidden sm:block text-right ${darkMode ? 'text-white' : 'text-slate-900'}`}>
             <p className="text-xs font-bold leading-none">{userData?.displayName || 'James Sterling'}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1">{userData?.role || 'Hospital Admin'}</p>
