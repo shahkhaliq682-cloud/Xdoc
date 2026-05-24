@@ -494,7 +494,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   };
 
   const renderHeader = () => (
-    <header className="bg-white px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-[100]">
+    <header className="bg-gradient-to-r from-white/60 via-sky-50/40 to-white/60 backdrop-blur-2xl border-b border-slate-200/25 px-6 py-4 flex items-center justify-between shadow-[0_8px_30px_rgba(11,95,255,0.03)] sticky top-0 z-[100]">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
           {userData?.name?.charAt(0) || 'P'}

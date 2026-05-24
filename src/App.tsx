@@ -162,7 +162,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
       <>
         <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 h-20 flex items-center border-b ${
           isScrolled 
-            ? 'bg-white/60 backdrop-blur-xl border-slate-200/40 shadow-[0_8px_32px_0_rgba(148,163,184,0.06)] h-[72px]' 
+            ? 'bg-gradient-to-r from-white/50 via-sky-50/30 to-white/50 backdrop-blur-2xl border-slate-200/25 shadow-[0_12px_40px_rgba(11,95,255,0.04),_0_1px_2px_rgba(11,95,255,0.02)] h-[72px]' 
             : 'bg-transparent border-transparent'
         }`}>
           <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex justify-between items-center gap-4">
@@ -306,10 +306,10 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
   }
 
   return (
-    <header className={`flex justify-between items-center w-full px-6 py-4 sticky top-0 z-[60] backdrop-blur-xl border-b transition-all duration-300 ${
+    <header className={`flex justify-between items-center w-full px-6 py-4 sticky top-0 z-[60] backdrop-blur-2xl border-b transition-all duration-300 ${
       darkMode 
-        ? 'bg-[#0B1D35]/65 border-white/10 text-white' 
-        : 'bg-white/65 border-slate-200/40 text-slate-900 shadow-[0_4px_24px_rgba(0,0,0,0.02)]'
+        ? 'bg-[#0B1D35]/70 border-white/10 text-white' 
+        : 'bg-gradient-to-r from-white/50 via-sky-50/30 to-white/50 border-slate-200/25 text-slate-900 shadow-[0_8px_30px_rgba(11,95,255,0.03)]'
     }`}>
       <div className="flex items-center gap-4">
         <div onClick={onLogoClick} className="flex items-center gap-3 cursor-pointer group">

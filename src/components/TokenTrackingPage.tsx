@@ -206,7 +206,7 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
       </AnimatePresence>
 
       {/* Top Banner Navigation */}
-      <header className="h-20 bg-white border-b border-slate-100 sticky top-0 z-40 flex items-center justify-between px-6 sm:px-10">
+      <header className="h-20 bg-gradient-to-r from-white/60 via-sky-50/40 to-white/60 backdrop-blur-2xl border-b border-indigo-100/30 sticky top-0 z-40 flex items-center justify-between px-6 sm:px-10 shadow-[0_8px_30px_rgba(11,95,255,0.02)]">
         <button onClick={onBack} className="h-10 px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl font-bold flex items-center gap-2 transition-all">
           <ArrowLeft size={16} />
           <span>{u ? 'واپس جائیں' : 'Back'}</span>

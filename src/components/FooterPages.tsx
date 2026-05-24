@@ -55,7 +55,7 @@ export default function FooterPages({ activePage, onBack }: FooterPagesProps) {
   return (
     <div className="bg-slate-50 min-h-screen font-sans flex flex-col justify-between">
       {/* HEADER SECTION */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4">
+      <header className="sticky top-0 z-50 bg-gradient-to-r from-white/60 via-sky-50/40 to-white/60 backdrop-blur-2xl border-b border-indigo-100/30 px-6 py-4 shadow-[0_8px_30px_rgba(11,95,255,0.02)]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 

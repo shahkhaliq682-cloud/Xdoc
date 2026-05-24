@@ -2132,7 +2132,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       {/* Main Content */}
       <main className={`flex-1 transition-all duration-300 lg:ml-64 ${language === 'UR' ? 'lg:mr-64 lg:ml-0' : 'lg:ml-64'}`}>
         {/* Header */}
-        <header className="h-24 bg-white border-b border-slate-100 flex items-center justify-between px-8 sticky top-0 z-40">
+        <header className="h-24 bg-gradient-to-r from-white/60 via-sky-50/40 to-white/60 backdrop-blur-2xl border-b border-indigo-100/30 flex items-center justify-between px-8 sticky top-0 z-40 shadow-[0_8px_30px_rgba(11,95,255,0.02)]">
           <div className="flex flex-col">
             <div className="flex items-center gap-3">
                <h1 className="text-xl font-black text-slate-900 tracking-tight truncate max-w-[300px]">
