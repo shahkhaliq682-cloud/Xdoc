@@ -26,7 +26,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       style={!isResponsive ? { width: resolvedSize, height: resolvedSize } : undefined}
     >
       <img
-        src="/logo.png"
+        src="https://i.postimg.cc/jdK6XPST/file-0000000070ac7207a76601008a5f7ae8.png"
         alt="Xdoc Logo"
         referrerPolicy="no-referrer"
         style={{ 
