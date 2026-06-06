@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, Calendar, Clock, Stethoscope, 
   MapPin, User, ArrowRight, Download, Home,
@@ -17,6 +17,31 @@ interface BookingSuccessProps {
 const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onViewBookings }) => {
   const { t, language } = useLanguage();
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+
+  const openInvoiceModal = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('invoice', 'true');
+    window.history.pushState(null, '', url.pathname + url.search);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  const closeInvoiceModal = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invoice');
+    window.history.pushState(null, '', url.pathname + url.search);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  useEffect(() => {
+    const handleInvoicePopState = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      setIsInvoiceOpen(searchParams.get('invoice') === 'true');
+    };
+
+    handleInvoicePopState();
+    window.addEventListener('popstate', handleInvoicePopState);
+    return () => window.removeEventListener('popstate', handleInvoicePopState);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[120] bg-white flex flex-col items-center p-6 overflow-y-auto custom-scrollbar">
@@ -43,7 +68,7 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
            </p>
            <div className="py-6 px-10 bg-health-teal/5 rounded-[32px] inline-block border-2 border-dashed border-health-teal/20">
              <span className="text-7xl font-black text-health-teal tracking-tighter" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-               {tokenData.tokenNumber}
+               {tokenData?.tokenNumber}
              </span>
            </div>
         </div>
@@ -52,33 +77,33 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
         <div className="bg-slate-50 rounded-[40px] p-8 space-y-6 mb-8">
             <div className="flex items-center gap-4">
               <HospitalIcon size={20} className="text-health-teal shrink-0" />
-              <span className="font-bold text-slate-700">{tokenData.hospitalName}</span>
+              <span className="font-bold text-slate-700">{tokenData?.hospitalName}</span>
             </div>
             
             <div className="flex items-center gap-4">
               <Stethoscope size={20} className="text-health-teal shrink-0" />
-              <span className="font-bold text-slate-700">Dr. {tokenData.doctorName}</span>
+              <span className="font-bold text-slate-700">Dr. {tokenData?.doctorName}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <Calendar size={20} className="text-health-teal shrink-0" />
-              <span className="font-bold text-slate-700">{tokenData.appointmentDate}</span>
+              <span className="font-bold text-slate-700">{tokenData?.appointmentDate}</span>
             </div>
 
             <div className="flex items-center gap-4">
               <Clock size={20} className="text-health-teal shrink-0" />
-              <span className="font-bold text-slate-700">{tokenData.appointmentTime}</span>
+              <span className="font-bold text-slate-700">{tokenData?.appointmentTime}</span>
             </div>
 
             <div className="flex items-center gap-4 border-t border-slate-200 pt-6">
               <Wallet size={20} className="text-health-teal shrink-0" />
-              <span className="font-bold text-slate-900">Rs. {tokenData.consultationFee}</span>
+              <span className="font-bold text-slate-900">Rs. {tokenData?.consultationFee}</span>
             </div>
 
             <div className="flex items-center justify-between items-center gap-4 border-t border-slate-200 pt-6">
               <div className="flex items-center gap-4">
                 <Phone size={20} className="text-health-teal shrink-0" />
-                <span className="font-bold text-slate-600">{tokenData.patientPhone}</span>
+                <span className="font-bold text-slate-600">{tokenData?.patientPhone}</span>
               </div>
               <div className="px-4 py-1.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-widest">
                 {t.patient.booking.waiting}
@@ -105,7 +130,7 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
              {t.patient.booking.meriBookings} <ArrowRight size={20} />
            </button>
            <button 
-             onClick={() => setIsInvoiceOpen(true)}
+             onClick={openInvoiceModal}
              className="w-full py-5 bg-white border-2 border-primary text-primary font-black rounded-3xl hover:bg-primary/5 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
            >
              <span>{language === 'UR' ? '🧾 انوائس دیکھیں' : '🧾 Invoice Dekhen'}</span>
@@ -121,7 +146,7 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
 
       <InvoiceModal 
         isOpen={isInvoiceOpen} 
-        onClose={() => setIsInvoiceOpen(false)} 
+        onClose={closeInvoiceModal} 
         token={tokenData} 
       />
     </div>

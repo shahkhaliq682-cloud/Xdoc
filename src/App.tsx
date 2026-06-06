@@ -1971,7 +1971,8 @@ export default function App() {
   const { currentUser, userData, logout } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
-  const [viewState, setViewState] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin' | 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy'>('hero');
+  // Real State hook definitions (Raw inputs)
+  const [viewState, setViewStateRaw] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin' | 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy'>('hero');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -1980,65 +1981,242 @@ export default function App() {
   
   const [deepLinkTokenId, setDeepLinkTokenId] = useState<string | null>(null);
   const [deepLinkLiveHospitalId, setDeepLinkLiveHospitalId] = useState<string | null>(null);
-  const [patientPreferredTab, setPatientPreferredTab] = useState<'hospitals' | 'history' | 'profile'>('hospitals');
+  const [patientPreferredTab, setPatientPreferredTabRaw] = useState<'hospitals' | 'history' | 'profile'>('hospitals');
   const [landingSearchQuery, setLandingSearchQuery] = useState('');
 
-  // Path Checking deepLink and legal routes on Initial Startup and History Changes
-  useEffect(() => {
-    const handleUrlRouting = () => {
-      const path = window.location.pathname;
-      const tokenMatch = path.match(/^\/token\/([^/]+)/);
-      if (tokenMatch) {
-        setDeepLinkTokenId(tokenMatch[1]);
-        return;
-      }
+  // Patient flow states
+  const [selectedHospital, setSelectedHospitalRaw] = useState<Hospital | any | null>(null);
+  const [selectedDoctor, setSelectedDoctorRaw] = useState<Doctor | any | null>(null);
+  const [isBookingFlow, setIsBookingFlowRaw] = useState(false);
+  const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
+  const [loginPrompt, setLoginPrompt] = useState(false);
+  const [lastCreatedToken, setLastCreatedTokenRaw] = useState<any>(null);
+
+  // Unified Navigation Stack Helper (mimicking react-router-dom navigate)
+  const navigate = (path: string, replace = false) => {
+    if (replace) {
+      window.history.replaceState(null, '', path);
+    } else {
+      window.history.pushState(null, '', path);
+    }
+    // Dispatch popstate event to let our listener update state instantly
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  // Wrapped triggers that automatically map changes in React state directly to browser history / URL
+  const setViewState = (state: typeof viewState) => {
+    let targetPath = '/';
+    if (state === 'hero') targetPath = '/';
+    else if (state === 'login') {
+      const searchParam = landingSearchQuery ? `?search=${encodeURIComponent(landingSearchQuery)}` : '';
+      targetPath = `/login${searchParam}`;
+    }
+    else if (state === 'auth_choice') targetPath = '/auth-choice';
+    else if (state === 'hospital_reg') targetPath = '/hospital-registration';
+    else if (state === 'patient_reg') targetPath = '/patient-registration';
+    else if (state === 'patient_home') {
+      targetPath = `/patient-dashboard/${patientPreferredTab}`;
+    }
+    else if (state === 'admin_dashboard') targetPath = '/admin-dashboard';
+    else if (state === 'super_admin') targetPath = '/super-admin';
+    else if (state === 'privacy') targetPath = '/privacy-policy';
+    else if (state === 'terms') targetPath = '/terms';
+    else if (state === 'contact') targetPath = '/contact';
+    else if (state === 'about') targetPath = '/about';
+    else if (state === 'content_policy') targetPath = '/content-policy';
+    
+    navigate(targetPath);
+  };
+
+  const setPatientPreferredTab = (tab: typeof patientPreferredTab) => {
+    navigate(`/patient-dashboard/${tab}`);
+  };
+
+  const setSelectedHospital = (h: Hospital | any | null) => {
+    if (h) {
+      navigate(`/hospital/${h.id}`);
+    } else {
+      navigate(`/patient-dashboard/${patientPreferredTab}`);
+    }
+  };
+
+  const setSelectedDoctor = (d: Doctor | any | null) => {
+    setSelectedDoctorRaw(d);
+  };
+
+  const setIsBookingFlow = (val: boolean) => {
+    if (val && selectedHospital && selectedDoctor) {
+      navigate(`/hospital/${selectedHospital.id}/book/${selectedDoctor.id}`);
+    } else if (!val && selectedHospital) {
+      navigate(`/hospital/${selectedHospital.id}`);
+    } else {
+      navigate(`/patient-dashboard/${patientPreferredTab}`);
+    }
+  };
+
+  const setLastCreatedToken = (token: any) => {
+    if (token) {
+      navigate(`/token/${token.id || token}/success`);
+    } else {
+      navigate(`/patient-dashboard/history`);
+    }
+  };
+
+  // Universal URL & popstate Sync Logic
+  const handleUrlRouting = () => {
+    const path = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    // Sync search parameter
+    const urlSearch = searchParams.get('search');
+    if (urlSearch !== null) {
+      setLandingSearchQuery(urlSearch);
+    }
+
+    // 1. Check existing legacy deep links first
+    const tokenMatch = path.match(/^\/token\/([^/]+)$/);
+    if (tokenMatch) {
+      setDeepLinkTokenId(tokenMatch[1]);
+      setDeepLinkLiveHospitalId(null);
+      return;
+    }
+    
+    const liveMatch = path.match(/^\/hospital\/([^/]+)\/live$/);
+    if (liveMatch) {
+       setDeepLinkLiveHospitalId(liveMatch[1]);
+       setDeepLinkTokenId(null);
+       return;
+    }
+
+    setDeepLinkTokenId(null);
+    setDeepLinkLiveHospitalId(null);
+
+    // 2. Legal pages
+    if (path === '/privacy-policy') {
+      setViewStateRaw('privacy');
+    } else if (path === '/terms') {
+      setViewStateRaw('terms');
+    } else if (path === '/contact') {
+      setViewStateRaw('contact');
+    } else if (path === '/about') {
+      setViewStateRaw('about');
+    } else if (path === '/content-policy') {
+      setViewStateRaw('content_policy');
+    }
+    // 3. Identification views
+    else if (path === '/login') {
+      setViewStateRaw('login');
+    } else if (path === '/auth-choice') {
+      setViewStateRaw('auth_choice');
+    } else if (path === '/hospital-registration') {
+      setViewStateRaw('hospital_reg');
+    } else if (path === '/patient-registration') {
+      setViewStateRaw('patient_reg');
+    }
+    // 4. Admin panels
+    else if (path === '/admin-dashboard') {
+      setViewStateRaw('admin_dashboard');
+    } else if (path === '/super-admin') {
+      setViewStateRaw('super_admin');
+    }
+    // 5. Patient workspace paths
+    else if (path.startsWith('/patient-dashboard') || path.startsWith('/hospital/') || path.startsWith('/token/')) {
+      setViewStateRaw('patient_home');
       
-      const liveMatch = path.match(/^\/hospital\/([^/]+)\/live/);
-      if (liveMatch) {
-        setDeepLinkLiveHospitalId(liveMatch[1]);
-        return;
+      // Determine preference tab
+      if (path === '/patient-dashboard/history' || path === '/patient-dashboard/history/') {
+        setPatientPreferredTabRaw('history');
+        setSelectedHospitalRaw(null);
+        setIsBookingFlowRaw(false);
+        setLastCreatedTokenRaw(null);
+      } else if (path === '/patient-dashboard/profile' || path === '/patient-dashboard/profile/') {
+        setPatientPreferredTabRaw('profile');
+        setSelectedHospitalRaw(null);
+        setIsBookingFlowRaw(false);
+        setLastCreatedTokenRaw(null);
+      } else {
+        setPatientPreferredTabRaw('hospitals');
       }
 
-      if (path === '/privacy-policy') {
-        setViewState('privacy');
-        setDeepLinkTokenId(null);
-        setDeepLinkLiveHospitalId(null);
-      } else if (path === '/terms') {
-        setViewState('terms');
-        setDeepLinkTokenId(null);
-        setDeepLinkLiveHospitalId(null);
-      } else if (path === '/contact') {
-        setViewState('contact');
-        setDeepLinkTokenId(null);
-        setDeepLinkLiveHospitalId(null);
-      } else if (path === '/about') {
-        setViewState('about');
-        setDeepLinkTokenId(null);
-        setDeepLinkLiveHospitalId(null);
-      } else if (path === '/content-policy') {
-        setViewState('content_policy');
-        setDeepLinkTokenId(null);
-        setDeepLinkLiveHospitalId(null);
-      } else if (path === '/') {
-        setViewState('hero');
-        setDeepLinkTokenId(null);
-        setDeepLinkLiveHospitalId(null);
-      }
-    };
+      // Details, bookings, successes
+      const hospMatch = path.match(/^\/hospital\/([^/]+)$/);
+      const bookingMatch = path.match(/^\/hospital\/([^/]+)\/book\/([^/]+)$/);
+      const successMatch = path.match(/^\/token\/([^/]+)\/success$/);
 
+      if (hospMatch) {
+        const hospId = hospMatch[1];
+        const found = fetchedHospitals.find(h => h.id === hospId);
+        if (found) {
+          setSelectedHospitalRaw(found);
+        } else {
+          setSelectedHospitalRaw({ id: hospId, _isPlaceholder: true });
+        }
+        setIsBookingFlowRaw(false);
+        setLastCreatedTokenRaw(null);
+      } else if (bookingMatch) {
+        const hospId = bookingMatch[1];
+        const docId = bookingMatch[2];
+        const foundHosp = fetchedHospitals.find(h => h.id === hospId);
+        if (foundHosp) {
+          setSelectedHospitalRaw(foundHosp);
+          const doctorsList = foundHosp.doctors || foundHosp.specialists || [];
+          const foundDoc = doctorsList.find((d: any) => d.id === docId);
+          if (foundDoc) {
+            setSelectedDoctorRaw(foundDoc);
+          } else {
+            setSelectedDoctorRaw({ id: docId, _isPlaceholder: true });
+          }
+        } else {
+          setSelectedHospitalRaw({ id: hospId, _isPlaceholder: true });
+          setSelectedDoctorRaw({ id: docId, _isPlaceholder: true });
+        }
+        setIsBookingFlowRaw(true);
+        setLastCreatedTokenRaw(null);
+      } else if (successMatch) {
+        const tokId = successMatch[1];
+        if (!lastCreatedToken || lastCreatedToken.id !== tokId) {
+          setLastCreatedTokenRaw({ id: tokId, _isPlaceholder: true });
+        }
+      } else if (path === '/patient-dashboard' || path === '/patient-dashboard/hospitals') {
+        setSelectedHospitalRaw(null);
+        setIsBookingFlowRaw(false);
+        setLastCreatedTokenRaw(null);
+      }
+    }
+    // 6. Home redesign / Main landing
+    else {
+      setViewStateRaw('hero');
+      setSelectedHospitalRaw(null);
+      setIsBookingFlowRaw(false);
+      setLastCreatedTokenRaw(null);
+    }
+  };
+
+  // Run onmount and URL changes
+  useEffect(() => {
     handleUrlRouting();
     window.addEventListener('popstate', handleUrlRouting);
     return () => window.removeEventListener('popstate', handleUrlRouting);
-  }, []);
-  
-  // Patient flow states
-  const [selectedHospital, setSelectedHospital] = useState<Hospital | any | null>(null);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | any | null>(null);
-  const [isBookingFlow, setIsBookingFlow] = useState(false);
-  const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
-  const [loginPrompt, setLoginPrompt] = useState(false);
+  }, [fetchedHospitals]);
 
-  const [lastCreatedToken, setLastCreatedToken] = useState<any>(null);
+  // Handle lazy placeholder transitions once Firestore fetchedHospitals array completes
+  useEffect(() => {
+    if (fetchedHospitals.length === 0) return;
+    
+    if (selectedHospital && selectedHospital._isPlaceholder) {
+      const realHosp = fetchedHospitals.find(h => h.id === selectedHospital.id);
+      if (realHosp) {
+        setSelectedHospitalRaw(realHosp);
+        if (selectedDoctor && selectedDoctor._isPlaceholder) {
+          const doctorsList = realHosp.doctors || realHosp.specialists || [];
+          const realDoc = doctorsList.find((d: any) => d.id === selectedDoctor.id);
+          if (realDoc) {
+            setSelectedDoctorRaw(realDoc);
+          }
+        }
+      }
+    }
+  }, [fetchedHospitals, selectedHospital, selectedDoctor]);
 
   // Handle book click
   const handleBookToken = (doctorData: any) => {
@@ -2240,8 +2418,7 @@ export default function App() {
           tokenId={deepLinkTokenId} 
           onBack={() => {
             setDeepLinkTokenId(null);
-            window.history.pushState(null, '', '/');
-            setViewState('hero');
+            navigate('/');
           }} 
         />
       );
@@ -2252,8 +2429,7 @@ export default function App() {
           hospitalId={deepLinkLiveHospitalId} 
           onBack={() => {
             setDeepLinkLiveHospitalId(null);
-            window.history.pushState(null, '', '/');
-            setViewState('hero');
+            navigate('/');
           }} 
         />
       );
@@ -2447,9 +2623,7 @@ export default function App() {
           <FooterPages 
             activePage={viewState} 
             onBack={() => {
-              window.history.pushState(null, '', '/');
-              const pathRoutingEvent = new PopStateEvent('popstate');
-              window.dispatchEvent(pathRoutingEvent);
+              navigate('/');
             }} 
           />
         );

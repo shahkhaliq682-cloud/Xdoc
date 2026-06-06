@@ -22,6 +22,31 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [language, setLanguage] = useState<'EN' | 'UR'>('EN');
 
+  const openInvoiceModal = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('invoice', 'true');
+    window.history.pushState(null, '', url.pathname + url.search);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  const closeInvoiceModal = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invoice');
+    window.history.pushState(null, '', url.pathname + url.search);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  useEffect(() => {
+    const handleInvoicePopState = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      setIsInvoiceOpen(searchParams.get('invoice') === 'true');
+    };
+
+    handleInvoicePopState();
+    window.addEventListener('popstate', handleInvoicePopState);
+    return () => window.removeEventListener('popstate', handleInvoicePopState);
+  }, []);
+
   // Dynamic queue stats
   const [queuePos, setQueuePos] = useState<number>(0);
   const [waitTime, setWaitTime] = useState<number>(0);
@@ -248,7 +273,7 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
               {(token.status === 'completed' || token.status === 'Completed') && (
                 <div className="pt-3">
                   <button 
-                    onClick={() => setIsInvoiceOpen(true)}
+                    onClick={openInvoiceModal}
                     className="px-6 py-3 bg-[#0B5FFF] hover:bg-[#0B5FFF]/90 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-[#0B5FFF]/20 active:scale-95"
                   >
                     <span>🧾 {u ? 'انوائس حاصل کریں' : 'Get Invoice'}</span>
@@ -430,7 +455,7 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
 
       <InvoiceModal 
         isOpen={isInvoiceOpen} 
-        onClose={() => setIsInvoiceOpen(false)} 
+        onClose={closeInvoiceModal} 
         token={token} 
         hospitalData={hospital} 
       />

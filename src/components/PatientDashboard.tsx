@@ -82,6 +82,41 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [expiredNotificationToken, setExpiredNotificationToken] = useState<any>(null);
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [selectedInvoiceToken, setSelectedInvoiceToken] = useState<any>(null);
+
+  const openInvoiceModal = (token: any) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('invoice', token.id);
+    window.history.pushState(null, '', url.pathname + url.search);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  const closeInvoiceModal = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invoice');
+    window.history.pushState(null, '', url.pathname + url.search);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  useEffect(() => {
+    const handleInvoicePopState = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const invoiceTokenId = searchParams.get('invoice');
+      if (invoiceTokenId) {
+        const found = patientTokens.find(t => t.id === invoiceTokenId);
+        if (found) {
+          setSelectedInvoiceToken(found);
+          setIsInvoiceOpen(true);
+          return;
+        }
+      }
+      setIsInvoiceOpen(false);
+      setSelectedInvoiceToken(null);
+    };
+
+    handleInvoicePopState();
+    window.addEventListener('popstate', handleInvoicePopState);
+    return () => window.removeEventListener('popstate', handleInvoicePopState);
+  }, [patientTokens]);
   const prevTokensRef = useRef<any[]>([]);
 
   // Pull to refresh simulation
@@ -831,7 +866,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
                       {(token.status === 'completed' || token.status === 'Completed') && (
                         <button 
-                          onClick={() => { setSelectedInvoiceToken(token); setIsInvoiceOpen(true); }}
+                          onClick={() => openInvoiceModal(token)}
                           className="text-[10px] font-black text-primary hover:underline cursor-pointer"
                         >
                           {language === 'UR' ? 'انوائس دیکھیں' : 'Invoice'}
@@ -939,7 +974,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
       {/* Invoice Modal Integration */}
       <InvoiceModal 
         isOpen={isInvoiceOpen} 
-        onClose={() => { setIsInvoiceOpen(false); setSelectedInvoiceToken(null); }} 
+        onClose={closeInvoiceModal} 
         token={selectedInvoiceToken} 
       />
 

@@ -119,6 +119,31 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const [newTokenId, setNewTokenId] = useState<string | null>(null);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [showReceptionMode, setShowReceptionMode] = useState(false);
+
+  const openReceptionMode = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('reception', 'true');
+    window.history.pushState(null, '', url.pathname + url.search);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  const closeReceptionMode = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('reception');
+    window.history.pushState(null, '', url.pathname + url.search);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  useEffect(() => {
+    const handleReceptionPopState = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      setShowReceptionMode(searchParams.get('reception') === 'true');
+    };
+
+    handleReceptionPopState();
+    window.addEventListener('popstate', handleReceptionPopState);
+    return () => window.removeEventListener('popstate', handleReceptionPopState);
+  }, []);
   const [isLive, setIsLive] = useState(true);
 
   // Doctors & Walk-in systems states
@@ -603,7 +628,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       <div className="p-8 space-y-10">
         {/* Reception Mode Button */}
         <button 
-          onClick={() => setShowReceptionMode(true)}
+          onClick={openReceptionMode}
           className="w-full bg-slate-950 text-white p-8 rounded-[48px] flex items-center justify-between group hover:scale-[1.01] transition-all shadow-2xl relative overflow-hidden"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -mr-32 -mt-32 blur-3xl" />
@@ -755,7 +780,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                           <h4 className="text-lg font-bold text-slate-900">🎫 Aaj koi token nahi aaya.</h4>
                           <p className="text-slate-500 text-sm font-medium">Patients aane ka intezaar hai!</p>
                           <button 
-                            onClick={() => setShowReceptionMode(true)}
+                            onClick={openReceptionMode}
                             className="px-6 py-3 bg-white text-primary border-2 border-primary rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
                           >
                             Open Reception Mode
@@ -2252,7 +2277,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           {showReceptionMode && (
             <ReceptionMode 
               hospitalData={hospitalData}
-              onClose={() => setShowReceptionMode(false)}
+              onClose={closeReceptionMode}
               tokens={tokens}
               updateTokenStatus={updateTokenStatus}
               doctors={doctors}
