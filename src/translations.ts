@@ -20,7 +20,7 @@ export const translations = {
         joinHospital: 'Join as Hospital',
       },
       hero: {
-        badge: '🏥 Pakistan\'s #1 Healthcare Platform',
+        badge: 'Pakistan\'s #1 Healthcare Platform',
         title1: 'Find Your',
         title2: 'Doctor',
         title3: 'From Home.',
@@ -587,7 +587,7 @@ export const translations = {
     },
     homeRedesign: {
       hero: {
-        badge: '🏥 پاکستان کا نمبر 1 ہیلتھ کیئر پلیٹ فارم',
+        badge: 'پاکستان کا نمبر 1 ہیلتھ کیئر پلیٹ فارم',
         title1: 'اپنا ڈاکٹر',
         title2: 'ڈھونڈیں',
         title3: 'گھر بیٹھے۔',

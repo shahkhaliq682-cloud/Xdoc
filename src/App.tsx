@@ -237,7 +237,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                   </button>
                   <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="md:hidden p-2 text-slate-600 hover:bg-slate-100/50 rounded-xl transition-colors"
+                    className="hidden p-2 text-slate-600 hover:bg-slate-100/50 rounded-xl transition-colors"
                   >
                     {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                   </button>
@@ -1980,6 +1980,8 @@ export default function App() {
   
   const [deepLinkTokenId, setDeepLinkTokenId] = useState<string | null>(null);
   const [deepLinkLiveHospitalId, setDeepLinkLiveHospitalId] = useState<string | null>(null);
+  const [patientPreferredTab, setPatientPreferredTab] = useState<'hospitals' | 'history' | 'profile'>('hospitals');
+  const [landingSearchQuery, setLandingSearchQuery] = useState('');
 
   // Path Checking deepLink and legal routes on Initial Startup and History Changes
   useEffect(() => {
@@ -2308,8 +2310,13 @@ export default function App() {
               onSignUp={() => setViewState('auth_choice')} 
               onLogin={() => setViewState('login')}
               onSearch={(q) => {
-                // Future: add search logic here or set view to patient results
-                console.log("Search query:", q);
+                setLandingSearchQuery(q);
+                if (userData) {
+                  setViewState('patient_home');
+                  setPatientPreferredTab('hospitals');
+                } else {
+                  setViewState('login');
+                }
               }}
               onHospitalClick={(h) => setSelectedHospital(h)}
               onNavigate={(view, path) => {
@@ -2426,6 +2433,9 @@ export default function App() {
             hospitals={fetchedHospitals}
             onSignOut={() => handleLogoutAction()} 
             onHospitalClick={(h) => setSelectedHospital(h)}
+            preferredTab={patientPreferredTab}
+            onTabChange={setPatientPreferredTab}
+            initialSearchQuery={landingSearchQuery}
           />
         );
       case 'privacy':
@@ -2555,11 +2565,7 @@ export default function App() {
 
       {/* WhatsApp Floating Support Button */}
       <div 
-        className={`fixed z-[9999] flex flex-col items-center justify-center transition-all duration-300 ${
-          (viewState === 'patient_home' || viewState === 'admin_dashboard')
-            ? 'bottom-[80px] lg:bottom-[20px] right-[16px] md:right-[20px]' 
-            : 'bottom-[16px] md:bottom-[20px] right-[16px] md:right-[20px]'
-        }`}
+        className="fixed bottom-[104px] md:bottom-[24px] right-4 z-[100] flex flex-col items-center justify-center transition-all duration-300 pb-safe"
       >
         <div className="relative group flex flex-col items-center justify-center">
           {/* Tooltip on Hover */}
@@ -2592,6 +2598,91 @@ export default function App() {
           {language === 'UR' ? 'سپورٹ' : 'Support'}
         </span>
       </div>
+
+      {/* Permanent Mobile Bottom Navigation Bar */}
+      {((userData && userData.role === 'patient') || (!userData && ['hero', 'login', 'auth_choice', 'privacy', 'terms', 'contact', 'about', 'content_policy'].includes(viewState))) && (
+        <div className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-40 py-3 pb-safe-area flex justify-around items-center shadow-[0_-4px_24px_rgba(15,23,42,0.06)]">
+          {[
+            {
+              id: 'home',
+              label: language === 'UR' ? 'ہوم' : 'Home',
+              icon: Home,
+              active: viewState === 'hero' && !selectedHospital,
+              onClick: () => {
+                setViewState('hero');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            },
+            {
+              id: 'tokens',
+              label: language === 'UR' ? 'میرے ٹوکن' : 'My Tokens',
+              icon: Ticket,
+              active: viewState === 'patient_home' && patientPreferredTab === 'history',
+              onClick: () => {
+                if (userData) {
+                  setViewState('patient_home');
+                  setPatientPreferredTab('history');
+                } else {
+                  setViewState('login');
+                }
+              }
+            },
+            {
+              id: 'hospitals',
+              label: language === 'UR' ? 'ہسبتال' : 'Hospitals',
+              icon: Building2,
+              active: (viewState === 'patient_home' && patientPreferredTab === 'hospitals') && !selectedHospital,
+              onClick: () => {
+                if (userData) {
+                  setViewState('patient_home');
+                  setPatientPreferredTab('hospitals');
+                  setSelectedHospital(null);
+                } else {
+                  setViewState('login');
+                }
+              }
+            },
+            {
+              id: 'profile',
+              label: language === 'UR' ? 'پروفائل' : 'Profile',
+              icon: User,
+              active: viewState === 'patient_home' && patientPreferredTab === 'profile',
+              onClick: () => {
+                if (userData) {
+                  setViewState('patient_home');
+                  setPatientPreferredTab('profile');
+                } else {
+                  setViewState('login');
+                }
+              }
+            }
+          ].map((tab) => {
+            const IconComponent = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={tab.onClick}
+                className="flex flex-col items-center justify-center py-1 px-3.5 rounded-2xl transition-all duration-200 cursor-pointer active:scale-95"
+              >
+                <IconComponent 
+                  size={20} 
+                  strokeWidth={tab.active ? 2.5 : 1.75} 
+                  className={`transition-colors duration-200 ${tab.active ? 'text-[#0B5FFF]' : 'text-slate-400'}`} 
+                />
+                <span className={`text-[10px] font-bold mt-1 tracking-wide transition-colors duration-200 ${tab.active ? 'text-[#0B5FFF]' : 'text-slate-500'}`}>
+                  {tab.label}
+                </span>
+                {tab.active && (
+                  <motion.div 
+                    layoutId="activeTabIndicator"
+                    className="w-1.5 h-1.5 rounded-full bg-[#0B5FFF] mt-0.5" 
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

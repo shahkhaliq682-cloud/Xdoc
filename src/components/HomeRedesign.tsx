@@ -155,10 +155,10 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#F1F5F9] border border-[#CBD5E0] rounded-full mb-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50/50 border border-blue-100/80 rounded-full mb-8 shadow-[0_2px_12px_rgba(11,95,255,0.03)]"
           >
-            <ShieldCheck size={14} className="text-slate-600" />
-            <span className="text-[13px] font-medium text-slate-600">{h.hero.badge}</span>
+            <ShieldCheck size={14} className="text-[#0B5FFF]" />
+            <span className="text-[12px] font-bold text-slate-700 tracking-wide uppercase">{h.hero.badge}</span>
           </motion.div>
 
           {/* Heading */}
@@ -168,62 +168,124 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
             transition={{ delay: 0.1 }}
             className="max-w-[800px] mb-8"
           >
-            <h1 className="text-5xl md:text-[72px] font-[900] text-[#0B1D35] tracking-tight leading-[1.1] mb-8">
+            <h1 className="text-4xl md:text-[64px] font-bold text-[#0B1D35] tracking-tight leading-[1.15] mb-6">
               {h.hero.title1} {h.hero.title2}<br />
               <span className="text-[#0B5FFF]">{h.hero.title3}</span>
             </h1>
-            <p className="text-lg md:text-[22px] text-[#64748B] leading-[1.6] max-w-[600px] mx-auto font-medium">
+            <p className="text-base md:text-lg text-slate-700 leading-[1.6] max-w-[620px] mx-auto font-medium">
               {language === 'UR' 
                 ? 'پاکستان کی نمبر 1 ڈیجیٹل ہیلتھ کیئر ایپ۔ ڈاکٹرز کو تلاش کریں اور سیکنڈز میں ٹوکن بک کریں۔'
-                : 'Pakistan #1 Digital Healthcare App. Find top doctors and book tokens in seconds.'
+                : 'Pakistan\'s #1 Digital Healthcare App. Find top doctors and book tokens in seconds.'
               }
             </p>
           </motion.div>
 
-          {/* Main Search Bar - Focal Point */}
+          {/* Optimized Search Container */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="w-full max-w-[720px] mb-6"
+            className="w-full max-w-[720px] mb-8"
           >
-            <div className="flex flex-col md:flex-row items-center bg-white p-2 md:p-3 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-slate-100 focus-within:border-[#0B5FFF]/30 transition-all gap-2 md:gap-4">
-              <div className="flex-1 flex items-center px-4 w-full h-[60px] md:h-auto border-b md:border-b-0 md:border-r border-slate-100">
-                <Search className="text-[#0B5FFF] mr-3" size={24} strokeWidth={2.5} />
-                <input 
-                  type="text" 
-                  placeholder={h.hero.searchPlaceholder}
-                  value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && onSearch(searchVal)}
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-lg text-slate-800 placeholder-slate-400 font-semibold"
-                />
+            <div className={`p-4 md:p-5 bg-white rounded-[28px] border border-slate-200/60 shadow-[0_16px_48px_rgba(11,95,255,0.04)] focus-within:border-[#0B5FFF]/40 transition-all text-left ${language === 'UR' ? 'md:text-right' : 'md:text-left'}`}>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                {/* Field 1: Doctor/Hospital Search */}
+                <div className="md:col-span-8 flex flex-col">
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1 block">
+                    {language === 'UR' ? 'آپ کس کی تلاش کر رہے ہیں؟' : 'What are you looking for?'}
+                  </label>
+                  <div className="flex items-center px-4 bg-slate-50/60 border border-slate-200/40 hover:border-slate-200 focus-within:bg-white focus-within:border-[#0B5FFF]/50 h-[56px] rounded-2xl transition-all">
+                    <Search className="text-[#0B5FFF] mr-3 shrink-0" size={18} strokeWidth={2.5} />
+                    <input 
+                      type="text" 
+                      placeholder={h.hero.searchPlaceholder}
+                      value={searchVal}
+                      onChange={(e) => setSearchVal(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && onSearch(searchVal)}
+                      className="flex-1 bg-transparent border-none p-0 focus:ring-0 text-sm text-slate-800 placeholder-slate-400 font-semibold"
+                    />
+                  </div>
+                </div>
+
+                {/* Field 2: Location Selector */}
+                <div className="md:col-span-4 flex flex-col">
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1 block">
+                    {language === 'UR' ? 'آپ کا شہر' : 'Location'}
+                  </label>
+                  <div className="flex items-center justify-between px-4 bg-slate-50/60 border border-slate-200/40 h-[56px] rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="text-slate-400 shrink-0" size={18} />
+                      <span className="text-slate-700 font-bold text-sm">Karachi</span>
+                    </div>
+                    <span className="text-[10px] font-black bg-blue-100 text-[#0B5FFF] px-2 py-0.5 rounded-full uppercase tracking-wider">PK</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center px-4 w-full md:w-auto h-[60px] md:h-auto">
-                <MapPin className="text-slate-400 mr-2" size={20} />
-                <span className="text-slate-700 font-bold">Karachi</span>
+
+              {/* Spaced Search Button */}
+              <div className="mt-5 flex justify-end">
+                <button 
+                  onClick={() => onSearch(searchVal)}
+                  className="w-full md:w-auto px-10 py-3.5 bg-[#0B5FFF] hover:bg-[#0B5FFF]/95 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-blue-500/15 active:scale-[0.98] duration-200"
+                >
+                  {h.hero.searchBtn}
+                </button>
               </div>
-              <button 
-                onClick={() => onSearch(searchVal)}
-                className="w-full md:w-auto px-10 py-4 bg-[#0B5FFF] text-white font-bold rounded-[18px] hover:bg-blue-600 transition-all text-base shadow-lg shadow-blue-500/20 active:scale-95"
-              >
-                {h.hero.searchBtn}
-              </button>
             </div>
           </motion.div>
 
-          {/* Quick Categories */}
+          {/* Quick Access Categories (Above the Fold) */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-3 mb-12"
+            className="w-full max-w-[720px] mb-12 text-left"
           >
-            {['General Physician', 'Specialist', 'Dentist', 'Emergency'].map((cat, i) => (
-              <button key={i} className="px-5 py-2.5 bg-white border border-slate-200 rounded-full text-sm font-bold text-slate-600 hover:border-[#0B5FFF] hover:text-[#0B5FFF] transition-all shadow-sm">
-                {cat}
-              </button>
-            ))}
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center md:text-left px-1">
+              {language === 'UR' ? 'فوری رسائی' : 'Quick Access Categories'}
+            </p>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0 scroll-smooth">
+              {[
+                { 
+                  name: language === 'UR' ? 'عام معالج' : 'General Physician', 
+                  query: 'General Physician', 
+                  icon: Stethoscope,
+                  color: 'bg-blue-50/70 border-blue-100 text-[#0B5FFF] hover:bg-blue-50' 
+                },
+                { 
+                  name: language === 'UR' ? 'ماہر امراض' : 'Specialist', 
+                  query: 'Specialist', 
+                  icon: Activity,
+                  color: 'bg-pink-50/70 border-pink-100 text-pink-600 hover:bg-pink-50' 
+                },
+                { 
+                  name: language === 'UR' ? 'دندان ساز' : 'Dentist', 
+                  query: 'Dentist', 
+                  icon: Check, // Tooth is Check
+                  color: 'bg-indigo-50/70 border-indigo-100 text-indigo-600 hover:bg-indigo-50' 
+                },
+                { 
+                  name: language === 'UR' ? 'ایمرجنسی' : 'Emergency', 
+                  query: 'Emergency', 
+                  icon: ShieldCheck,
+                  color: 'bg-rose-50/70 border-rose-100 text-rose-600 hover:bg-rose-50' 
+                }
+              ].map((cat, i) => {
+                const IconComp = cat.icon;
+                return (
+                  <motion.button 
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    key={i} 
+                    onClick={() => onSearch(cat.query)}
+                    className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl border ${cat.color} font-bold text-xs uppercase tracking-wider shadow-sm transition-all whitespace-nowrap shrink-0`}
+                  >
+                    <IconComp size={16} strokeWidth={2.5} />
+                    <span>{cat.name}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
           </motion.div>
 
           {/* Real App Preview - Glassmorphism UI */}

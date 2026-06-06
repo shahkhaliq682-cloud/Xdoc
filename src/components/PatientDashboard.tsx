@@ -33,19 +33,44 @@ interface PatientDashboardProps {
   hospitals: any[];
   onHospitalClick: (h: any) => void;
   onSignOut: () => void;
+  preferredTab?: 'hospitals' | 'history' | 'profile';
+  onTabChange?: (tab: 'hospitals' | 'history' | 'profile') => void;
+  initialSearchQuery?: string;
 }
 
 const PatientDashboard: React.FC<PatientDashboardProps> = ({ 
   userData, 
   hospitals, 
   onHospitalClick,
-  onSignOut
+  onSignOut,
+  preferredTab,
+  onTabChange,
+  initialSearchQuery
 }) => {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'hospitals' | 'history' | 'profile'>('hospitals');
+  const [activeTab, setActiveTabInner] = useState<'hospitals' | 'history' | 'profile'>(preferredTab || 'hospitals');
   const [hospitalType, setHospitalType] = useState<'All' | 'Private Hospital' | 'Private Clinic' | 'Govt. Hospital'>('All');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
+
+  useEffect(() => {
+    if (preferredTab && preferredTab !== activeTab) {
+      setActiveTabInner(preferredTab);
+    }
+  }, [preferredTab]);
+
+  useEffect(() => {
+    if (initialSearchQuery !== undefined) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
+
+  const setActiveTab = (tab: 'hospitals' | 'history' | 'profile') => {
+    setActiveTabInner(tab);
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+  };
   const [patientTokens, setPatientTokens] = useState<any[]>([]);
   const [allTodayTokens, setAllTodayTokens] = useState<any[]>([]);
   const [showDataWarning, setShowDataWarning] = useState(false);
