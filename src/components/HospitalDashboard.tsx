@@ -99,7 +99,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   const { t, language, setLanguage } = useLanguage();
   const { toast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'doctors' | 'search' | 'data' | 'staff' | 'profile' | 'invoices'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'doctors' | 'search' | 'data' | 'staff' | 'profile' | 'invoices' | 'appointments' | 'prescriptions' | 'medicalRecords'>('home');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [hospitalData, setHospitalData] = useState(initialHospitalData);
   const [doctors, setDoctors] = useState<any[]>([]);
@@ -596,13 +596,25 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   const d = t.dashboard;
 
+  const enabledFeatures = hospitalData?.enabledFeatures || {
+    tokenSystem: true,
+    appointments: false,
+    prescriptions: false,
+    medicalRecords: false,
+    doctorManagement: true,
+    patientManagement: true
+  };
+
   const navItems = [
     { id: 'home', icon: LayoutDashboard, label: t.dashboard.nav.dashboard || 'DASHBOARD' },
-    { id: 'doctors', icon: Stethoscope, label: 'DOCTORS • ڈاکٹرز' },
+    ...(enabledFeatures.appointments ? [{ id: 'appointments', icon: Clock, label: language === 'UR' ? 'اپوائنٹمنٹس' : 'Appointments • اپوائنٹمنٹس' }] : []),
+    ...(enabledFeatures.doctorManagement ? [{ id: 'doctors', icon: Stethoscope, label: 'DOCTORS • ڈاکٹرز' }] : []),
     { id: 'search', icon: Search, label: t.dashboard.search || 'SEARCH' },
-    { id: 'data', icon: Activity, label: t.patient.booking.patients || 'PATIENTS' },
+    ...(enabledFeatures.patientManagement ? [{ id: 'data', icon: Activity, label: t.patient.booking.patients || 'PATIENTS' }] : []),
+    ...(enabledFeatures.prescriptions ? [{ id: 'prescriptions', icon: FileText, label: language === 'UR' ? 'نسخہ جات' : 'Prescriptions • نسخہ جات' }] : []),
+    ...(enabledFeatures.medicalRecords ? [{ id: 'medicalRecords', icon: ShieldCheck, label: language === 'UR' ? 'طبی ریکارڈ' : 'Medical Records • طبی ریکارڈ' }] : []),
     { id: 'staff', icon: Users, label: t.dashboard.nav.staff || 'STAFF' },
-    { id: 'invoices', icon: FileText, label: language === 'UR' ? 'انوائسز' : 'Invoices' },
+    ...(enabledFeatures.tokenSystem ? [{ id: 'invoices', icon: FileText, label: language === 'UR' ? 'انوائسز' : 'Invoices' }] : []),
     { id: 'profile', icon: UserSquare2, label: t.patient.booking.editProfile }
   ];
 
@@ -1899,6 +1911,440 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
   };
 
 
+  // Safe feature tab reset hook
+  useEffect(() => {
+    if (activeTab === 'doctors' && !enabledFeatures.doctorManagement) {
+      setActiveTab('home');
+    } else if (activeTab === 'data' && !enabledFeatures.patientManagement) {
+      setActiveTab('home');
+    } else if (activeTab === 'invoices' && !enabledFeatures.tokenSystem) {
+      setActiveTab('home');
+    } else if (activeTab === 'appointments' && !enabledFeatures.appointments) {
+      setActiveTab('home');
+    } else if (activeTab === 'prescriptions' && !enabledFeatures.prescriptions) {
+      setActiveTab('home');
+    } else if (activeTab === 'medicalRecords' && !enabledFeatures.medicalRecords) {
+      setActiveTab('home');
+    }
+  }, [enabledFeatures, activeTab]);
+
+  // Appointments Screen
+  const renderAppointmentsTab = () => {
+    const todayStr = getKarachiDateStr(new Date());
+    const appts = tokens.filter(t => t.appointmentDate === todayStr || t.bookingDate === todayStr);
+    
+    return (
+      <div className="p-8 space-y-8 animate-in fade-in duration-300 text-slate-800">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[#0F2236] text-white p-8 rounded-[32px] shadow-lg relative overflow-hidden gap-4">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl rounded-full" />
+          <div>
+            <h2 className="text-2xl font-bold">OPD Appointments Board</h2>
+            <p className="text-slate-300 text-xs mt-1 uppercase tracking-widest font-semibold">Active appointments and pre-bookings mapped in real-time</p>
+          </div>
+          <Clock size={36} className="text-primary animate-pulse" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Appointments</p>
+            <h3 className="text-2xl font-black text-slate-900">{appts.length}</h3>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pending Checkup</p>
+            <h3 className="text-2xl font-black text-amber-500">
+              {appts.filter(t => (t.status || '').toLowerCase() === 'waiting' || (t.status || '').toLowerCase() === 'active').length}
+            </h3>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Completed Consultation</p>
+            <h3 className="text-2xl font-black text-emerald-500">
+              {appts.filter(t => (t.status || '').toLowerCase() === 'completed').length}
+            </h3>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-100">
+            <h3 className="font-bold text-slate-900">Today's Queue Roster</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-600">
+              <thead className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <tr>
+                  <th className="px-6 py-4">Token / Patient</th>
+                  <th className="px-6 py-4">Assigned Doctor</th>
+                  <th className="px-6 py-4">Appt Slot</th>
+                  <th className="px-6 py-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {appts.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-slate-400 font-medium">No appointments scheduled for today.</td>
+                  </tr>
+                ) : (
+                  appts.map(appt => (
+                    <tr key={appt.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-slate-800">#{appt.tokenNumber} - {appt.patientName}</div>
+                        <div className="text-xs text-slate-400">{appt.phone || '03xxxxxxxxx'}</div>
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-slate-700">Dr. {appt.doctorName}</td>
+                      <td className="px-6 py-4 font-mono text-xs">{appt.appointmentTime || appt.bookingTime || 'Scheduled'}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold capitalize ${
+                          (appt.status || '').toLowerCase() === 'completed' 
+                            ? 'bg-emerald-50 text-emerald-600' 
+                            : (appt.status || '').toLowerCase() === 'waiting'
+                            ? 'bg-amber-50 text-amber-600'
+                            : 'bg-slate-50 text-slate-500'
+                        }`}>
+                          {appt.status || 'Active'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Prescriptions state and view
+  const [rxForm, setRxForm] = useState({
+    patientName: '',
+    doctorId: '',
+    medName: '',
+    dosage: '1-0-1',
+    duration: '5 days',
+    sigs: 'Take after meal'
+  });
+  const [issuedRxs, setIssuedRxs] = useState<any[]>([]);
+
+  const handleIssueRx = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rxForm.patientName || !rxForm.doctorId || !rxForm.medName) {
+      toast.warning("Please fill all required Prescription fields.");
+      return;
+    }
+    const docSelected = doctors.find(d => d.id === rxForm.doctorId);
+    const newRx = {
+      id: Date.now().toString(),
+      patientName: rxForm.patientName,
+      doctorName: docSelected ? docSelected.name : 'Primary Physician',
+      medName: rxForm.medName,
+      dosage: rxForm.dosage,
+      duration: rxForm.duration,
+      sigs: rxForm.sigs,
+      date: new Date().toLocaleDateString()
+    };
+    setIssuedRxs([newRx, ...issuedRxs]);
+    toast.success("Digital Prescription generated & synchronized successfully!");
+    setRxForm({ patientName: '', doctorId: '', medName: '', dosage: '1-0-1', duration: '5 days', sigs: 'Take after meal' });
+  };
+
+  const renderPrescriptionsTab = () => {
+    return (
+      <div className="p-8 space-y-8 animate-in fade-in duration-300 text-slate-800">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[#0F2236] text-white p-8 rounded-[32px] shadow-lg relative overflow-hidden gap-4">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 blur-3xl rounded-full" />
+          <div>
+            <h2 className="text-2xl font-bold">Prescription Central</h2>
+            <p className="text-slate-300 text-xs mt-1 uppercase tracking-widest font-semibold flex items-center gap-1">
+              <ShieldCheck size={12} className="text-health-teal" /> Fully Authorized Digital RX Pad and logs
+            </p>
+          </div>
+          <FileText size={36} className="text-health-teal animate-pulse" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm h-fit">
+            <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <Plus className="text-primary" size={18} /> Issue New Prescription
+            </h3>
+            <form onSubmit={handleIssueRx} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Patient Name *</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Shayan Khan"
+                  value={rxForm.patientName}
+                  onChange={e => setRxForm({ ...rxForm, patientName: e.target.value })}
+                  className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Select Physician *</label>
+                <select
+                  required
+                  value={rxForm.doctorId}
+                  onChange={e => setRxForm({ ...rxForm, doctorId: e.target.value })}
+                  className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800"
+                >
+                  <option value="">-- Choose Doctor --</option>
+                  {doctors.map(d => (
+                    <option key={d.id} value={d.id}>Dr. {d.name} ({d.specialty || 'General Physician'})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Medication Name *</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Panadol 500mg"
+                  value={rxForm.medName}
+                  onChange={e => setRxForm({ ...rxForm, medName: e.target.value })}
+                  className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800 font-sans"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Dosage Format</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. 1-0-1"
+                    value={rxForm.dosage}
+                    onChange={e => setRxForm({ ...rxForm, dosage: e.target.value })}
+                    className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Duration</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. 5 days"
+                    value={rxForm.duration}
+                    onChange={e => setRxForm({ ...rxForm, duration: e.target.value })}
+                    className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Instructions / Note</label>
+                <textarea 
+                  placeholder="e.g. Take twice daily with warm water"
+                  value={rxForm.sigs}
+                  onChange={e => setRxForm({ ...rxForm, sigs: e.target.value })}
+                  className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white h-20 transition-all text-slate-800"
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all text-xs uppercase tracking-widest"
+              >
+                Issue Digital RX
+              </button>
+            </form>
+          </div>
+
+          <div className="lg:col-span-3 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+            <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <History className="text-slate-400" size={18} /> Issued Prescriptions Log
+            </h3>
+            <div className="space-y-4">
+              {issuedRxs.length === 0 ? (
+                <div className="py-20 text-center text-slate-400 text-xs font-semibold uppercase tracking-widest">No prescriptions issued in this session. Create one on the left.</div>
+              ) : (
+                issuedRxs.map(rx => (
+                  <div key={rx.id} className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 relative group overflow-hidden">
+                    <div className="absolute top-0 right-0 w-2 h-full bg-emerald-500" />
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-base">{rx.patientName}</h4>
+                        <p className="text-[10px] text-slate-400 font-medium">PHY: Dr. {rx.doctorName}</p>
+                      </div>
+                      <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded-lg">{rx.date}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 border-t border-slate-200/60 pt-4">
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Rx Medicine</p>
+                        <p className="text-xs font-bold text-slate-800 mt-1">{rx.medName}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Dosage</p>
+                        <p className="text-xs font-bold text-teal-600 mt-1">{rx.dosage}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Duration</p>
+                        <p className="text-xs font-bold text-indigo-500 mt-1">{rx.duration}</p>
+                      </div>
+                    </div>
+                    {rx.sigs && (
+                      <div className="mt-3 text-xs bg-white p-2 border border-slate-100 rounded-lg text-slate-500 font-semibold italic">
+                        Note: "{rx.sigs}"
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // EHR states and views
+  const [recordForm, setRecordForm] = useState({
+    patientName: '',
+    vitalsTemp: '98.4 F',
+    vitalsBp: '120/80',
+    diagnoses: '',
+    labRecommend: ''
+  });
+  const [medRecords, setMedRecords] = useState<any[]>([
+    { id: '1', patientName: 'Kamran Shah', temp: '99 F', bp: '130/85', diagnoses: 'Mild Seasonal Influenza', labRecommend: 'Complete blood count (CBC)', date: '04-Jun-2026' },
+  ]);
+
+  const handleCreateRecord = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recordForm.patientName || !recordForm.diagnoses) {
+      toast.warning("Please fill required Medical Record fields.");
+      return;
+    }
+    const newRecord = {
+      id: Date.now().toString(),
+      patientName: recordForm.patientName,
+      temp: recordForm.vitalsTemp,
+      bp: recordForm.vitalsBp,
+      diagnoses: recordForm.diagnoses,
+      labRecommend: recordForm.labRecommend || 'None',
+      date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+    };
+    setMedRecords([newRecord, ...medRecords]);
+    toast.success("Certified Medical Record archived successfully!");
+    setRecordForm({ patientName: '', vitalsTemp: '98.4 F', vitalsBp: '120/80', diagnoses: '', labRecommend: '' });
+  };
+
+  const renderMedicalRecordsTab = () => {
+    return (
+      <div className="p-8 space-y-8 animate-in fade-in duration-300 text-slate-800">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[#0F2236] text-white p-8 rounded-[32px] shadow-lg relative overflow-hidden gap-4">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl rounded-full" />
+          <div>
+            <h2 className="text-2xl font-bold">Electronic Health Records (EHR)</h2>
+            <p className="text-slate-300 text-xs mt-1 uppercase tracking-widest font-semibold flex items-center gap-1">
+              <ShieldCheck size={12} className="text-[#00C9B1]" /> Standard digital health archive
+            </p>
+          </div>
+          <Activity size={36} className="text-primary animate-pulse" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm h-fit">
+            <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <ShieldCheck className="text-primary" size={18} /> Record New Entry
+            </h3>
+            <form onSubmit={handleCreateRecord} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Patient Name *</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Amina Begum"
+                  value={recordForm.patientName}
+                  onChange={e => setRecordForm({ ...recordForm, patientName: e.target.value })}
+                  className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Body Temperature</label>
+                  <input 
+                    type="text" 
+                    placeholder="98.4 F"
+                    value={recordForm.vitalsTemp}
+                    onChange={e => setRecordForm({ ...recordForm, vitalsTemp: e.target.value })}
+                    className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Blood Pressure</label>
+                  <input 
+                    type="text" 
+                    placeholder="120/80"
+                    value={recordForm.vitalsBp}
+                    onChange={e => setRecordForm({ ...recordForm, vitalsBp: e.target.value })}
+                    className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Clinical Diagnosis *</label>
+                <textarea 
+                  required
+                  placeholder="e.g. Acute bronchitis with airway resistance..."
+                  value={recordForm.diagnoses}
+                  onChange={e => setRecordForm({ ...recordForm, diagnoses: e.target.value })}
+                  className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white h-20 transition-all text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Recommended Lab Tests</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Chest X-Ray / Sputum Culture"
+                  value={recordForm.labRecommend}
+                  onChange={e => setRecordForm({ ...recordForm, labRecommend: e.target.value })}
+                  className="w-full text-sm font-semibold p-3.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary focus:bg-white transition-all text-slate-800"
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full py-4 bg-[#0F2236] text-white font-black rounded-2xl shadow-lg border border-white/5 hover:scale-[1.01] active:scale-95 transition-all text-xs uppercase tracking-widest"
+              >
+                Archive to EHR
+              </button>
+            </form>
+          </div>
+
+          <div className="lg:col-span-3 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+            <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <History className="text-slate-400" size={18} /> Electronic EHR Archive
+            </h3>
+            <div className="space-y-4">
+              {medRecords.map(rc => (
+                <div key={rc.id} className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 relative group overflow-hidden">
+                  <div className="absolute top-0 right-0 w-2 h-full bg-primary" />
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-base">{rc.patientName}</h4>
+                      <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1 font-bold">
+                        <span>TEMP: {rc.temp}</span>
+                        <span>•</span>
+                        <span>BP: {rc.bp}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-lg">{rc.date}</span>
+                  </div>
+                  <div className="border-t border-slate-200/60 pt-4 space-y-3">
+                    <div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Clinical Impression / Diagnosis</p>
+                      <p className="text-xs font-medium text-slate-700 mt-1 bg-white p-3 rounded-xl border border-slate-100">{rc.diagnoses}</p>
+                    </div>
+                    {rc.labRecommend && rc.labRecommend !== 'None' && (
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Prescribed Investigations</p>
+                        <p className="text-xs font-bold text-indigo-500 mt-1 flex items-center gap-1">
+                          <Activity size={12} /> {rc.labRecommend}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'home': return renderDashboardHome();
@@ -1908,6 +2354,9 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
       case 'staff': return renderStaffList();
       case 'profile': return renderProfile();
       case 'invoices': return renderInvoices();
+      case 'appointments': return renderAppointmentsTab();
+      case 'prescriptions': return renderPrescriptionsTab();
+      case 'medicalRecords': return renderMedicalRecordsTab();
       default: return renderDashboardHome();
     }
   };

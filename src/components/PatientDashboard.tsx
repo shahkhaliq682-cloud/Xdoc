@@ -85,14 +85,16 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
   const openInvoiceModal = (token: any) => {
     const url = new URL(window.location.href);
-    url.searchParams.set('invoice', token.id);
+    url.searchParams.set('modal', 'invoice');
+    url.searchParams.set('inv', token.id);
     window.history.pushState(null, '', url.pathname + url.search);
     window.dispatchEvent(new Event('popstate'));
   };
 
   const closeInvoiceModal = () => {
     const url = new URL(window.location.href);
-    url.searchParams.delete('invoice');
+    url.searchParams.delete('modal');
+    url.searchParams.delete('inv');
     window.history.pushState(null, '', url.pathname + url.search);
     window.dispatchEvent(new Event('popstate'));
   };
@@ -100,8 +102,9 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   useEffect(() => {
     const handleInvoicePopState = () => {
       const searchParams = new URLSearchParams(window.location.search);
-      const invoiceTokenId = searchParams.get('invoice');
-      if (invoiceTokenId) {
+      const isInvoice = searchParams.get('modal') === 'invoice';
+      const invoiceTokenId = searchParams.get('inv');
+      if (isInvoice && invoiceTokenId) {
         const found = patientTokens.find(t => t.id === invoiceTokenId);
         if (found) {
           setSelectedInvoiceToken(found);

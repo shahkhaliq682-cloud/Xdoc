@@ -20,14 +20,16 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
 
   const openInvoiceModal = () => {
     const url = new URL(window.location.href);
-    url.searchParams.set('invoice', 'true');
+    url.searchParams.set('modal', 'invoice');
+    url.searchParams.set('inv', tokenData?.id || 'success');
     window.history.pushState(null, '', url.pathname + url.search);
     window.dispatchEvent(new Event('popstate'));
   };
 
   const closeInvoiceModal = () => {
     const url = new URL(window.location.href);
-    url.searchParams.delete('invoice');
+    url.searchParams.delete('modal');
+    url.searchParams.delete('inv');
     window.history.pushState(null, '', url.pathname + url.search);
     window.dispatchEvent(new Event('popstate'));
   };
@@ -35,13 +37,15 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
   useEffect(() => {
     const handleInvoicePopState = () => {
       const searchParams = new URLSearchParams(window.location.search);
-      setIsInvoiceOpen(searchParams.get('invoice') === 'true');
+      const isInvoice = searchParams.get('modal') === 'invoice';
+      const isMatchingId = searchParams.get('inv') === (tokenData?.id || 'success');
+      setIsInvoiceOpen(isInvoice && isMatchingId);
     };
 
     handleInvoicePopState();
     window.addEventListener('popstate', handleInvoicePopState);
     return () => window.removeEventListener('popstate', handleInvoicePopState);
-  }, []);
+  }, [tokenData?.id]);
 
   return (
     <div className="fixed inset-0 z-[120] bg-white flex flex-col items-center p-6 overflow-y-auto custom-scrollbar">

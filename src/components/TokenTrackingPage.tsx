@@ -24,14 +24,16 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
 
   const openInvoiceModal = () => {
     const url = new URL(window.location.href);
-    url.searchParams.set('invoice', 'true');
+    url.searchParams.set('modal', 'invoice');
+    url.searchParams.set('inv', tokenId);
     window.history.pushState(null, '', url.pathname + url.search);
     window.dispatchEvent(new Event('popstate'));
   };
 
   const closeInvoiceModal = () => {
     const url = new URL(window.location.href);
-    url.searchParams.delete('invoice');
+    url.searchParams.delete('modal');
+    url.searchParams.delete('inv');
     window.history.pushState(null, '', url.pathname + url.search);
     window.dispatchEvent(new Event('popstate'));
   };
@@ -39,13 +41,15 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
   useEffect(() => {
     const handleInvoicePopState = () => {
       const searchParams = new URLSearchParams(window.location.search);
-      setIsInvoiceOpen(searchParams.get('invoice') === 'true');
+      const isInvoice = searchParams.get('modal') === 'invoice';
+      const isMatchingId = searchParams.get('inv') === tokenId;
+      setIsInvoiceOpen(isInvoice && isMatchingId);
     };
 
     handleInvoicePopState();
     window.addEventListener('popstate', handleInvoicePopState);
     return () => window.removeEventListener('popstate', handleInvoicePopState);
-  }, []);
+  }, [tokenId]);
 
   // Dynamic queue stats
   const [queuePos, setQueuePos] = useState<number>(0);

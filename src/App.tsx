@@ -64,7 +64,8 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  signOut
 } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { doc, setDoc, addDoc, getDoc, serverTimestamp, getDocFromServer, collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
@@ -85,6 +86,7 @@ import HospitalRegistration from './components/HospitalRegistration';
 import TokenTrackingPage from './components/TokenTrackingPage';
 import HospitalLiveQueuePage from './components/HospitalLiveQueuePage';
 import FooterPages from './components/FooterPages';
+import { SmartImage } from './components/ui/SmartImage';
 
 // --- Splash Screen ---
 const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
@@ -404,6 +406,7 @@ const Navbar = ({ activeTab, setActiveTab, darkMode = false }: { activeTab: stri
 
 const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { onLoginSuccess: (role: string) => void, onSignUpClick: (type: 'Hospital' | 'Patient') => void, onForgotPasswordClick: () => void }) => {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -473,8 +476,18 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
         }
         
         let role = userData.role;
-        if (role === 'Admin' || role === 'hospital_admin') role = 'hospital_admin';
-        else if (role === 'SuperAdmin' || role === 'super_admin') role = 'super_admin';
+        if (role === 'Admin' || role === 'hospital_admin') {
+          // Fetch hospitals/{uid} to check isBlocked field
+          const hospDoc = await getDoc(doc(db, 'hospitals', user.uid));
+          if (hospDoc.exists() && hospDoc.data().isBlocked === true) {
+            await signOut(auth);
+            setError({ general: "Your account has been blocked. Please contact Xdoc support." });
+            setLoading(false);
+            return;
+          }
+          role = 'hospital_admin';
+        }
+        else if (role === 'SuperAdmin' || role === 'super_admin' || role === 'superadmin') role = 'super_admin';
         else role = 'patient';
 
         onLoginSuccess(role);
@@ -544,8 +557,17 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       if (userDoc.exists()) {
         const userData = userDoc.data();
         let role = userData.role;
-        if (role === 'Admin' || role === 'hospital_admin') role = 'hospital_admin';
-        else if (role === 'SuperAdmin' || role === 'super_admin') role = 'super_admin';
+        if (role === 'Admin' || role === 'hospital_admin') {
+          // Fetch hospitals/{uid} to check isBlocked field
+          const hospDoc = await getDoc(doc(db, 'hospitals', user.uid));
+          if (hospDoc.exists() && hospDoc.data().isBlocked === true) {
+            await signOut(auth);
+            toast.error("Your account has been blocked. Please contact Xdoc support.");
+            return;
+          }
+          role = 'hospital_admin';
+        }
+        else if (role === 'SuperAdmin' || role === 'super_admin' || role === 'superadmin') role = 'super_admin';
         else role = 'patient';
         onLoginSuccess(role);
       } else {
@@ -1972,24 +1994,28 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
   // Real State hook definitions (Raw inputs)
-  const [viewState, setViewStateRaw] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin' | 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy'>('hero');
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [viewState, setViewStateRaw] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin' | 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy' | 'category' | 'doctor_profile'>('hero');
+  const [activeTab, setActiveTab ] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen ] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen ] = useState(false);
+  const [showOnboarding, setShowOnboarding ] = useState(false);
   
   const [deepLinkTokenId, setDeepLinkTokenId] = useState<string | null>(null);
   const [deepLinkLiveHospitalId, setDeepLinkLiveHospitalId] = useState<string | null>(null);
   const [patientPreferredTab, setPatientPreferredTabRaw] = useState<'hospitals' | 'history' | 'profile'>('hospitals');
   const [landingSearchQuery, setLandingSearchQuery] = useState('');
 
+  // Suffix state declarations for category and doctor
+  const [categoryType, setCategoryType] = useState<string | null>(null);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+
   // Patient flow states
   const [selectedHospital, setSelectedHospitalRaw] = useState<Hospital | any | null>(null);
   const [selectedDoctor, setSelectedDoctorRaw] = useState<Doctor | any | null>(null);
   const [isBookingFlow, setIsBookingFlowRaw] = useState(false);
   const [fetchedHospitals, setFetchedHospitals] = useState<any[]>([]);
-  const [loginPrompt, setLoginPrompt] = useState(false);
+  const [loginPrompt, setLoginPrompt ] = useState(false);
   const [lastCreatedToken, setLastCreatedTokenRaw] = useState<any>(null);
 
   // Unified Navigation Stack Helper (mimicking react-router-dom navigate)
@@ -2005,60 +2031,64 @@ export default function App() {
 
   // Wrapped triggers that automatically map changes in React state directly to browser history / URL
   const setViewState = (state: typeof viewState) => {
-    let targetPath = '/';
-    if (state === 'hero') targetPath = '/';
+    let targetPath = `?view=${state}`;
+    if (state === 'hero') targetPath = '?view=home';
     else if (state === 'login') {
-      const searchParam = landingSearchQuery ? `?search=${encodeURIComponent(landingSearchQuery)}` : '';
-      targetPath = `/login${searchParam}`;
+      const searchParam = landingSearchQuery ? `&search=${encodeURIComponent(landingSearchQuery)}` : '';
+      targetPath = `?view=login${searchParam}`;
     }
-    else if (state === 'auth_choice') targetPath = '/auth-choice';
-    else if (state === 'hospital_reg') targetPath = '/hospital-registration';
-    else if (state === 'patient_reg') targetPath = '/patient-registration';
     else if (state === 'patient_home') {
-      targetPath = `/patient-dashboard/${patientPreferredTab}`;
+      const tabVal = patientPreferredTab === 'history' ? 'tokens' : patientPreferredTab;
+      targetPath = `?view=patient_home&tab=${tabVal}`;
     }
-    else if (state === 'admin_dashboard') targetPath = '/admin-dashboard';
-    else if (state === 'super_admin') targetPath = '/super-admin';
-    else if (state === 'privacy') targetPath = '/privacy-policy';
-    else if (state === 'terms') targetPath = '/terms';
-    else if (state === 'contact') targetPath = '/contact';
-    else if (state === 'about') targetPath = '/about';
-    else if (state === 'content_policy') targetPath = '/content-policy';
     
     navigate(targetPath);
   };
 
   const setPatientPreferredTab = (tab: typeof patientPreferredTab) => {
-    navigate(`/patient-dashboard/${tab}`);
+    const tabVal = tab === 'history' ? 'tokens' : tab;
+    navigate(`?view=patient_home&tab=${tabVal}`);
   };
 
   const setSelectedHospital = (h: Hospital | any | null) => {
     if (h) {
-      navigate(`/hospital/${h.id}`);
+      navigate(`?view=hospital&id=${h.id}`);
     } else {
-      navigate(`/patient-dashboard/${patientPreferredTab}`);
+      const tabVal = patientPreferredTab === 'history' ? 'tokens' : patientPreferredTab;
+      navigate(`?view=patient_home&tab=${tabVal}`);
     }
   };
 
   const setSelectedDoctor = (d: Doctor | any | null) => {
-    setSelectedDoctorRaw(d);
+    if (d) {
+      const hospParam = selectedHospital ? `&hosp=${selectedHospital.id}` : '';
+      navigate(`?view=doctor&id=${d.id}${hospParam}`);
+    } else if (selectedHospital) {
+      navigate(`?view=hospital&id=${selectedHospital.id}`);
+    } else {
+      const tabVal = patientPreferredTab === 'history' ? 'tokens' : patientPreferredTab;
+      navigate(`?view=patient_home&tab=${tabVal}`);
+    }
   };
 
   const setIsBookingFlow = (val: boolean) => {
     if (val && selectedHospital && selectedDoctor) {
-      navigate(`/hospital/${selectedHospital.id}/book/${selectedDoctor.id}`);
-    } else if (!val && selectedHospital) {
-      navigate(`/hospital/${selectedHospital.id}`);
+      navigate(`?view=doctor&id=${selectedDoctor.id}&hosp=${selectedHospital.id}&book=true`);
+    } else if (!val && selectedHospital && selectedDoctor) {
+      navigate(`?view=doctor&id=${selectedDoctor.id}&hosp=${selectedHospital.id}`);
+    } else if (selectedHospital) {
+      navigate(`?view=hospital&id=${selectedHospital.id}`);
     } else {
-      navigate(`/patient-dashboard/${patientPreferredTab}`);
+      const tabVal = patientPreferredTab === 'history' ? 'tokens' : patientPreferredTab;
+      navigate(`?view=patient_home&tab=${tabVal}`);
     }
   };
 
   const setLastCreatedToken = (token: any) => {
     if (token) {
-      navigate(`/token/${token.id || token}/success`);
+      navigate(`?view=booking_success&id=${token.id || token}`);
     } else {
-      navigate(`/patient-dashboard/history`);
+      navigate('?view=patient_home&tab=tokens');
     }
   };
 
@@ -2073,122 +2103,220 @@ export default function App() {
       setLandingSearchQuery(urlSearch);
     }
 
-    // 1. Check existing legacy deep links first
-    const tokenMatch = path.match(/^\/token\/([^/]+)$/);
-    if (tokenMatch) {
-      setDeepLinkTokenId(tokenMatch[1]);
-      setDeepLinkLiveHospitalId(null);
-      return;
-    }
-    
-    const liveMatch = path.match(/^\/hospital\/([^/]+)\/live$/);
-    if (liveMatch) {
-       setDeepLinkLiveHospitalId(liveMatch[1]);
-       setDeepLinkTokenId(null);
-       return;
+    // 1. Check legacy deep links and paths first, and translate them to synchronous query parameters
+    let viewQuery = searchParams.get('view');
+    let tabQuery = searchParams.get('tab');
+    let typeQuery = searchParams.get('type');
+    let idQuery = searchParams.get('id');
+    let bHospQuery = searchParams.get('hosp');
+
+    if (path !== '/' && path !== '/index.html') {
+      const tokenMatch = path.match(/^\/token\/([^/]+)$/);
+      const liveMatch = path.match(/^\/hospital\/([^/]+)\/live$/);
+      const hospMatch = path.match(/^\/hospital\/([^/]+)$/);
+      const bookingMatch = path.match(/^\/hospital\/([^/]+)\/book\/([^/]+)$/);
+      const successMatch = path.match(/^\/token\/([^/]+)\/success$/);
+
+      if (tokenMatch) {
+        setDeepLinkTokenId(tokenMatch[1]);
+        setDeepLinkLiveHospitalId(null);
+        return;
+      } else if (liveMatch) {
+         setDeepLinkLiveHospitalId(liveMatch[1]);
+         setDeepLinkTokenId(null);
+         return;
+      } else if (hospMatch) {
+        const hospId = hospMatch[1];
+        const newUrl = `?view=hospital&id=${hospId}`;
+        window.history.replaceState(null, '', newUrl);
+        viewQuery = 'hospital';
+        idQuery = hospId;
+      } else if (bookingMatch) {
+        const hospId = bookingMatch[1];
+        const docId = bookingMatch[2];
+        const newUrl = `?view=doctor&id=${docId}&hosp=${hospId}&book=true`;
+        window.history.replaceState(null, '', newUrl);
+        viewQuery = 'doctor';
+        idQuery = docId;
+        bHospQuery = hospId;
+      } else if (successMatch) {
+        const tokId = successMatch[1];
+        const newUrl = `?view=booking_success&id=${tokId}`;
+        window.history.replaceState(null, '', newUrl);
+        viewQuery = 'booking_success';
+        idQuery = tokId;
+      } else if (path === '/privacy-policy') {
+        window.history.replaceState(null, '', '?view=privacy');
+        viewQuery = 'privacy';
+      } else if (path === '/terms') {
+        window.history.replaceState(null, '', '?view=terms');
+        viewQuery = 'terms';
+      } else if (path === '/contact') {
+        window.history.replaceState(null, '', '?view=contact');
+        viewQuery = 'contact';
+      } else if (path === '/about') {
+        window.history.replaceState(null, '', '?view=about');
+        viewQuery = 'about';
+      } else if (path === '/content-policy') {
+        window.history.replaceState(null, '', '?view=content_policy');
+        viewQuery = 'content_policy';
+      } else if (path === '/login') {
+        window.history.replaceState(null, '', '?view=login');
+        viewQuery = 'login';
+      } else if (path === '/auth-choice') {
+        window.history.replaceState(null, '', '?view=auth_choice');
+        viewQuery = 'auth_choice';
+      } else if (path === '/hospital-registration') {
+        window.history.replaceState(null, '', '?view=hospital_reg');
+        viewQuery = 'hospital_reg';
+      } else if (path === '/patient-registration') {
+        window.history.replaceState(null, '', '?view=patient_reg');
+        viewQuery = 'patient_reg';
+      } else if (path === '/admin-dashboard') {
+        window.history.replaceState(null, '', '?view=admin_dashboard');
+        viewQuery = 'admin_dashboard';
+      } else if (path === '/super-admin') {
+        window.history.replaceState(null, '', '?view=super_admin');
+        viewQuery = 'super_admin';
+      } else if (path.startsWith('/patient-dashboard/')) {
+        const pTab = path.split('/').pop() || 'hospitals';
+        const tabVal = pTab === 'history' ? 'tokens' : pTab;
+        window.history.replaceState(null, '', `?view=patient_home&tab=${tabVal}`);
+        viewQuery = 'patient_home';
+        tabQuery = tabVal;
+      } else if (path === '/patient-dashboard') {
+        window.history.replaceState(null, '', `?view=patient_home`);
+        viewQuery = 'patient_home';
+      }
     }
 
     setDeepLinkTokenId(null);
     setDeepLinkLiveHospitalId(null);
 
-    // 2. Legal pages
-    if (path === '/privacy-policy') {
-      setViewStateRaw('privacy');
-    } else if (path === '/terms') {
-      setViewStateRaw('terms');
-    } else if (path === '/contact') {
-      setViewStateRaw('contact');
-    } else if (path === '/about') {
-      setViewStateRaw('about');
-    } else if (path === '/content-policy') {
-      setViewStateRaw('content_policy');
-    }
-    // 3. Identification views
-    else if (path === '/login') {
-      setViewStateRaw('login');
-    } else if (path === '/auth-choice') {
-      setViewStateRaw('auth_choice');
-    } else if (path === '/hospital-registration') {
-      setViewStateRaw('hospital_reg');
-    } else if (path === '/patient-registration') {
-      setViewStateRaw('patient_reg');
-    }
-    // 4. Admin panels
-    else if (path === '/admin-dashboard') {
-      setViewStateRaw('admin_dashboard');
-    } else if (path === '/super-admin') {
-      setViewStateRaw('super_admin');
-    }
-    // 5. Patient workspace paths
-    else if (path.startsWith('/patient-dashboard') || path.startsWith('/hospital/') || path.startsWith('/token/')) {
-      setViewStateRaw('patient_home');
+    // 2. Main query-parameter resolution
+    if (!viewQuery || viewQuery === 'home') {
+      setViewStateRaw('hero');
+      setSelectedHospitalRaw(null);
+      setSelectedDoctorRaw(null);
+      setIsBookingFlowRaw(false);
+      setLastCreatedTokenRaw(null);
+      setCategoryType(null);
+    } 
+    else if (viewQuery === 'category') {
+      setViewStateRaw('category');
+      setCategoryType(typeQuery);
+      setSelectedHospitalRaw(null);
+      setSelectedDoctorRaw(null);
+      setIsBookingFlowRaw(false);
+      setLastCreatedTokenRaw(null);
+    } 
+    else if (viewQuery === 'doctor') {
+      setViewStateRaw('doctor_profile');
+      setSelectedDoctorId(idQuery);
+      setCategoryType(null);
       
-      // Determine preference tab
-      if (path === '/patient-dashboard/history' || path === '/patient-dashboard/history/') {
-        setPatientPreferredTabRaw('history');
-        setSelectedHospitalRaw(null);
-        setIsBookingFlowRaw(false);
-        setLastCreatedTokenRaw(null);
-      } else if (path === '/patient-dashboard/profile' || path === '/patient-dashboard/profile/') {
-        setPatientPreferredTabRaw('profile');
-        setSelectedHospitalRaw(null);
-        setIsBookingFlowRaw(false);
-        setLastCreatedTokenRaw(null);
-      } else {
-        setPatientPreferredTabRaw('hospitals');
+      const isBookingActive = searchParams.get('book') === 'true';
+      setIsBookingFlowRaw(isBookingActive);
+      setLastCreatedTokenRaw(null);
+
+      // Lazy resolve Doctor and Hospital raw objects for legacy compatibility in child views
+      if (idQuery && fetchedHospitals.length > 0) {
+        let foundDoc = null;
+        let foundHosp = null;
+        for (const h of fetchedHospitals) {
+          const docs = h.doctors || h.specialists || [];
+          const doc = docs.find((d: any) => d.id === idQuery);
+          if (doc) {
+            foundDoc = doc;
+            foundHosp = h;
+            break;
+          }
+        }
+        if (foundDoc && foundHosp) {
+          setSelectedDoctorRaw(foundDoc);
+          setSelectedHospitalRaw(foundHosp);
+        } else {
+          setSelectedDoctorRaw({ id: idQuery, _isPlaceholder: true });
+          if (bHospQuery) {
+            const h = fetchedHospitals.find(hosp => hosp.id === bHospQuery);
+            setSelectedHospitalRaw(h || { id: bHospQuery, _isPlaceholder: true });
+          }
+        }
+      } else if (idQuery) {
+        setSelectedDoctorRaw({ id: idQuery, _isPlaceholder: true });
+        if (bHospQuery) {
+          setSelectedHospitalRaw({ id: bHospQuery, _isPlaceholder: true });
+        }
       }
+    } 
+    else if (viewQuery === 'hospital') {
+      setViewStateRaw('patient_home');
+      setIsBookingFlowRaw(false);
+      setLastCreatedTokenRaw(null);
+      setCategoryType(null);
 
-      // Details, bookings, successes
-      const hospMatch = path.match(/^\/hospital\/([^/]+)$/);
-      const bookingMatch = path.match(/^\/hospital\/([^/]+)\/book\/([^/]+)$/);
-      const successMatch = path.match(/^\/token\/([^/]+)\/success$/);
-
-      if (hospMatch) {
-        const hospId = hospMatch[1];
-        const found = fetchedHospitals.find(h => h.id === hospId);
+      const hId = idQuery;
+      if (hId) {
+        const found = fetchedHospitals.find(h => h.id === hId);
         if (found) {
           setSelectedHospitalRaw(found);
         } else {
-          setSelectedHospitalRaw({ id: hospId, _isPlaceholder: true });
+          setSelectedHospitalRaw({ id: hId, _isPlaceholder: true });
         }
-        setIsBookingFlowRaw(false);
-        setLastCreatedTokenRaw(null);
-      } else if (bookingMatch) {
-        const hospId = bookingMatch[1];
-        const docId = bookingMatch[2];
-        const foundHosp = fetchedHospitals.find(h => h.id === hospId);
-        if (foundHosp) {
-          setSelectedHospitalRaw(foundHosp);
-          const doctorsList = foundHosp.doctors || foundHosp.specialists || [];
-          const foundDoc = doctorsList.find((d: any) => d.id === docId);
-          if (foundDoc) {
-            setSelectedDoctorRaw(foundDoc);
-          } else {
-            setSelectedDoctorRaw({ id: docId, _isPlaceholder: true });
-          }
-        } else {
-          setSelectedHospitalRaw({ id: hospId, _isPlaceholder: true });
-          setSelectedDoctorRaw({ id: docId, _isPlaceholder: true });
-        }
-        setIsBookingFlowRaw(true);
-        setLastCreatedTokenRaw(null);
-      } else if (successMatch) {
-        const tokId = successMatch[1];
-        if (!lastCreatedToken || lastCreatedToken.id !== tokId) {
-          setLastCreatedTokenRaw({ id: tokId, _isPlaceholder: true });
-        }
-      } else if (path === '/patient-dashboard' || path === '/patient-dashboard/hospitals') {
-        setSelectedHospitalRaw(null);
-        setIsBookingFlowRaw(false);
-        setLastCreatedTokenRaw(null);
       }
     }
-    // 6. Home redesign / Main landing
-    else {
-      setViewStateRaw('hero');
+    else if (viewQuery === 'booking_success') {
+      setViewStateRaw('patient_home');
+      setIsBookingFlowRaw(false);
+      setCategoryType(null);
       setSelectedHospitalRaw(null);
+      setSelectedDoctorRaw(null);
+
+      if (idQuery) {
+        if (!lastCreatedToken || lastCreatedToken.id !== idQuery) {
+          setLastCreatedTokenRaw({ id: idQuery, _isPlaceholder: true });
+        }
+      }
+    }
+    else if (viewQuery === 'patient_home') {
+      setViewStateRaw('patient_home');
+      setSelectedHospitalRaw(null);
+      setSelectedDoctorRaw(null);
       setIsBookingFlowRaw(false);
       setLastCreatedTokenRaw(null);
+      setCategoryType(null);
+
+      // Tab mapping
+      if (tabQuery === 'history' || tabQuery === 'tokens' || tabQuery === 'my_tokens') {
+        setPatientPreferredTabRaw('history');
+      } else if (tabQuery === 'profile') {
+        setPatientPreferredTabRaw('profile');
+      } else {
+        setPatientPreferredTabRaw('hospitals');
+      }
+    }
+    else if (viewQuery === 'privacy') {
+      setViewStateRaw('privacy');
+    } else if (viewQuery === 'terms') {
+      setViewStateRaw('terms');
+    } else if (viewQuery === 'contact') {
+      setViewStateRaw('contact');
+    } else if (viewQuery === 'about') {
+      setViewStateRaw('about');
+    } else if (viewQuery === 'content_policy') {
+      setViewStateRaw('content_policy');
+    } else if (viewQuery === 'login') {
+      setViewStateRaw('login');
+    } else if (viewQuery === 'auth_choice') {
+      setViewStateRaw('auth_choice');
+    } else if (viewQuery === 'hospital_reg') {
+      setViewStateRaw('hospital_reg');
+    } else if (viewQuery === 'patient_reg') {
+      setViewStateRaw('patient_reg');
+    } else if (viewQuery === 'admin_dashboard') {
+      setViewStateRaw('admin_dashboard');
+    } else if (viewQuery === 'super_admin') {
+      setViewStateRaw('super_admin');
     }
   };
 
@@ -2310,7 +2438,7 @@ export default function App() {
     // Auto-redirect from auth pages to dashboards
     if (['hero', 'login', 'auth_choice', 'hospital_reg', 'patient_reg'].includes(viewState)) {
       if (role === 'hospital_admin' || role === 'Admin') setViewState('admin_dashboard');
-      else if (role === 'super_admin' || role === 'SuperAdmin') setViewState('super_admin');
+      else if (role === 'super_admin' || role === 'SuperAdmin' || role === 'superadmin') setViewState('super_admin');
       else if (role === 'patient') setViewState('patient_home');
       return;
     }
@@ -2320,7 +2448,7 @@ export default function App() {
       setViewState('patient_home');
     } else if (viewState === 'patient_home' && (role === 'hospital_admin' || role === 'Admin')) {
       setViewState('admin_dashboard');
-    } else if (viewState === 'super_admin' && role !== 'super_admin' && role !== 'SuperAdmin') {
+    } else if (viewState === 'super_admin' && role !== 'super_admin' && role !== 'SuperAdmin' && role !== 'superadmin') {
       setViewState(role === 'hospital_admin' || role === 'Admin' ? 'admin_dashboard' : 'patient_home');
     }
   }, [userData, viewState]);
@@ -2486,12 +2614,16 @@ export default function App() {
               onSignUp={() => setViewState('auth_choice')} 
               onLogin={() => setViewState('login')}
               onSearch={(q) => {
-                setLandingSearchQuery(q);
-                if (userData) {
-                  setViewState('patient_home');
-                  setPatientPreferredTab('hospitals');
+                const isCat = ['Dentist', 'dentist', 'General Physician', 'Specialist', 'Dentistry', 'Cardiology', 'Pediatrics', 'Dermatology'].some(c => c.toLowerCase() === q.toLowerCase() || q.toLowerCase().includes(c.toLowerCase()));
+                if (isCat) {
+                  navigate(`?view=category&type=${encodeURIComponent(q)}`);
                 } else {
-                  setViewState('login');
+                  setLandingSearchQuery(q);
+                  if (userData) {
+                    navigate(`?view=patient_home&tab=hospitals&search=${encodeURIComponent(q)}`);
+                  } else {
+                    navigate(`?view=login&search=${encodeURIComponent(q)}`);
+                  }
                 }
               }}
               onHospitalClick={(h) => setSelectedHospital(h)}
@@ -2503,6 +2635,430 @@ export default function App() {
             />
           </div>
         );
+      case 'category': {
+        const typeLower = (categoryType || '').toLowerCase().trim();
+        
+        // Find matching hospitals
+        const categoryHospitals = fetchedHospitals.filter(h => {
+          const name = (h.hospitalName || h.name || '').toLowerCase();
+          const isTest = name.includes('test') || name.includes('demo') || name.includes('care with');
+          if (isTest) return false;
+          
+          if (!categoryType) return true;
+          const catLower = categoryType.toLowerCase();
+          const hasSpec = (h.specializations || []).some((s: string) => s.toLowerCase().includes(catLower));
+          if (hasSpec) return true;
+          
+          if (catLower === 'dentist' || catLower === 'dentistry') {
+            return (h.specializations || []).some((s: string) => s.toLowerCase().includes('dentist') || s.toLowerCase().includes('dentistry'));
+          }
+          if (catLower === 'specialist') {
+            return (h.specializations || []).some((s: string) => !s.toLowerCase().includes('general'));
+          }
+          return false;
+        });
+
+        // Find matching doctors
+        const categoryDoctors: any[] = [];
+        categoryHospitals.forEach(h => {
+          const list = h.doctors || h.specialists || [];
+          list.forEach((d: any) => {
+            if (!categoryDoctors.some(existing => existing.id === d.id)) {
+              categoryDoctors.push({ ...d, hospital: h });
+            }
+          });
+        });
+
+        return (
+          <div className="bg-slate-50 min-h-screen pb-16">
+            <Header 
+              onLogoClick={() => setViewState('hero')} 
+              onSignUp={() => setViewState('auth_choice')} 
+              onLogin={() => setViewState('login')}
+              isLanding={false}
+              viewState={viewState}
+              setViewState={setViewState}
+            />
+
+            <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8">
+              {/* Back button */}
+              <button 
+                onClick={() => setViewState('hero')}
+                className="mb-8 flex items-center gap-2 text-slate-500 font-sans font-bold text-xs hover:text-primary transition-all uppercase tracking-widest bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-100"
+              >
+                <ArrowLeft size={16} />
+                {language === 'UR' ? 'پیچھے جائیں' : 'Go Back'}
+              </button>
+
+              {/* Title Header Section */}
+              <div className="mb-12">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">{language === 'UR' ? 'کیٹیگری' : 'Selected Category'}</span>
+                <h1 className="text-4xl font-extrabold text-slate-950 tracking-tight flex items-center gap-3">
+                  <Stethoscope className="text-primary" size={32} />
+                  {categoryType || 'Specialists'}
+                </h1>
+                <p className="text-slate-500 font-medium mt-2 max-w-2xl">
+                  {language === 'UR' 
+                    ? `دستیاب ہسپتال اور ڈاکٹروں کی فہرست برائے ${categoryType}` 
+                    : `Verified list of hospitals, clinics and specialist doctors offering ${categoryType} care.`}
+                </p>
+              </div>
+
+              {/* Grid of Results */}
+              <div className="space-y-12">
+                
+                {/* 1. Hospitals / Clinics */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      <HospitalIcon className="text-primary" size={20} />
+                      {language === 'UR' ? 'دستیاب کلینکس اور ہسپتال' : 'Hospitals & Clinics'}
+                    </h2>
+                    <span className="font-mono text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      {categoryHospitals.length} {language === 'UR' ? 'ملے' : 'Found'}
+                    </span>
+                  </div>
+
+                  {categoryHospitals.length === 0 ? (
+                    <div className="bg-white rounded-[32px] p-12 text-center border border-slate-100 shadow-sm max-w-md mx-auto">
+                      <HospitalIcon className="mx-auto text-slate-300 mb-4" size={48} />
+                      <p className="font-sans font-bold text-slate-700">{language === 'UR' ? 'کوئی ہسپتال نہیں ملا' : 'No Clinics/Hospitals Found'}</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {categoryHospitals.map((h) => {
+                        const type = h.type || 'Private Hospital';
+                        const isGovt = type.toLowerCase().includes('government');
+                        const fee = isGovt ? (language === 'UR' ? 'مفت' : 'Free') : h.opdFee ? `Rs. ${h.opdFee}` : `Rs. ${h.startingFee || 800}`;
+                        const isOpen = h.status === 'open' || h.status === 'active' || true;
+                        
+                        return (
+                          <motion.div 
+                            key={h.id}
+                            onClick={() => setSelectedHospital(h)}
+                            className="bg-white rounded-[32px] border border-slate-100 hover:border-primary/20 hover:shadow-xl transition-all cursor-pointer group flex flex-col justify-between overflow-hidden relative"
+                          >
+                            <div className="p-6 space-y-4">
+                              <div className="h-36 rounded-2xl overflow-hidden relative bg-slate-100 border border-slate-100">
+                                <SmartImage 
+                                  src={h.imageUrl || h.photo || `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800&h=400&sig=${h.id}`} 
+                                  alt={h.hospitalName} 
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  fallbackInitials={h.hospitalName?.[0] || h.name?.[0]}
+                                />
+                                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-md">
+                                  <div className={`w-2 h-2 ${isOpen ? 'bg-emerald-500 breathing-dot' : 'bg-red-500'} rounded-full`} />
+                                  <span className="font-mono text-[9px] font-extrabold uppercase tracking-widest text-slate-800">
+                                    {isOpen ? 'Open' : 'Closed'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div>
+                                <h3 className="text-xl font-extrabold text-slate-900 leading-tight group-hover:text-primary transition-colors">
+                                  {h.hospitalName || h.name}
+                                </h3>
+                                <div className="flex items-center gap-1.5 text-slate-400 mt-2 text-xs font-semibold">
+                                  <MapPin size={12} />
+                                  <span>{h.area}, {h.city}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+                              <div className="text-slate-600 text-xs font-bold">
+                                {language === 'UR' ? 'فیس' : 'Fee'}: <span className="text-slate-900 font-extrabold">{fee}</span>
+                              </div>
+                              <span className="text-primary text-xs font-bold uppercase tracking-widest hover:underline flex items-center gap-1">
+                                {language === 'UR' ? 'ہسپتال دیکھیں' : 'View'}
+                                <ArrowRight size={14} />
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Specialists Available */}
+                <div className="space-y-6 pt-6">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      <Stethoscope size={20} className="text-primary" />
+                      {language === 'UR' ? 'دستیاب اسپیشلسٹ ڈاکٹرز' : 'Available Specialists'}
+                    </h2>
+                    <span className="font-mono text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      {categoryDoctors.length} {language === 'UR' ? 'ملے' : 'Found'}
+                    </span>
+                  </div>
+
+                  {categoryDoctors.length === 0 ? (
+                    <div className="bg-white rounded-[32px] p-12 text-center border border-slate-100 shadow-sm max-w-md mx-auto">
+                      <User className="mx-auto text-slate-300 mb-4" size={48} />
+                      <p className="font-sans font-bold text-slate-700">{language === 'UR' ? 'کوئی ڈاکٹر نہیں ملا' : 'No Specialist Doctors Found'}</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {categoryDoctors.map((doc) => {
+                        const dName = doc.name || doc.doctorName || 'Doctor';
+                        const dSpec = doc.specialization || categoryType || 'Specialist';
+                        const dFee = doc.fee || doc.opdFee || doc.hospital?.startingFee || '800';
+                        const dTimings = doc.timings || doc.timing || '5:00 PM - 9:00 PM';
+                        
+                        return (
+                          <motion.div 
+                            key={doc.id}
+                            onClick={() => setSelectedDoctor(doc)}
+                            className="bg-white rounded-[32px] border border-slate-100 hover:border-primary/20 hover:shadow-xl transition-all cursor-pointer p-6 flex gap-5 items-start group"
+                          >
+                            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 flex-shrink-0 relative">
+                              <SmartImage 
+                                src={doc.imageUrl || doc.photo || `https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300&h=300`} 
+                                alt={dName}
+                                className="w-full h-full object-cover"
+                                fallbackInitials={dName?.[0]}
+                              />
+                            </div>
+
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div>
+                                <h3 className="font-extrabold text-slate-950 text-lg group-hover:text-primary transition-colors leading-tight">
+                                  Dr. {dName}
+                                </h3>
+                                <p className="text-xs font-bold text-primary font-mono uppercase tracking-wide">{dSpec}</p>
+                              </div>
+
+                              <div className="flex flex-col gap-1 text-slate-500 font-medium text-xs">
+                                <div className="flex items-center gap-1">
+                                  <HospitalIcon size={12} />
+                                  <span className="truncate">{doc.hospital?.hospitalName || doc.hospital?.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock size={12} />
+                                  <span>{dTimings}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                                <span className="text-slate-800 font-extrabold text-xs">Rs. {dFee}</span>
+                                <span className="bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white px-3 py-1.5 rounded-xl font-sans font-black text-[9px] uppercase tracking-widest transition-all">
+                                  {language === 'UR' ? 'پروفائل دیکھیں' : 'Profile'}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            </div>
+          </div>
+        );
+      }
+      case 'doctor_profile': {
+        const dId = selectedDoctorId;
+        const searchParams = new URLSearchParams(window.location.search);
+        const bookMode = searchParams.get('book') === 'true';
+        
+        let foundDoc = selectedDoctor;
+        let foundHosp = selectedHospital;
+        
+        // Resolve doctor and hospital securely if placeholders or null
+        if ((!foundDoc || foundDoc._isPlaceholder || !foundHosp || foundHosp._isPlaceholder) && dId && fetchedHospitals.length > 0) {
+          for (const h of fetchedHospitals) {
+            const list = h.doctors || h.specialists || [];
+            const d = list.find((item: any) => item.id === dId);
+            if (d) {
+              foundDoc = d;
+              foundHosp = h;
+              break;
+            }
+          }
+        }
+
+        // If booking flow is active (book=true is appended)
+        if (bookMode && foundHosp && foundDoc) {
+          return (
+            <BookingFlow 
+              hospital={foundHosp}
+              doctor={foundDoc}
+              onClose={() => setIsBookingFlow(false)}
+              onSuccess={(token) => {
+                setLastCreatedToken(token);
+              }}
+            />
+          );
+        }
+
+        // Render the premium doctor profile page
+        const name = foundDoc?.name || foundDoc?.doctorName || 'Specialist Doctor';
+        const spec = foundDoc?.specialization || foundDoc?.speciality || categoryType || 'healthcare';
+        const fee = foundDoc?.fee || foundDoc?.opdFee || foundHosp?.startingFee || '800';
+        const rating = foundDoc?.rating || '4.8';
+        const reviews = foundDoc?.reviews || '80+ Reviews';
+        const timings = foundDoc?.timings || foundDoc?.timing || (foundHosp ? foundHosp.openingTime + ' - ' + foundHosp.closingTime : '5:00 PM - 9:00 PM');
+        const days = foundDoc?.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        
+        return (
+          <div className="bg-slate-50 min-h-screen pb-16">
+            <Header 
+              onLogoClick={() => setViewState('hero')} 
+              onSignUp={() => setViewState('auth_choice')} 
+              onLogin={() => setViewState('login')}
+              isLanding={false}
+              viewState={viewState}
+              setViewState={setViewState}
+            />
+            
+            <div className="max-w-4xl mx-auto px-4 pt-8">
+              {/* Back button */}
+              <button 
+                onClick={() => {
+                  if (categoryType) {
+                    navigate(`?view=category&type=${encodeURIComponent(categoryType)}`);
+                  } else if (foundHosp) {
+                    setSelectedHospital(foundHosp);
+                  } else {
+                    setViewState('hero');
+                  }
+                }}
+                className="mb-8 flex items-center gap-2 text-slate-500 font-sans font-bold text-xs hover:text-primary transition-all uppercase tracking-widest bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-100"
+              >
+                <ArrowLeft size={16} />
+                {language === 'UR' ? 'پیچھے جائیں' : 'Go Back'}
+              </button>
+
+              {/* Doctor Details Card */}
+              <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden md:flex p-6 md:p-10 gap-10">
+                
+                {/* Visual block */}
+                <div className="flex flex-col items-center md:items-start text-center md:text-left gap-6 md:w-1/3">
+                  <div className="w-40 h-40 rounded-full border-4 border-slate-100 shadow-inner overflow-hidden flex items-center justify-center bg-slate-50 text-slate-400 relative">
+                    <SmartImage 
+                      src={foundDoc?.imageUrl || foundDoc?.photo || `https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300&h=300`} 
+                      alt={name}
+                      className="w-full h-full object-cover"
+                      fallbackInitials={name?.[0]}
+                    />
+                    <div className="absolute right-1 bottom-1 bg-teal-500 text-white rounded-full p-2 border-4 border-white">
+                      <Stethoscope size={16} />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 bg-amber-500/10 text-amber-600 px-4 py-1.5 rounded-full font-bold text-xs tracking-wide">
+                    <Star size={14} fill="currentColor" />
+                    <span>{rating} ({reviews})</span>
+                  </div>
+                </div>
+
+                {/* Info block */}
+                <div className="flex-1 space-y-6 mt-6 md:mt-0">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">{language === 'UR' ? 'عام ڈاکٹر' : 'Doctor Details'}</span>
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-none">
+                      Dr. {name}
+                    </h1>
+                    <p className="text-primary font-bold text-lg mt-2 font-mono uppercase tracking-wide">{spec}</p>
+                  </div>
+
+                  <hr className="border-slate-100" />
+
+                  {/* Timings, Fee Bento Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Consultation Fee */}
+                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex items-start gap-4">
+                      <div className="bg-primary/10 text-primary p-3 rounded-2xl">
+                        <CreditCard size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{language === 'UR' ? 'مشاورتی فیس' : 'Consult Fee'}</p>
+                        <p className="text-lg font-black text-slate-800">Rs. {fee}</p>
+                      </div>
+                    </div>
+
+                    {/* Operational Timings */}
+                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex items-start gap-4">
+                      <div className="bg-emerald-500/10 text-emerald-600 p-3 rounded-2xl">
+                        <Clock size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{language === 'UR' ? 'وقت' : 'Timings'}</p>
+                        <p className="text-sm font-bold text-slate-800">{timings}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Practicing Hospital details */}
+                  {foundHosp && (
+                    <div 
+                      onClick={() => setSelectedHospital(foundHosp)}
+                      className="bg-sky-500/10 hover:bg-sky-500/20 border border-sky-400/20 p-6 rounded-3xl cursor-pointer flex items-center justify-between group transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="bg-sky-500 text-white p-3 rounded-2xl">
+                          <HospitalIcon size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-sky-600 uppercase tracking-wider">{language === 'UR' ? 'ہسپتال / کلینک' : 'Practice Hospital'}</p>
+                          <p className="text-base font-black text-slate-800 group-hover:text-primary transition-colors">{foundHosp.hospitalName || foundHosp.name}</p>
+                          <p className="text-xs font-semibold text-slate-500">{foundHosp.area}, {foundHosp.city}</p>
+                        </div>
+                      </div>
+                      <ChevronRight size={20} className="text-sky-600 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  )}
+
+                  {/* Days */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{language === 'UR' ? 'دستیاب دن' : 'Available Days'}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dIdx) => {
+                        const isAvailable = days.includes(day);
+                        return (
+                          <span 
+                            key={dIdx} 
+                            className={`px-3 py-1.5 rounded-xl text-xs font-sans font-bold uppercase tracking-wider border transition-all ${
+                              isAvailable 
+                                ? 'bg-primary/10 text-primary border-primary/20' 
+                                : 'bg-slate-50 text-slate-300 border-slate-100 line-through'
+                            }`}
+                          >
+                            {day}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Giant Book Token Action */}
+                  <div className="pt-4">
+                    <button
+                      onClick={() => {
+                        if (!currentUser) {
+                          setLoginPrompt(true);
+                          return;
+                        }
+                        setIsBookingFlow(true);
+                      }}
+                      className="w-full py-4 tracking-widest text-xs uppercase font-sans font-black bg-primary text-white rounded-3xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:-translate-y-0.5 transition-all text-center flex items-center justify-center gap-3"
+                    >
+                      <Ticket size={18} />
+                      {language === 'UR' ? 'ٹوکن بک کریں' : 'Book Appointment / Grab Token'}
+                    </button>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+          </div>
+        );
+      }
       case 'login':
         return (
           <>
