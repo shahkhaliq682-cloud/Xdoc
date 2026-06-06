@@ -86,6 +86,7 @@ import HospitalRegistration from './components/HospitalRegistration';
 import TokenTrackingPage from './components/TokenTrackingPage';
 import HospitalLiveQueuePage from './components/HospitalLiveQueuePage';
 import FooterPages from './components/FooterPages';
+import PricingPage from './components/PricingPage';
 import { SmartImage } from './components/ui/SmartImage';
 
 // --- Splash Screen ---
@@ -212,6 +213,18 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
               >
                 {t.nav?.about}
               </button>
+              <button 
+                onClick={() => {
+                  setViewState?.('pricing');
+                }} 
+                className={`px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all duration-200 rounded-full ${
+                  viewState === 'pricing' 
+                    ? 'bg-white text-primary shadow-sm' 
+                    : 'text-slate-600 hover:text-primary'
+                }`}
+              >
+                {language === 'EN' ? 'Pricing' : 'قیمت'}
+              </button>
             </nav>
             
             {/* Right: Actions */}
@@ -278,6 +291,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                 <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-sm uppercase tracking-wider">{t.nav?.home}</a>
                 <a href="#" onClick={() => { setIsMobileMenuOpen(false); onLogoClick?.(); }} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-sm uppercase tracking-wider">{t.nav?.findHospital}</a>
                 <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-sm uppercase tracking-wider">{t.nav?.about}</a>
+                <a href="#pricing" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); setViewState?.('pricing'); }} className="px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-sm uppercase tracking-wider">{language === 'EN' ? 'Pricing' : 'قیمت'}</a>
                 <div className="h-px bg-slate-200/40 my-3" />
                 <button 
                    onClick={() => { setLanguage(language === 'EN' ? 'UR' : 'EN'); setIsMobileMenuOpen(false); }}
@@ -1994,7 +2008,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
   // Real State hook definitions (Raw inputs)
-  const [viewState, setViewStateRaw] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin' | 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy' | 'category' | 'doctor_profile'>('hero');
+  const [viewState, setViewStateRaw] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin' | 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy' | 'category' | 'doctor_profile' | 'pricing'>('hero');
   const [activeTab, setActiveTab ] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen ] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -2033,6 +2047,9 @@ export default function App() {
   const setViewState = (state: typeof viewState) => {
     let targetPath = `?view=${state}`;
     if (state === 'hero') targetPath = '?view=home';
+    else if (state === 'pricing') {
+      targetPath = '/pricing';
+    }
     else if (state === 'login') {
       const searchParam = landingSearchQuery ? `&search=${encodeURIComponent(landingSearchQuery)}` : '';
       targetPath = `?view=login${searchParam}`;
@@ -2145,6 +2162,9 @@ export default function App() {
         window.history.replaceState(null, '', newUrl);
         viewQuery = 'booking_success';
         idQuery = tokId;
+      } else if (path === '/pricing') {
+        window.history.replaceState(null, '', '?view=pricing');
+        viewQuery = 'pricing';
       } else if (path === '/privacy-policy') {
         window.history.replaceState(null, '', '?view=privacy');
         viewQuery = 'privacy';
@@ -2294,6 +2314,9 @@ export default function App() {
       } else {
         setPatientPreferredTabRaw('hospitals');
       }
+    }
+    else if (viewQuery === 'pricing') {
+      setViewStateRaw('pricing');
     }
     else if (viewQuery === 'privacy') {
       setViewStateRaw('privacy');
@@ -3170,6 +3193,17 @@ export default function App() {
             initialSearchQuery={landingSearchQuery}
           />
         );
+      case 'pricing':
+        return (
+          <PricingPage 
+            onBack={() => {
+              navigate('/');
+            }}
+            onSignUp={() => setViewState('auth_choice')}
+            onLogin={() => setViewState('login')}
+            language={language}
+          />
+        );
       case 'privacy':
       case 'terms':
       case 'contact':
@@ -3330,7 +3364,7 @@ export default function App() {
       </div>
 
       {/* Permanent Mobile Bottom Navigation Bar */}
-      {((userData && userData.role === 'patient') || (!userData && ['hero', 'login', 'auth_choice', 'privacy', 'terms', 'contact', 'about', 'content_policy'].includes(viewState))) && (
+      {((userData && userData.role === 'patient') || (!userData && ['hero', 'login', 'auth_choice', 'privacy', 'terms', 'contact', 'about', 'content_policy', 'pricing'].includes(viewState))) && (
         <div className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-40 py-3 pb-safe-area flex justify-around items-center shadow-[0_-4px_24px_rgba(15,23,42,0.06)]">
           {[
             {

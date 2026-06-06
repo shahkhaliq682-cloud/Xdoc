@@ -102,7 +102,7 @@ const Step = ({ number, title, desc, icon: Icon, isLast = false }: { number: num
   </div>
 );
 
-const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate }: { onSignUp: () => void, onLogin: () => void, onSearch: (q: string) => void, onHospitalClick?: (h: any) => void, onNavigate?: (view: 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy', path: string) => void }) => {
+const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate }: { onSignUp: () => void, onLogin: () => void, onSearch: (q: string) => void, onHospitalClick?: (h: any) => void, onNavigate?: (view: 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy' | 'pricing', path: string) => void }) => {
   const { t, language } = useLanguage();
   const [searchVal, setSearchVal] = useState('');
 
@@ -499,7 +499,16 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
                 <ul className="space-y-4 text-slate-400 text-sm">
                    <li>
                      <button 
-                       onClick={() => onNavigate?.('privacy', '/privacy-policy')}
+                       onClick={() => onNavigate?.('pricing', '/pricing')}
+                        className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full outline-all-none"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
+                        <span>{language === 'UR' ? 'قیمتیں' : 'Pricing'}</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        onClick={() => onNavigate?.('privacy', '/privacy-policy')}
                        className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full outline-all-none"
                      >
                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
