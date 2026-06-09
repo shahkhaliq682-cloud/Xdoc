@@ -12,6 +12,7 @@ import {
   Instagram, 
   Twitter, 
   Linkedin,
+  Youtube,
   Zap,
   DollarSign,
   Building,
@@ -466,7 +467,23 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
                 </div>
                 <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-xs">{h.footer.desc}</p>
                 <div className="flex gap-4">
-                   {[Facebook, Instagram, Twitter, Linkedin].map((Icon, i) => (
+                   {[
+                      { Icon: Linkedin, url: "https://www.linkedin.com/in/x-doc-a37ba9414", label: "Xdoc LinkedIn", color: "#0A66C2" },
+                      { Icon: Youtube, url: "https://youtube.com/@xdoc.official", label: "Xdoc YouTube", color: "#FF0000" },
+                      { Icon: Instagram, url: "https://www.instagram.com/xdoc.official", label: "Xdoc Instagram", gradient: true }
+                    ].map((m, i) => (
+                      <a 
+                        key={i} 
+                        href={m.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        aria-label={m.label}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+                        style={m.gradient ? { background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" } : { backgroundColor: m.color }}
+                      >
+                        <m.Icon size={18} />
+                      </a>
+                    )) || [].map((Icon, i) => (
                      <a key={i} href="#" className="w-10 h-10 rounded-lg bg-slate-800/50 flex items-center justify-center text-slate-300 hover:bg-[#0B5FFF] hover:text-white transition-all">
                        <Icon size={18} />
                      </a>

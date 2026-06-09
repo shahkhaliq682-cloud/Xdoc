@@ -17,7 +17,10 @@ import {
   Heart,
   Globe,
   Award,
-  Users
+  Users,
+  Linkedin,
+  Youtube,
+  Instagram
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -532,6 +535,61 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
               <p className="font-bold text-slate-900 text-sm mt-1 sm:text-base font-mono">+92 315 2328605</p>
             </div>
           </div>
+
+          {/* Follow Us Section */}
+          <div className="pt-6 border-t border-slate-100 space-y-4">
+            <div>
+              <h3 className="text-sm font-black text-slate-950 uppercase tracking-wider">
+                {isUrdu ? 'ہمیں فالو کریں' : 'Follow Us'}
+              </h3>
+              <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                {isUrdu ? 'سوشل میڈیا پر اپ ڈیٹ رہیں' : 'Stay updated on social media'}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex flex-col items-center gap-1.5">
+                <a 
+                  href="https://www.linkedin.com/in/x-doc-a37ba9414" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  aria-label="Xdoc LinkedIn"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+                  style={{ backgroundColor: '#0A66C2' }}
+                >
+                  <Linkedin size={22} />
+                </a>
+                <span className="text-[11px] font-medium text-[#64748B] font-sans">LinkedIn</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-1.5">
+                <a 
+                  href="https://youtube.com/@xdoc.official" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  aria-label="Xdoc YouTube"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+                  style={{ backgroundColor: '#FF0000' }}
+                >
+                  <Youtube size={22} />
+                </a>
+                <span className="text-[11px] font-medium text-[#64748B] font-sans">YouTube</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-1.5">
+                <a 
+                  href="https://www.instagram.com/xdoc.official" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  aria-label="Xdoc Instagram"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+                  style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
+                >
+                  <Instagram size={22} />
+                </a>
+                <span className="text-[11px] font-medium text-[#64748B] font-sans">Instagram</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-xs">
@@ -701,6 +759,46 @@ function AboutUsView({ language }: { language: 'EN' | 'UR' }) {
             ہمارا خودکار <strong>ریئل ٹائم ٹوکن سسٹم</strong> ہسپتال انتظامیہ کو اجازت دیتا ہے کہ وہ لائیو مانیٹرنگ اسکرین پر اگلے مریض کو کال کر سکیں جس سے گھر میں موجود مریض اپنے موبائل اسکرین پر لائیو ٹریکر کے ذریعے اپنی آمد کی پلاننگ کر لیتا ہے۔ یہ طبی خدمات میں انقلاب لانے کی ایک اہم ترین کڑی ہے۔
           </p>
         </div>
+
+        {/* About social icons block (Urdu) */}
+        <div className="pt-8 border-t border-slate-100 flex flex-col items-center sm:items-start gap-4">
+          <div className="text-right w-full">
+            <h4 className="text-sm font-bold text-slate-900">{isUrdu ? 'ہمیں فالو کریں' : 'Follow Us'}</h4>
+            <p className="text-xs text-slate-400">{isUrdu ? 'سوشل میڈیا پر اپ ڈیٹ رہیں' : 'Stay updated on social media'}</p>
+          </div>
+          <div className="flex gap-3 justify-end w-full">
+            <a 
+              href="https://www.linkedin.com/in/x-doc-a37ba9414" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              aria-label="Xdoc LinkedIn"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+              style={{ backgroundColor: '#0A66C2' }}
+            >
+              <Linkedin size={18} />
+            </a>
+            <a 
+              href="https://youtube.com/@xdoc.official" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              aria-label="Xdoc YouTube"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+              style={{ backgroundColor: '#FF0000' }}
+            >
+              <Youtube size={18} />
+            </a>
+            <a 
+              href="https://www.instagram.com/xdoc.official" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              aria-label="Xdoc Instagram"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+              style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
+            >
+              <Instagram size={18} />
+            </a>
+          </div>
+        </div>
       </div>
     );
   }
@@ -752,6 +850,46 @@ function AboutUsView({ language }: { language: 'EN' | 'UR' }) {
         <p>
           By establishing independent digital panels for clinics and patient trackers, we enable medical administrators to drive patient pipelines with digital tokens. This keeps patients safely at home until they are next in queue, optimizing practitioner utilization rates and keeping citizens safe.
         </p>
+      </div>
+
+      {/* About social icons block (English) */}
+      <div className="pt-8 border-t border-slate-100 flex flex-col items-center sm:items-start gap-4">
+        <div className="text-left w-full">
+          <h4 className="text-sm font-bold text-slate-900">Follow Us</h4>
+          <p className="text-xs text-slate-400">Stay updated on social media</p>
+        </div>
+        <div className="flex gap-3 justify-start w-full">
+          <a 
+            href="https://www.linkedin.com/in/x-doc-a37ba9414" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            aria-label="Xdoc LinkedIn"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+            style={{ backgroundColor: '#0A66C2' }}
+          >
+            <Linkedin size={18} />
+          </a>
+          <a 
+            href="https://youtube.com/@xdoc.official" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            aria-label="Xdoc YouTube"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+            style={{ backgroundColor: '#FF0000' }}
+          >
+            <Youtube size={18} />
+          </a>
+          <a 
+            href="https://www.instagram.com/xdoc.official" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            aria-label="Xdoc Instagram"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+            style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
+          >
+            <Instagram size={18} />
+          </a>
+        </div>
       </div>
     </div>
   );
