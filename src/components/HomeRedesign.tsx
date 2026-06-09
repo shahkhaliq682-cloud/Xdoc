@@ -466,11 +466,12 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
                    <span className="text-2xl font-bold tracking-tight">Xdoc</span>
                 </div>
                 <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-xs">{h.footer.desc}</p>
-                <div className="flex gap-4">
+                <div className="flex gap-3">
                    {[
                       { Icon: Linkedin, url: "https://www.linkedin.com/in/x-doc-a37ba9414", label: "Xdoc LinkedIn", color: "#0A66C2" },
                       { Icon: Youtube, url: "https://youtube.com/@xdoc.official", label: "Xdoc YouTube", color: "#FF0000" },
-                      { Icon: Instagram, url: "https://www.instagram.com/xdoc.official", label: "Xdoc Instagram", gradient: true }
+                      { Icon: Instagram, url: "https://www.instagram.com/xdoc.official", label: "Xdoc Instagram", gradient: true },
+                      { Icon: Facebook, url: "https://www.facebook.com/share/1JfJzXwzKS/", label: "Facebook", color: "#1877F2" }
                     ].map((m, i) => (
                       <a 
                         key={i} 
@@ -483,12 +484,9 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
                       >
                         <m.Icon size={18} />
                       </a>
-                    )) || [].map((Icon, i) => (
-                     <a key={i} href="#" className="w-10 h-10 rounded-lg bg-slate-800/50 flex items-center justify-center text-slate-300 hover:bg-[#0B5FFF] hover:text-white transition-all">
-                       <Icon size={18} />
-                     </a>
-                   ))}
+                    ))}
                 </div>
+
              </div>
 
              <div>

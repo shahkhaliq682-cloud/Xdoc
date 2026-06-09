@@ -20,7 +20,8 @@ import {
   Users,
   Linkedin,
   Youtube,
-  Instagram
+  Instagram,
+  Facebook
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -588,6 +589,20 @@ function ContactUsView({ language, toast }: { language: 'EN' | 'UR', toast: any 
                 </a>
                 <span className="text-[11px] font-medium text-[#64748B] font-sans">Instagram</span>
               </div>
+
+              <div className="flex flex-col items-center gap-1.5">
+                <a 
+                  href="https://www.facebook.com/share/1JfJzXwzKS/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  aria-label="Facebook"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+                  style={{ backgroundColor: '#1877F2' }}
+                >
+                  <Facebook size={22} />
+                </a>
+                <span className="text-[11px] font-medium text-[#64748B] font-sans">Facebook</span>
+              </div>
             </div>
           </div>
         </div>
@@ -797,6 +812,16 @@ function AboutUsView({ language }: { language: 'EN' | 'UR' }) {
             >
               <Instagram size={18} />
             </a>
+            <a 
+              href="https://www.facebook.com/share/1JfJzXwzKS/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              aria-label="Facebook"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+              style={{ backgroundColor: '#1877F2' }}
+            >
+              <Facebook size={18} />
+            </a>
           </div>
         </div>
       </div>
@@ -888,6 +913,16 @@ function AboutUsView({ language }: { language: 'EN' | 'UR' }) {
             style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
           >
             <Instagram size={18} />
+          </a>
+          <a 
+            href="https://www.facebook.com/share/1JfJzXwzKS/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            aria-label="Facebook"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
+            style={{ backgroundColor: '#1877F2' }}
+          >
+            <Facebook size={18} />
           </a>
         </div>
       </div>
