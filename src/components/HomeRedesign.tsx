@@ -112,11 +112,23 @@ const HomeRedesign = ({
             className="max-w-3xl mb-6"
           >
             <h1 className="text-[36px] md:text-[60px] font-bold text-[#0F172A] leading-[1.1] tracking-[-0.02em] mb-4">
-              {language === 'UR' ? "ڈاکٹرز کو آن لائن بک کریں۔" : "Book Doctors Online."}
-              <br />
-              <span className="text-[#2563EB]">
-                {language === 'UR' ? "قطار کو بائی پاس کریں۔" : "Skip the Queue."}
-              </span>
+              {language === 'UR' ? (
+                <>
+                  اپنی صحت کا انتظام کریں،
+                  <br />
+                  ڈاکٹرز اور اپائنٹمنٹس
+                  <br />
+                  <span className="text-[#2563EB]">ڈیجیٹل طور پر</span>
+                </>
+              ) : (
+                <>
+                  Manage Your Health,
+                  <br />
+                  Doctors & Appointments
+                  <br />
+                  <span className="text-[#2563EB]">Digitally</span>
+                </>
+              )}
             </h1>
             
             {/* Subtext */}
@@ -197,19 +209,19 @@ const HomeRedesign = ({
                   name: language === 'UR' ? 'ماہر امراض' : 'Specialist', 
                   query: 'Specialist', 
                   icon: Activity,
-                  color: 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-50' 
+                  color: 'bg-[#F0F9FF] border-[#BAE6FD] text-[#0284C7] hover:bg-[#F0F9FF]' 
                 },
                 { 
                   name: language === 'UR' ? 'دندان ساز' : 'Dentist', 
                   query: 'Dentist', 
                   icon: Check, 
-                  color: 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:bg-indigo-50' 
+                  color: 'bg-[#F0FDF4] border-[#BBF7D0] text-[#16A34A] hover:bg-[#F0FDF4]' 
                 },
                 { 
                   name: language === 'UR' ? 'ایمرجنسی' : 'Emergency', 
                   query: 'Emergency', 
                   icon: ShieldCheck,
-                  color: 'bg-[#FDF2F2] border-[#FDE8E8] text-[#9B1C1C] hover:bg-[#FDF2F2]' 
+                  color: 'bg-[#FFF7ED] border-[#FED7AA] text-[#EA580C] hover:bg-[#FFF7ED]' 
                 }
               ].map((cat, i) => {
                 const IconComp = cat.icon;
