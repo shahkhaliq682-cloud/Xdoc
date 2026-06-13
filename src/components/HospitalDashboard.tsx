@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { signOut } from 'firebase/auth';
 import { 
   LayoutDashboard, 
   Users, 
@@ -296,22 +297,35 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
   useEffect(() => {
     let isMounted = true;
     const hId = initialHospitalData?.uid || initialHospitalData?.id;
-    const fetchHospitalData = async () => {
-      if (!hId) return;
-      try {
-        const docRef = doc(db, 'hospitals', hId);
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
-          if (isMounted && docSnap.exists()) {
-            setHospitalData({ uid: docSnap.id, id: docSnap.id, ...docSnap.data() });
-          }
-        });
-        return () => unsubscribe();
-      } catch (error: any) {
-        if (isMounted) console.error("Error fetching hospital data:", error);
+    if (!hId) return;
+
+    const docRef = doc(db, 'hospitals', hId);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (isMounted && docSnap.exists()) {
+        const data = docSnap.data();
+        if (data?.isBlocked === true) {
+          signOut(auth).then(() => {
+            sessionStorage.setItem('suspended_error', 'Your account has been suspended. Please contact Xdoc support at +92 315 2328605');
+            const navigate = (path: string) => {
+              if (onNavigate) {
+                onNavigate('login');
+              } else {
+                window.history.pushState(null, '', '/?view=login');
+                window.dispatchEvent(new Event('popstate'));
+              }
+            };
+            navigate("/login");
+          });
+          return;
+        }
+        setHospitalData({ uid: docSnap.id, id: docSnap.id, ...data });
       }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
     };
-    fetchHospitalData();
-    return () => { isMounted = false; };
   }, [initialHospitalData?.uid, initialHospitalData?.id]);
 
   // Listen to doctors

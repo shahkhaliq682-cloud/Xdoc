@@ -36,10 +36,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user) {
         // Real-time listener for user document to handle race conditions and updates
         const userDocRef = doc(db, 'users', user.uid);
-        unsubDoc = onSnapshot(userDocRef, (docSnap) => {
+        unsubDoc = onSnapshot(userDocRef, async (docSnap) => {
           if (!isMounted) return;
           if (docSnap.exists()) {
-            setUserData(sanitizeFirestoreData(docSnap.data()));
+            const data = docSnap.data() || {};
+            const role = data.role;
+            if (role === 'Admin' || role === 'hospital_admin') {
+              try {
+                const hospDocRef = doc(db, 'hospitals', user.uid);
+                const hospDocSnap = await getDoc(hospDocRef);
+                if (isMounted && hospDocSnap.exists() && hospDocSnap.data().isBlocked === true) {
+                  sessionStorage.setItem('suspended_error', 'Your account has been suspended. Please contact Xdoc support at +92 315 2328605');
+                  await firebaseSignOut(auth);
+                  setUserData(null);
+                  setCurrentUser(null);
+                  setLoading(false);
+                  return;
+                }
+              } catch (err) {
+                console.error("AuthContext block check error:", err);
+              }
+            }
+            setUserData(sanitizeFirestoreData(data));
           } else {
             // Default to patient if doc doesn't exist yet (signup in progress)
             setUserData({ uid: user.uid, email: user.email, role: 'patient', isNew: true });

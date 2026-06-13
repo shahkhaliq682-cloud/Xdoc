@@ -11,9 +11,22 @@ service cloud.firestore {
     match /hospitals/{hospitalId} {
       // Anyone can read (for patient listing)
       allow read: if true;
-      // Only owner can write
-      allow write: if request.auth != null 
-        && request.auth.uid == hospitalId;
+      
+      // Separate write into create and update for precision
+      allow create: if request.auth != null 
+        && request.auth.uid == hospitalId
+        && (!('isBlocked' in request.resource.data) || request.resource.data.isBlocked == false);
+        
+      allow update: if request.auth != null && (
+        // The hospital owner can update their own data, but they cannot affect the 'isBlocked' field
+        (request.auth.uid == hospitalId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isBlocked']))
+        || 
+        // A Super Admin can write/block anything
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['super_admin', 'SuperAdmin', 'superadmin'])
+      );
+
+      allow delete: if request.auth != null 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['super_admin', 'SuperAdmin', 'superadmin'];
       
       // Doctors sub-collection
       match /doctors/{doctorId} {

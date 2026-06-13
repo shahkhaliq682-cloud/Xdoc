@@ -418,7 +418,7 @@ const Navbar = ({ activeTab, setActiveTab, darkMode = false }: { activeTab: stri
 
 // --- Auth & Onboarding Components ---
 
-const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { onLoginSuccess: (role: string) => void, onSignUpClick: (type: 'Hospital' | 'Patient') => void, onForgotPasswordClick: () => void }) => {
+const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick, initialError }: { onLoginSuccess: (role: string) => void, onSignUpClick: (type: 'Hospital' | 'Patient') => void, onForgotPasswordClick: () => void, initialError?: string | null }) => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -427,6 +427,18 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ email?: string; password?: string; general?: string }>({});
+
+  useEffect(() => {
+    if (initialError) {
+      setError({ general: initialError });
+    } else {
+      const errorFromSession = sessionStorage.getItem('suspended_error');
+      if (errorFromSession) {
+        setError({ general: errorFromSession });
+        sessionStorage.removeItem('suspended_error');
+      }
+    }
+  }, [initialError]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -480,6 +492,17 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       }
       
       const user = userCredential.user;
+
+      // Unconditional real-time block check for hospital document after signIn succeeds (Steps 1-4)
+      const hospDocRef = doc(db, 'hospitals', user.uid);
+      const hospDocSnap = await getDoc(hospDocRef);
+      if (hospDocSnap.exists() && hospDocSnap.data().isBlocked === true) {
+        await signOut(auth);
+        setError({ general: "Your account has been suspended. Please contact Xdoc support at +92 315 2328605" });
+        setLoading(false);
+        return;
+      }
+
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
@@ -491,14 +514,6 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
         
         let role = userData.role;
         if (role === 'Admin' || role === 'hospital_admin') {
-          // Fetch hospitals/{uid} to check isBlocked field
-          const hospDoc = await getDoc(doc(db, 'hospitals', user.uid));
-          if (hospDoc.exists() && hospDoc.data().isBlocked === true) {
-            await signOut(auth);
-            setError({ general: "Your account has been suspended. Please contact Xdoc support." });
-            setLoading(false);
-            return;
-          }
           role = 'hospital_admin';
         }
         else if (role === 'SuperAdmin' || role === 'super_admin' || role === 'superadmin') role = 'super_admin';
@@ -543,18 +558,10 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       const code = err.code || '';
       const message = err.message || '';
       
-      if (code === 'auth/user-not-found' || code === 'auth/invalid-email' || code === 'auth/invalid-credential' || message.includes('invalid-credential')) {
-        setError({ general: t.auth.invalidCredential });
-      } else if (code === 'auth/email-already-in-use' || message.includes('email-already-in-use')) {
-        setError({ general: t.auth.emailAlreadyInUse });
-      } else if (code === 'auth/wrong-password' || message.includes('wrong-password')) {
-        setError({ password: t.auth.incorrectPassword });
-      } else if (code === 'auth/network-request-failed' || message.includes('network-request-failed')) {
-        setError({ general: t.auth.networkError });
-      } else if (code === 'auth/too-many-requests' || message.includes('too-many-requests')) {
-        setError({ general: t.auth.tooManyRequests });
+      if (code === 'auth/wrong-password' || message.includes('wrong-password') || code === 'auth/invalid-credential' || message.includes('invalid-credential') || code === 'auth/user-not-found' || code === 'auth/invalid-email') {
+        setError({ general: "Invalid email or password" });
       } else {
-        setError({ general: message || 'Login failed. Please check your credentials.' });
+        setError({ general: "Login failed. Please try again." });
       }
     } finally {
       setLoading(false);
@@ -567,18 +574,19 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
+      const hospDocRef = doc(db, 'hospitals', user.uid);
+      const hospDocSnap = await getDoc(hospDocRef);
+      if (hospDocSnap.exists() && hospDocSnap.data().isBlocked === true) {
+        await signOut(auth);
+        setError({ general: "Your account has been suspended. Please contact Xdoc support at +92 315 2328605" });
+        return;
+      }
+
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
         let role = userData.role;
         if (role === 'Admin' || role === 'hospital_admin') {
-          // Fetch hospitals/{uid} to check isBlocked field
-          const hospDoc = await getDoc(doc(db, 'hospitals', user.uid));
-          if (hospDoc.exists() && hospDoc.data().isBlocked === true) {
-            await signOut(auth);
-            toast.error("Your account has been suspended. Please contact Xdoc support.");
-            return;
-          }
           role = 'hospital_admin';
         }
         else if (role === 'SuperAdmin' || role === 'super_admin' || role === 'superadmin') role = 'super_admin';
@@ -589,6 +597,7 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
       }
     } catch (error: any) {
       handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`);
+      setError({ general: "Login failed. Please try again." });
     }
   };
 
@@ -2007,6 +2016,7 @@ export default function App() {
   const { currentUser, userData, logout } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
+  const [suspendedError, setSuspendedError] = useState<string | null>(null);
   // Real State hook definitions (Raw inputs)
   const [viewState, setViewStateRaw] = useState<'hero' | 'login' | 'auth_choice' | 'hospital_reg' | 'patient_reg' | 'patient_home' | 'admin_dashboard' | 'super_admin' | 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy' | 'category' | 'doctor_profile' | 'pricing'>('hero');
   const [activeTab, setActiveTab ] = useState('dashboard');
@@ -2045,6 +2055,9 @@ export default function App() {
 
   // Wrapped triggers that automatically map changes in React state directly to browser history / URL
   const setViewState = (state: typeof viewState) => {
+    if (state !== 'login') {
+      setSuspendedError(null);
+    }
     let targetPath = `?view=${state}`;
     if (state === 'hero') targetPath = '?view=home';
     else if (state === 'pricing') {
@@ -2521,6 +2534,28 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+    if (!currentUser) return;
+    
+    const checkUserBlockState = async () => {
+      try {
+        const hospDocRef = doc(db, 'hospitals', currentUser.uid);
+        const hospDocSnap = await getDoc(hospDocRef);
+        if (isMounted && hospDocSnap.exists() && hospDocSnap.data().isBlocked === true) {
+          sessionStorage.setItem('suspended_error', 'Your account has been suspended. Please contact Xdoc support at +92 315 2328605');
+          setSuspendedError('Your account has been suspended. Please contact Xdoc support at +92 315 2328605');
+          await signOut(auth);
+          setViewState('login');
+        }
+      } catch (err) {
+        console.error("Route check block status error:", err);
+      }
+    };
+    checkUserBlockState();
+    return () => { isMounted = false; };
+  }, [currentUser, viewState]);
+
+  useEffect(() => {
     if (currentUser && userData) {
       // Check for onboarding
       const hasSeenTour = localStorage.getItem(`xdoc_tour_${currentUser.uid}`);
@@ -2538,12 +2573,20 @@ export default function App() {
         }
       }
     } else if (!currentUser) {
-      // Redirect to hero if logged out, but only if they were in a protected view
+      // Redirect if logged out, but only if they were in a protected view
       if (['admin_dashboard', 'super_admin', 'patient_home'].includes(viewState)) {
-        setViewState('hero');
+        const hasSuspensionError = sessionStorage.getItem('suspended_error') || suspendedError;
+        if (hasSuspensionError) {
+          if (!suspendedError) {
+            setSuspendedError(String(hasSuspensionError));
+          }
+          setViewState('login');
+        } else {
+          setViewState('hero');
+        }
       }
     }
-  }, [currentUser, userData, viewState]);
+  }, [currentUser, userData, viewState, suspendedError]);
 
   useEffect(() => {
     setIsDarkMode(viewState === 'admin_dashboard' || viewState === 'super_admin');
@@ -3086,6 +3129,7 @@ export default function App() {
         return (
           <>
             <LoginPage 
+              initialError={suspendedError}
               onLoginSuccess={(role) => {
                 if (selectedHospital) {
                   handleLoginSuccess();
