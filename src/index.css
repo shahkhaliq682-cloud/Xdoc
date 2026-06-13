@@ -26,6 +26,12 @@
     @apply font-sans text-slate-900;
     font-style: normal !important;
   }
+  /* Prevent iOS auto-zoom on inputs/selects/textareas on mobile */
+  @media (max-width: 767px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold tracking-tight;
     font-style: normal !important;

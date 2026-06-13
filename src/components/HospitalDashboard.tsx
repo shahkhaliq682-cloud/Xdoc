@@ -648,24 +648,25 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
     }
 
     return (
-      <div className="p-8 space-y-10">
+      <div className="p-4 md:p-8 space-y-6 md:space-y-10">
         {/* Reception Mode Button */}
         <button 
           onClick={openReceptionMode}
-          className="w-full bg-slate-950 text-white p-8 rounded-[48px] flex items-center justify-between group hover:scale-[1.01] transition-all shadow-2xl relative overflow-hidden"
+          className="w-full bg-slate-950 text-white p-4 sm:p-8 rounded-[24px] sm:rounded-[48px] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group hover:scale-[1.01] transition-all shadow-2xl relative overflow-hidden text-left"
+          style={{ minHeight: '44px' }}
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -mr-32 -mt-32 blur-3xl" />
-          <div className="flex items-center gap-6 relative z-10">
-            <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center text-primary group-hover:rotate-12 transition-transform">
-              <Activity size={32} />
+          <div className="flex items-center gap-4 sm:gap-6 relative z-10 w-full md:w-auto">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-2xl sm:rounded-3xl flex items-center justify-center text-primary group-hover:rotate-12 transition-transform shrink-0">
+              <Activity size={28} className="sm:w-8 sm:h-8" />
             </div>
-            <div className="text-left">
-              <h3 className="text-2xl font-black tracking-tight">{t.patient.booking.receptionMode}</h3>
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">{t.patient.booking.simpleTokenScreen}</p>
+            <div className="text-left min-w-0 flex-1">
+              <h3 className="text-lg sm:text-2xl font-black tracking-tight truncate">{t.patient.booking.receptionMode}</h3>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs truncate">{t.patient.booking.simpleTokenScreen}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 bg-white/10 px-6 py-3 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all relative z-10">
-            <span className="font-extrabold text-xs uppercase tracking-widest">{t.patient.booking.openReceptionMode}</span>
+          <div className="flex items-center gap-2 bg-white/10 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all relative z-10 shrink-0 self-stretch md:self-auto justify-center">
+            <span className="font-extrabold text-[10px] sm:text-xs uppercase tracking-widest">{t.patient.booking.openReceptionMode}</span>
             <ChevronRight size={16} strokeWidth={3} />
           </div>
         </button>
@@ -726,15 +727,15 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
             { label: d.completedToday, val: dashboardStats.completedToday, color: 'text-emerald-500', icon: CheckCircle2, sub: 'Done' },
             { label: d.revenueToday, val: `Rs. ${dashboardStats.revenueToday}`, color: 'text-health-teal', icon: Wallet, sub: 'Collected' },
           ].map((stat, idx) => (
-            <div key={idx} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden group">
-               <div className="flex items-center justify-between mb-4">
-                 <div className={`w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
-                    <stat.icon size={24} />
+            <div key={idx} className="bg-white p-4 sm:p-8 rounded-[24px] sm:rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden group">
+               <div className="flex items-center justify-between mb-3 sm:mb-4">
+                 <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-50 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
+                    <stat.icon className="w-5 h-5 sm:w-6 sm:h-6" />
                  </div>
-                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{stat.sub}</span>
+                 <span className="text-[8px] sm:text-[10px] font-black text-slate-300 uppercase tracking-widest">{stat.sub}</span>
                </div>
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">{stat.label}</p>
-               <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{stat.val}</h3>
+               <p className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em] mb-1 sm:mb-2 truncate">{stat.label}</p>
+               <h3 className="text-lg sm:text-3xl font-black text-slate-900 tracking-tighter truncate">{stat.val}</h3>
             </div>
           ))}
         </div>
@@ -760,11 +761,11 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                    <div className="space-y-4">
                       <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-4">{t.patient.booking.inProgress}</p>
                       {inProgressTokens.map(token => (
-                         <div key={token.id} className="p-8 bg-blue-50/50 rounded-[40px] border-2 border-blue-100 flex items-center justify-between shadow-xl shadow-blue-500/5">
+                         <div key={token.id} className="p-8 bg-blue-50/50 rounded-[24px] sm:rounded-[40px] border-2 border-blue-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-xl shadow-blue-500/5">
                             <div className="flex items-center gap-6">
-                               <div className="w-20 h-20 bg-white rounded-[32px] flex flex-col items-center justify-center border-2 border-blue-200 shadow-sm">
+                               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl sm:rounded-[32px] flex flex-col items-center justify-center border-2 border-blue-200 shrink-0 shadow-sm">
                                   <span className="text-[10px] font-black text-blue-400 uppercase leading-none">Token</span>
-                                  <span className="text-3xl font-black text-blue-600" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{token.tokenNumber}</span>
+                                  <span className="text-2xl sm:text-3xl font-black text-blue-600" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{token.tokenNumber}</span>
                                </div>
                                <div>
                                   <h4 className="text-xl font-black text-slate-900 leading-tight">{token.patientName}</h4>
@@ -774,16 +775,16 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                                   </p>
                                </div>
                             </div>
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 shrink-0">
                                <button 
                                  onClick={() => updateTokenStatus(token.id, 'completed', token.patientId)}
-                                 className="px-8 py-4 bg-emerald-500 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
+                                 className="px-6 py-3.5 bg-emerald-500 text-white rounded-xl sm:rounded-3xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center text-center w-full sm:w-auto min-h-[44px]"
                                >
                                  {t.patient.booking.markDone}
                                </button>
                                <button 
                                  onClick={() => updateTokenStatus(token.id, 'not-arrived', token.patientId)}
-                                 className="px-6 py-4 bg-slate-200 text-slate-600 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                                 className="px-5 py-3.5 bg-slate-200 text-slate-600 rounded-xl sm:rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white active:scale-95 transition-all flex items-center justify-center text-center w-full sm:w-auto min-h-[44px]"
                                >
                                  {t.patient.booking.absent}
                                </button>
@@ -814,10 +815,10 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                       waitingTokens.map(token => (
                          <div 
                            key={token.id} 
-                           className={`p-6 bg-slate-50/50 rounded-[32px] border border-slate-100 flex items-center justify-between hover:bg-white transition-all group ${newTokenId === token.id ? 'border-primary ring-4 ring-primary/10 animate-pulse' : ''}`}
+                           className={`p-4 sm:p-6 bg-slate-50/50 rounded-[20px] sm:rounded-[32px] border border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 hover:bg-white transition-all group ${newTokenId === token.id ? 'border-primary ring-4 ring-primary/10 animate-pulse' : ''}`}
                          >
                             <div className="flex items-center gap-6">
-                               <div className="w-16 h-16 bg-white rounded-2xl flex flex-col items-center justify-center border border-slate-100 shadow-sm transition-transform group-hover:scale-105">
+                               <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white rounded-2xl flex flex-col items-center justify-center border border-slate-100 shadow-sm transition-transform group-hover:scale-105 shrink-0">
                                   <span className="text-[8px] font-bold text-slate-400 uppercase leading-none">Token</span>
                                   <span className="text-xl font-black text-slate-900" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{token.tokenNumber}</span>
                                </div>
@@ -833,7 +834,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
 
                             <button 
                               onClick={() => updateTokenStatus(token.id, 'in-progress', token.patientId)}
-                              className="px-6 py-4 bg-white border-2 border-primary text-primary rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white shadow-xl shadow-primary/5 transition-all flex items-center gap-2"
+                              className="px-5 py-3.5 bg-white border-2 border-primary text-primary rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white active:scale-95 transition-all flex items-center justify-center gap-2 w-full sm:w-auto min-h-[44px]"
                             >
                               <Play size={16} fill="currentColor" /> {t.patient.booking.startNow}
                             </button>
@@ -1713,51 +1714,53 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
         </button>
       </div>
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-            <tr>
-              <th className="px-8 py-4">Token #</th>
-              <th className="px-8 py-4">Patient</th>
-              <th className="px-8 py-4">Doctor</th>
-              <th className="px-8 py-4">Status</th>
-              <th className="px-8 py-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {tokens.map(token => (
-              <tr key={token.id}>
-                <td className="px-8 py-4 font-mono font-bold text-slate-900">#{token.tokenNumber}</td>
-                <td className="px-8 py-4 font-bold text-slate-900">{token.patientName}</td>
-                <td className="px-8 py-4 text-slate-500">{token.doctorName}</td>
-                <td className="px-8 py-4">
-                  <select 
-                    value={token.status}
-                    onChange={(e) => updateTokenStatus(token.id, e.target.value, token.patientId)}
-                    className="bg-slate-50 border-none rounded-lg text-xs font-bold text-slate-600 focus:ring-primary cursor-pointer"
-                  >
-                    <option value="Waiting">Waiting</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </td>
-                <td className="px-8 py-4 flex items-center gap-2">
-                  <button onClick={() => deleteDoc(doc(db, 'tokens', token.id))} className="p-2 text-slate-300 hover:text-red-500 cursor-pointer" title="Delete Receipt"><Trash2 size={18} /></button>
-                  {token.status?.toLowerCase() === 'completed' && (
-                    <button 
-                      onClick={() => { setSelectedInvoiceToken(token); setIsInvoiceOpen(true); }}
-                      className="px-2.5 py-1.5 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1] hover:scale-105 active:scale-95 text-white rounded-lg transition-all text-[9px] font-black cursor-pointer uppercase flex items-center gap-1.5"
-                      title="View Invoice"
-                    >
-                      <FileText size={12} />
-                      <span>Invoice</span>
-                    </button>
-                  )}
-                </td>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left min-w-[600px]">
+            <thead className="bg-slate-50 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+              <tr>
+                <th className="px-8 py-4">Token #</th>
+                <th className="px-8 py-4">Patient</th>
+                <th className="px-8 py-4">Doctor</th>
+                <th className="px-8 py-4">Status</th>
+                <th className="px-8 py-4">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {tokens.map(token => (
+                <tr key={token.id}>
+                  <td className="px-8 py-4 font-mono font-bold text-slate-900">#{token.tokenNumber}</td>
+                  <td className="px-8 py-4 font-bold text-slate-900">{token.patientName}</td>
+                  <td className="px-8 py-4 text-slate-500">{token.doctorName}</td>
+                  <td className="px-8 py-4">
+                    <select 
+                      value={token.status}
+                      onChange={(e) => updateTokenStatus(token.id, e.target.value, token.patientId)}
+                      className="bg-slate-50 border-none rounded-lg text-xs font-bold text-slate-600 focus:ring-primary cursor-pointer"
+                    >
+                      <option value="Waiting">Waiting</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </td>
+                  <td className="px-8 py-4 flex items-center gap-2">
+                    <button onClick={() => deleteDoc(doc(db, 'tokens', token.id))} className="p-2 text-slate-300 hover:text-red-500 cursor-pointer" title="Delete Receipt"><Trash2 size={18} /></button>
+                    {token.status?.toLowerCase() === 'completed' && (
+                      <button 
+                        onClick={() => { setSelectedInvoiceToken(token); setIsInvoiceOpen(true); }}
+                        className="px-2.5 py-1.5 bg-gradient-to-r from-[#0B5FFF] to-[#00C9B1] hover:scale-105 active:scale-95 text-white rounded-lg transition-all text-[9px] font-black cursor-pointer uppercase flex items-center gap-1.5"
+                        title="View Invoice"
+                      >
+                        <FileText size={12} />
+                        <span>Invoice</span>
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -2634,50 +2637,53 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 lg:ml-64 ${language === 'UR' ? 'lg:mr-64 lg:ml-0' : 'lg:ml-64'}`}>
+      <main className={`flex-1 transition-all duration-300 ${language === 'UR' ? 'lg:mr-64 lg:ml-0' : 'lg:ml-64'} pb-28 md:pb-8`}>
         {/* Header */}
-        <header className="h-24 bg-gradient-to-r from-white/60 via-sky-50/40 to-white/60 backdrop-blur-2xl border-b border-indigo-100/30 flex items-center justify-between px-8 sticky top-0 z-40 shadow-[0_8px_30px_rgba(11,95,255,0.02)]">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-3">
-               <h1 className="text-xl font-black text-slate-900 tracking-tight truncate max-w-[300px]">
+        <header className="min-h-[6rem] h-auto py-4 bg-gradient-to-r from-white/60 via-sky-50/40 to-white/60 backdrop-blur-2xl border-b border-indigo-100/30 flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 md:px-8 sticky top-0 z-40 gap-4 shadow-[0_8px_30px_rgba(11,95,255,0.02)]">
+          <div className="flex flex-col w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+               <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight truncate max-w-[280px] sm:max-w-[300px]">
                  {hospitalData?.hospitalName || 'HOSPITAL DASHBOARD'}
                </h1>
                
-               <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-100 rounded-full">
-                 <div className={`w-2 h-2 rounded-full ${isLive ? 'bg-success-green breathing-dot' : 'bg-red-400'}`} />
-                 <span className={`text-[10px] font-black uppercase tracking-widest ${isLive ? 'text-success-green' : 'text-red-400'}`}>
-                    {isLive ? t.ux.live : t.ux.offline}
-                 </span>
-               </div>
-
-               {isSyncing && (
-                 <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 border border-primary/10 rounded-full animate-pulse">
-                   <div className="w-2 h-2 rounded-full bg-primary animate-spin" />
-                   <span className="text-[10px] font-black text-primary uppercase tracking-widest">
-                     Syncing
+               <div className="flex flex-wrap items-center gap-2">
+                 <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-100 rounded-full shrink-0">
+                   <div className={`w-2 h-2 rounded-full ${isLive ? 'bg-success-green breathing-dot' : 'bg-red-400'}`} />
+                   <span className={`text-[10px] font-black uppercase tracking-widest ${isLive ? 'text-success-green' : 'text-red-400'}`}>
+                      {isLive ? t.ux.live : t.ux.offline}
                    </span>
                  </div>
-               )}
 
-               <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${hospitalData?.status === 'open' ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    {hospitalData?.status === 'open' ? t.patient.booking.status + ': OPEN' : t.patient.booking.status + ': CLOSED'}
-                  </span>
-                  <button 
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      const newStatus = hospitalData?.status === 'open' ? 'closed' : 'open';
-                      await updateDoc(doc(db, 'hospitals', hospitalData.uid), { status: newStatus });
-                    }}
-                    className={`w-12 h-6 rounded-full relative transition-all duration-300 shadow-inner ${hospitalData?.status === 'open' ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                  >
-                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-md ${hospitalData?.status === 'open' ? 'right-1' : 'left-1'}`} />
-                  </button>
+                 {isSyncing && (
+                   <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 border border-primary/10 rounded-full animate-pulse shrink-0">
+                     <div className="w-2 h-2 rounded-full bg-primary animate-spin" />
+                     <span className="text-[10px] font-black text-primary uppercase tracking-widest">
+                       Syncing
+                     </span>
+                   </div>
+                 )}
+
+                 <div className="flex items-center gap-2.5 bg-slate-50 px-3 py-1.5 rounded-2xl border border-slate-100 shrink-0">
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${hospitalData?.status === 'open' ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {hospitalData?.status === 'open' ? t.patient.booking.status + ': OPEN' : t.patient.booking.status + ': CLOSED'}
+                    </span>
+                    <button 
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const newStatus = hospitalData?.status === 'open' ? 'closed' : 'open';
+                        await updateDoc(doc(db, 'hospitals', hospitalData.uid), { status: newStatus });
+                      }}
+                      className={`w-12 h-6 rounded-full relative transition-all duration-300 shadow-inner shrink-0 ${hospitalData?.status === 'open' ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                      style={{ minHeight: '24px', minWidth: '48px' }}
+                    >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-md ${hospitalData?.status === 'open' ? 'right-1' : 'left-1'}`} />
+                    </button>
+                 </div>
                </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
              <div className="hidden lg:flex items-center gap-3 px-6 border-r border-slate-100">
                 <div className="text-right">
                   <p className="text-sm font-black text-slate-900">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
@@ -2685,13 +2691,13 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                 </div>
              </div>
 
-             <button onClick={() => setLanguage(language === 'UR' ? 'EN' : 'UR')} className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 hover:text-primary transition-colors">
+             <button onClick={() => setLanguage(language === 'UR' ? 'EN' : 'UR')} className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 hover:text-primary transition-colors shrink-0">
                 <Globe size={20} />
              </button>
              
              <button 
                onClick={onSignOut}
-               className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all group"
+               className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all group shrink-0"
              >
                <LogOut size={20} className="group-hover:translate-x-0.5 transition-transform" />
              </button>
@@ -2769,7 +2775,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-[36px] border border-slate-100 max-w-md w-full p-6 md:p-8 relative text-center shadow-2xl"
+                className="bg-white rounded-2xl sm:rounded-[36px] border border-slate-100 max-w-md w-full p-6 md:p-8 relative text-center shadow-2xl max-h-[90vh] overflow-y-auto"
               >
                 <div className="w-16 h-16 bg-blue-50 text-[#0B5FFF] rounded-3xl flex items-center justify-center mx-auto mb-6">
                   <Lock size={32} />
@@ -2820,7 +2826,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
         {renderActiveTab()}
 
         {/* Bottom Navigation (Mobile) */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between lg:hidden z-50 overflow-x-auto gap-4 scrollbar-none">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3.5 flex items-center justify-start lg:hidden z-50 overflow-x-auto gap-1 scrollbar-none scroll-smooth">
            {navItems.map((item) => (
              <button
                key={item.id}
@@ -2832,17 +2838,20 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                    setActiveTab(item.id);
                  }
                }}
-               className={`flex flex-col items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                 item.isLocked ? 'opacity-30' : ''
+               className={`flex flex-col items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer min-w-[62px] max-w-[80px] py-1 ${
+                 item.isLocked ? 'opacity-35' : ''
                } ${
-                 activeTab === item.id && !item.isLocked ? 'text-primary' : 'text-slate-300'
+                 activeTab === item.id && !item.isLocked ? 'text-primary' : 'text-slate-400'
                }`}
+               style={{ minHeight: '44px' }}
              >
-               <div className="relative">
-                 <item.icon size={22} />
+               <div className="relative flex items-center justify-center">
+                 <item.icon size={20} className="w-5 h-5 shrink-0" />
                  {item.isLocked && <Lock size={10} className="absolute -top-1 -right-1 text-red-500 bg-white rounded-full p-0.5" />}
                </div>
-               <span className="text-[9px] font-black uppercase tracking-tight">{item.label.split(' • ')[0]}</span>
+               <span className="text-[9px] font-extrabold uppercase tracking-tight whitespace-nowrap break-keep text-center">
+                 {item.label.split(' • ')[0]}
+               </span>
              </button>
            ))}
         </nav>
@@ -2854,7 +2863,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[40px] p-10 max-w-md w-full shadow-2xl space-y-8"
+                className="bg-white rounded-2xl sm:rounded-[40px] p-6 sm:p-10 max-w-md w-full shadow-2xl space-y-6 sm:space-y-8 max-h-[90vh] overflow-y-auto"
               >
                 <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mx-auto">
                    <AlertTriangle size={40} />
@@ -2902,7 +2911,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 30 }}
-                className="bg-white rounded-[36px] border border-slate-100 p-8 max-w-2xl w-full shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto"
+                className="bg-white rounded-2xl sm:rounded-[36px] border border-slate-100 p-4 sm:p-8 max-w-2xl w-full shadow-2xl space-y-4 sm:space-y-6 my-0 sm:my-8 max-h-screen sm:max-h-[90vh] overflow-y-auto"
               >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                   <div>
@@ -3142,7 +3151,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 30 }}
-                className="bg-white rounded-[36px] border border-slate-100 p-8 max-w-xl w-full shadow-2xl space-y-6 my-8"
+                className="bg-white rounded-2xl sm:rounded-[36px] border border-slate-100 p-4 sm:p-8 max-w-xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] shadow-2xl space-y-4 sm:space-y-6 my-0 sm:my-8 overflow-y-auto"
               >
                 {!walkInSuccessToken ? (
                   // STEP 1 & 2: Booking Form Layout
