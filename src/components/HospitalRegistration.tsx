@@ -92,6 +92,9 @@ const HospitalRegistration: React.FC<HospitalRegistrationProps> = ({ onComplete 
         facilities: ['Emergency Ward', 'Pharmacy', 'Lab'], // Default set
         rating: 0,
         totalReviews: 0,
+        isBlocked: false,
+        isActive: true,
+        blockedAt: null,
         status: "active",
         currentPlan: "trial",
         planStatus: "active",

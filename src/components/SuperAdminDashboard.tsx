@@ -36,6 +36,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
   const [seeding, setSeeding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [localSelectedPlans, setLocalSelectedPlans] = useState<Record<string, string>>({});
+  const [blockConfirmData, setBlockConfirmData] = useState<{ hospital: any; action: 'block' | 'unblock' } | null>(null);
+  const [updatingHospId, setUpdatingHospId] = useState<string | null>(null);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -113,6 +115,43 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
       await deleteDoc(doc(db, 'hospitals', id));
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleToggleBlock = (hospital: any) => {
+    const isCurrentlyBlocked = hospital.isBlocked === true;
+    setBlockConfirmData({
+      hospital,
+      action: isCurrentlyBlocked ? 'unblock' : 'block'
+    });
+  };
+
+  const handleExecuteBlockToggle = async () => {
+    if (!blockConfirmData) return;
+    const { hospital, action } = blockConfirmData;
+    setUpdatingHospId(hospital.id);
+    
+    try {
+      const hospitalRef = doc(db, 'hospitals', hospital.id);
+      if (action === 'block') {
+        await updateDoc(hospitalRef, {
+          isBlocked: true,
+          blockedAt: serverTimestamp()
+        });
+        toast.success(`${hospital.hospitalName || 'Hospital'} has been suspended successfully`);
+      } else {
+        await updateDoc(hospitalRef, {
+          isBlocked: false,
+          blockedAt: null
+        });
+        toast.success(`${hospital.hospitalName || 'Hospital'} has been unblocked successfully`);
+      }
+    } catch (err: any) {
+      console.error("Error toggling block:", err);
+      toast.error(err.message || "Failed to update suspension status");
+    } finally {
+      setUpdatingHospId(null);
+      setBlockConfirmData(null);
     }
   };
 
@@ -294,49 +333,150 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
                 </td>
               </tr>
             ) : (
-              hospitals.map(h => (
-                <tr key={h.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                        <HospitalIcon size={20} />
+              hospitals.map(h => {
+                const isBlocked = h.isBlocked === true;
+                const isActive = h.isActive !== false;
+                const isUpdating = updatingHospId === h.id;
+
+                let statusLabel = 'Active';
+                if (isBlocked) {
+                  statusLabel = 'Suspended';
+                } else if (!isActive) {
+                  statusLabel = 'Inactive';
+                }
+
+                return (
+                  <tr key={h.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                          <HospitalIcon size={20} />
+                        </div>
+                        <span className="font-bold text-slate-800">{h.hospitalName}</span>
                       </div>
-                      <span className="font-bold text-slate-800">{h.hospitalName}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-slate-700 text-sm">{h.city}</span>
-                      <span className="text-[10px] text-slate-400">{h.area}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${h.type?.toLowerCase().includes('government') ? 'bg-emerald-50 text-emerald-600' : 'bg-primary/5 text-primary'}`}>
-                      {h.type}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${h.status === 'active' ? 'bg-emerald-500' : 'bg-red-400'}`} />
-                      <span className="text-xs font-bold text-slate-600 capitalize">{h.status || 'Active'}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => handleUpdateStatus(h.id, h.status === 'active' ? 'suspended' : 'active')} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all">
-                        <ShieldAlert size={18} />
-                      </button>
-                      <button onClick={() => handleDeleteHosp(h.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700 text-sm">{h.city}</span>
+                        <span className="text-[10px] text-slate-400">{h.area}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${h.type?.toLowerCase().includes('government') ? 'bg-emerald-50 text-emerald-600' : 'bg-primary/5 text-primary'}`}>
+                        {h.type}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                        isBlocked 
+                          ? 'bg-rose-50 text-rose-600 border-rose-100' 
+                          : !isActive 
+                          ? 'bg-slate-50 text-slate-500 border-slate-200' 
+                          : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          isBlocked ? 'bg-rose-500' : !isActive ? 'bg-slate-400' : 'bg-emerald-500'
+                        }`} />
+                        {statusLabel}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => handleToggleBlock(h)} 
+                          title={isBlocked ? "Unblock Hospital" : "Suspend Hospital"}
+                          disabled={isUpdating}
+                          className={`p-2 rounded-lg transition-all ${
+                            isBlocked 
+                              ? 'text-emerald-500 hover:bg-emerald-100 bg-emerald-50/50' 
+                              : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'
+                          }`}
+                        >
+                          {isUpdating ? (
+                            <svg className="animate-spin h-4.5 w-4.5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : isBlocked ? (
+                            <ShieldCheck size={18} />
+                          ) : (
+                            <ShieldAlert size={18} />
+                          )}
+                        </button>
+                        <button onClick={() => handleDeleteHosp(h.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Block/Unblock Confirmation Modal */}
+      <AnimatePresence>
+        {blockConfirmData && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm text-left">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-md bg-white rounded-3xl p-6 shadow-xl border border-slate-100"
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className={`p-3 rounded-2xl ${blockConfirmData.action === 'block' ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}>
+                  {blockConfirmData.action === 'block' ? <ShieldAlert size={24} /> : <ShieldCheck size={24} />}
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-slate-900">
+                    {blockConfirmData.action === 'block' ? "Suspend" : "Unblock"} Hospital?
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {blockConfirmData.hospital.hospitalName}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-sm text-slate-600 mb-6 leading-relaxed">
+                {blockConfirmData.action === 'block' ? (
+                  <>
+                    Are you sure you want to suspend <strong className="text-slate-900">{blockConfirmData.hospital.hospitalName}</strong>?
+                    They will lose access to their dashboard immediately.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to unblock <strong className="text-slate-900">{blockConfirmData.hospital.hospitalName}</strong>?
+                    Their team will immediately regain dashboard access.
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 justify-end">
+                <button
+                  onClick={() => setBlockConfirmData(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExecuteBlockToggle}
+                  className={`px-4 py-2 text-white rounded-xl text-xs font-bold transition-all shadow-lg ${
+                    blockConfirmData.action === 'block'
+                      ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/10'
+                      : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/10'
+                  }`}
+                >
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

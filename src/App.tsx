@@ -495,7 +495,7 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
           const hospDoc = await getDoc(doc(db, 'hospitals', user.uid));
           if (hospDoc.exists() && hospDoc.data().isBlocked === true) {
             await signOut(auth);
-            setError({ general: "Your account has been blocked. Please contact Xdoc support." });
+            setError({ general: "Your account has been suspended. Please contact Xdoc support." });
             setLoading(false);
             return;
           }
@@ -576,7 +576,7 @@ const LoginPage = ({ onLoginSuccess, onSignUpClick, onForgotPasswordClick }: { o
           const hospDoc = await getDoc(doc(db, 'hospitals', user.uid));
           if (hospDoc.exists() && hospDoc.data().isBlocked === true) {
             await signOut(auth);
-            toast.error("Your account has been blocked. Please contact Xdoc support.");
+            toast.error("Your account has been suspended. Please contact Xdoc support.");
             return;
           }
           role = 'hospital_admin';
