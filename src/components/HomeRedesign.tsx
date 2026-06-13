@@ -109,18 +109,34 @@ const HomeRedesign = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="max-w-[800px] mx-auto mb-6 text-center"
+            className="w-full max-w-[900px] mx-auto mb-6 text-center"
           >
-            <h1 className="text-[40px] md:text-[64px] font-extrabold text-[#0F172A] leading-[1.05] tracking-[-0.03em] mb-4">
+            <style dangerouslySetInnerHTML={{ __html: `
+              .precise-hero-heading {
+                font-size: 36px !important;
+                font-weight: 800 !important;
+                line-height: 1.1 !important;
+                letter-spacing: -0.02em !important;
+                text-align: center !important;
+                max-width: 900px !important;
+                margin: 0 auto !important;
+              }
+              @media (min-width: 641px) {
+                .precise-hero-heading {
+                  font-size: 64px !important;
+                }
+              }
+            `}} />
+            <h1 className="precise-hero-heading text-[#0F172A] mb-4">
               {language === 'UR' ? (
                 <>
-                  اپنی صحت، ڈاکٹرز اور اپائنٹمنٹس کا انتظام کریں
+                  اپنے ہیلتھ کیئر کا انتظام کریں
                   <br />
                   <span className="text-[#2563EB]">ڈیجیٹل طور پر</span>
                 </>
               ) : (
                 <>
-                  Manage Your Health, Doctors & Appointments
+                  Manage Your Healthcare
                   <br />
                   <span className="text-[#2563EB]">Digitally</span>
                 </>
@@ -148,7 +164,7 @@ const HomeRedesign = ({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]"></span>
               </span>
-              <span>{language === 'UR' ? '● آن لائن اپائنٹمنٹس: سٹینڈرڈ اور پریمیم پر دستیاب ہیں' : '● Online Appointments: Available on Standard & Premium'}</span>
+              <span>{language === 'UR' ? 'آن لائن اپائنٹمنٹس: سٹینڈرڈ اور پریمیم پر دستیاب ہیں' : 'Online Appointments: Available on Standard & Premium'}</span>
             </div>
           </motion.div>
 
