@@ -40,7 +40,9 @@ import {
   ArrowLeft,
   Copy,
   Check,
-  FileText
+  FileText,
+  Lock,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from './ui/BrandLogo';
@@ -89,15 +91,33 @@ import EmptyState from './ui/EmptyState';
 import LoadingButton from './ui/LoadingButton';
 import { useToast } from '../contexts/ToastContext';
 import confetti from 'canvas-confetti';
+import { usePlanFeatures } from '../hooks/usePlanFeatures';
+import PlanPurchaseModal from './PlanPurchaseModal';
 
 interface HospitalDashboardProps {
   hospitalData: any;
   onSignOut: () => void;
+  onNavigate?: (state: string) => void;
 }
 
-const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: HospitalDashboardProps) => {
+const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNavigate }: HospitalDashboardProps) => {
   const { t, language, setLanguage } = useLanguage();
   const { toast } = useToast();
+  const { features, limits, planName, daysRemaining, planEndDate, currentPlan, planStatus } = usePlanFeatures();
+
+  const [isUpgradePromptOpen, setIsUpgradePromptOpen] = useState(false);
+  const [lockedFeatureName, setLockedFeatureName] = useState('');
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+
+  const getMonthlyPatientCount = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    return tokens.filter(tok => {
+      const dates = tok.createdAt?.toDate ? tok.createdAt.toDate() : new Date((tok.createdAt?.seconds || 0) * 1000 || Date.now());
+      return dates.getMonth() === currentMonth && dates.getFullYear() === currentYear;
+    }).length;
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'doctors' | 'search' | 'data' | 'staff' | 'profile' | 'invoices' | 'appointments' | 'prescriptions' | 'medicalRecords'>('home');
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -596,26 +616,17 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   const d = t.dashboard;
 
-  const enabledFeatures = hospitalData?.enabledFeatures || {
-    tokenSystem: true,
-    appointments: false,
-    prescriptions: false,
-    medicalRecords: false,
-    doctorManagement: true,
-    patientManagement: true
-  };
-
   const navItems = [
-    { id: 'home', icon: LayoutDashboard, label: t.dashboard.nav.dashboard || 'DASHBOARD' },
-    ...(enabledFeatures.appointments ? [{ id: 'appointments', icon: Clock, label: language === 'UR' ? 'اپوائنٹمنٹس' : 'Appointments • اپوائنٹمنٹس' }] : []),
-    ...(enabledFeatures.doctorManagement ? [{ id: 'doctors', icon: Stethoscope, label: 'DOCTORS • ڈاکٹرز' }] : []),
-    { id: 'search', icon: Search, label: t.dashboard.search || 'SEARCH' },
-    ...(enabledFeatures.patientManagement ? [{ id: 'data', icon: Activity, label: t.patient.booking.patients || 'PATIENTS' }] : []),
-    ...(enabledFeatures.prescriptions ? [{ id: 'prescriptions', icon: FileText, label: language === 'UR' ? 'نسخہ جات' : 'Prescriptions • نسخہ جات' }] : []),
-    ...(enabledFeatures.medicalRecords ? [{ id: 'medicalRecords', icon: ShieldCheck, label: language === 'UR' ? 'طبی ریکارڈ' : 'Medical Records • طبی ریکارڈ' }] : []),
-    { id: 'staff', icon: Users, label: t.dashboard.nav.staff || 'STAFF' },
-    ...(enabledFeatures.tokenSystem ? [{ id: 'invoices', icon: FileText, label: language === 'UR' ? 'انوائسز' : 'Invoices' }] : []),
-    { id: 'profile', icon: UserSquare2, label: t.patient.booking.editProfile }
+    { id: 'home', icon: LayoutDashboard, label: t.dashboard.nav.dashboard || 'DASHBOARD', isLocked: false },
+    { id: 'appointments', icon: Clock, label: language === 'UR' ? 'اپوائنٹمنٹس' : 'Appointments • اپوائنٹمنٹس', isLocked: !features?.appointments },
+    { id: 'doctors', icon: Stethoscope, label: 'DOCTORS • ڈاکٹرز', isLocked: !features?.doctorManagement },
+    { id: 'search', icon: Search, label: t.dashboard.search || 'SEARCH', isLocked: false },
+    { id: 'data', icon: Activity, label: t.patient.booking.patients || 'PATIENTS', isLocked: !features?.patientManagement },
+    { id: 'prescriptions', icon: FileText, label: language === 'UR' ? 'نسخہ جات' : 'Prescriptions • نسخہ جات', isLocked: !features?.prescriptions },
+    { id: 'medicalRecords', icon: ShieldCheck, label: language === 'UR' ? 'طبی ریکارڈ' : 'Medical Records • طبی ریکارڈ', isLocked: !features?.medicalRecords },
+    { id: 'staff', icon: Users, label: t.dashboard.nav.staff || 'STAFF', isLocked: !features?.doctorManagement },
+    { id: 'invoices', icon: FileText, label: language === 'UR' ? 'انوائسز' : 'Invoices', isLocked: !features?.tokenSystem },
+    { id: 'profile', icon: UserSquare2, label: t.patient.booking.editProfile, isLocked: false }
   ];
 
   const renderDashboardHome = () => {
@@ -1383,6 +1394,12 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           </div>
           <button 
             onClick={() => {
+              if (limits && doctors.length >= limits.doctors) {
+                toast.error(`Plan limit reached! Your plan allows up to ${limits.doctors} Doctors. Please upgrade.`);
+                setLockedFeatureName(`Register New Doctor (Max ${limits.doctors} allowed)`);
+                setIsUpgradePromptOpen(true);
+                return;
+              }
               setEditingDoctorId(null);
               setNewDoctor({
                 name: '', phone: '', email: '', specialization: 'General Physician',
@@ -1913,20 +1930,21 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
 
   // Safe feature tab reset hook
   useEffect(() => {
-    if (activeTab === 'doctors' && !enabledFeatures.doctorManagement) {
+    if (!features) return;
+    if (activeTab === 'doctors' && !features.doctorManagement) {
       setActiveTab('home');
-    } else if (activeTab === 'data' && !enabledFeatures.patientManagement) {
+    } else if (activeTab === 'data' && !features.patientManagement) {
       setActiveTab('home');
-    } else if (activeTab === 'invoices' && !enabledFeatures.tokenSystem) {
+    } else if (activeTab === 'invoices' && !features.tokenSystem) {
       setActiveTab('home');
-    } else if (activeTab === 'appointments' && !enabledFeatures.appointments) {
+    } else if (activeTab === 'appointments' && !features.appointments) {
       setActiveTab('home');
-    } else if (activeTab === 'prescriptions' && !enabledFeatures.prescriptions) {
+    } else if (activeTab === 'prescriptions' && !features.prescriptions) {
       setActiveTab('home');
-    } else if (activeTab === 'medicalRecords' && !enabledFeatures.medicalRecords) {
+    } else if (activeTab === 'medicalRecords' && !features.medicalRecords) {
       setActiveTab('home');
     }
-  }, [enabledFeatures, activeTab]);
+  }, [features, activeTab]);
 
   // Appointments Screen
   const renderAppointmentsTab = () => {
@@ -2575,15 +2593,27 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all group ${
-                  activeTab === item.id 
+                onClick={() => {
+                  if (item.isLocked) {
+                    setLockedFeatureName(item.label);
+                    setIsUpgradePromptOpen(true);
+                  } else {
+                    setActiveTab(item.id);
+                  }
+                }}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all group cursor-pointer ${
+                  item.isLocked ? 'opacity-40 hover:opacity-75' : ''
+                } ${
+                  activeTab === item.id && !item.isLocked
                     ? 'bg-primary text-white shadow-lg shadow-primary/20' 
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <item.icon size={22} />
-                <span className="font-semibold">{item.label}</span>
+                <div className="flex items-center gap-4">
+                  <item.icon size={22} />
+                  <span className="font-semibold">{item.label}</span>
+                </div>
+                {item.isLocked && <Lock size={14} className="text-slate-500" />}
               </button>
             ))}
           </nav>
@@ -2668,21 +2698,151 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
           </div>
         </header>
 
+        {/* Subscription Status Bar */}
+        {planName && (
+          <div className="flex flex-col">
+            {/* If expired, show red banner */}
+            {(daysRemaining <= 0 || planStatus !== 'active') ? (
+              <div className="bg-rose-500 text-white px-8 py-3 text-sm font-bold flex items-center justify-between animate-in slide-in-from-top duration-300">
+                <div className="flex items-center gap-2">
+                  <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] tracking-wider uppercase font-black">🚨 Alert</span>
+                  <span>{language === 'UR' ? 'آپ کا پلان ختم ہو چکا ہے۔ تجدید کے لیے ایڈمن سے رابطہ کریں۔' : 'Your plan has expired. Contact admin to renew.'}</span>
+                </div>
+              </div>
+            ) : daysRemaining < 7 ? (
+              /* If days remaining < 7: show warning in orange */
+              <div className="bg-amber-500 text-white px-8 py-3 text-sm font-bold flex items-center justify-between animate-in slide-in-from-top duration-300">
+                <div className="flex items-center gap-2">
+                  <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] tracking-wider uppercase font-black">⚠️ Warning</span>
+                  <span>
+                    {language === 'UR' 
+                      ? `آپ کا پلان جلد ختم ہو رہا ہے! صرف ${daysRemaining} دن باقی ہیں۔`
+                      : `Your plan is expiring soon! Only ${daysRemaining} days remaining.`
+                    }
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Standard Dashboard Header / Badge layout */}
+            <div className="bg-slate-50 border-b border-indigo-100/40 px-8 py-3.5 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  {language === 'UR' ? 'سبسکرپشن اسٹیٹس:' : 'Subscription Details:'}
+                </span>
+
+                <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black bg-blue-50 text-[#0B5FFF] border border-blue-100 uppercase tracking-widest">
+                  Current Plan: {planName}
+                </span>
+
+                <span className="text-xs font-semibold text-slate-500">
+                  Expires: {planEndDate ? (planEndDate.toDate ? planEndDate.toDate().toLocaleDateString() : new Date(planEndDate).toLocaleDateString()) : 'N/A'}
+                </span>
+
+                <span className={`inline-flex items-center px-2.5 py-1 text-[11px] font-bold rounded-lg ${
+                  daysRemaining <= 0 || planStatus !== 'active'
+                    ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                    : daysRemaining < 7
+                    ? 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse font-bold'
+                    : 'bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold'
+                }`}>
+                  Days Remaining: {daysRemaining <= 0 ? 0 : daysRemaining} days
+                </span>
+              </div>
+              
+              <button
+                onClick={() => setIsPurchaseModalOpen(true)}
+                className="px-5 py-2.5 rounded-2xl bg-[#0B5FFF] hover:bg-[#0B5FFF]/90 text-white text-[10px] font-black uppercase tracking-wider shadow-md shadow-[#0B5FFF]/10 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-white" />
+                <span>{language === 'UR' ? 'پلان اپ گریڈ کریں' : 'Upgrade Plan'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade Prompt Modal */}
+        <AnimatePresence>
+          {isUpgradePromptOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-[36px] border border-slate-100 max-w-md w-full p-6 md:p-8 relative text-center shadow-2xl"
+              >
+                <div className="w-16 h-16 bg-blue-50 text-[#0B5FFF] rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <Lock size={32} />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 mb-2">
+                  {language === 'UR' ? 'مخصوص خصوصیت مقفل ہے' : 'Premium Feature Locked'}
+                </h3>
+                <p className="text-slate-500 text-sm font-medium mb-8">
+                  {language === 'UR' 
+                    ? `یہ خصوصیت آپ کے موجودہ پلان میں شامل نہیں ہے۔ اپ گریڈ کرنے کے لیے Xdoc ایڈمن سے رابطہ کریں۔`
+                    : `This feature is not included in your current plan. Contact Xdoc Admin to upgrade your plan.`}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => setIsUpgradePromptOpen(false)}
+                    className="flex-1 py-3.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-2xl font-bold cursor-pointer transition-all"
+                  >
+                    {language === 'UR' ? 'بند کریں' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsUpgradePromptOpen(false);
+                      if (onNavigate) {
+                        onNavigate('pricing');
+                      } else {
+                        toast.error("Navigation handler missing; visit /pricing directly.");
+                      }
+                    }}
+                    className="flex-1 py-3.5 bg-[#0B5FFF] hover:bg-[#0B5FFF]/90 text-white rounded-2xl font-black shadow-lg shadow-[#0B5FFF]/15 cursor-pointer transition-all flex items-center justify-center gap-2"
+                  >
+                    <span>{language === 'UR' ? 'پلان دیکھیں ←' : 'View Plans →'}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <PlanPurchaseModal
+          isOpen={isPurchaseModalOpen}
+          onClose={() => setIsPurchaseModalOpen(false)}
+          planId={currentPlan}
+          hospitalIdProp={hospitalData?.id || hospitalData?.uid}
+          hospitalNameProp={hospitalData?.hospitalName || hospitalData?.name}
+        />
+
         {/* View Content */}
         {renderActiveTab()}
 
         {/* Bottom Navigation (Mobile) */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between lg:hidden z-50">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between lg:hidden z-50 overflow-x-auto gap-4 scrollbar-none">
            {navItems.map((item) => (
              <button
                key={item.id}
-               onClick={() => setActiveTab(item.id)}
-               className={`flex flex-col items-center gap-1.5 transition-all ${
-                 activeTab === item.id ? 'text-primary' : 'text-slate-300'
+               onClick={() => {
+                 if (item.isLocked) {
+                   setLockedFeatureName(item.label);
+                   setIsUpgradePromptOpen(true);
+                 } else {
+                   setActiveTab(item.id);
+                 }
+               }}
+               className={`flex flex-col items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                 item.isLocked ? 'opacity-30' : ''
+               } ${
+                 activeTab === item.id && !item.isLocked ? 'text-primary' : 'text-slate-300'
                }`}
              >
-               <item.icon size={24} />
-               <span className="text-[10px] font-bold uppercase tracking-tight">{item.label}</span>
+               <div className="relative">
+                 <item.icon size={22} />
+                 {item.isLocked && <Lock size={10} className="absolute -top-1 -right-1 text-red-500 bg-white rounded-full p-0.5" />}
+               </div>
+               <span className="text-[9px] font-black uppercase tracking-tight">{item.label.split(' • ')[0]}</span>
              </button>
            ))}
         </nav>
@@ -2941,6 +3101,13 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                           });
                           toast.success("Physician credentials updated successfully!");
                         } else {
+                          if (limits && doctors.length >= limits.doctors) {
+                            toast.error(`Plan limit reached! Your plan allows up to ${limits.doctors} Doctors. Please upgrade.`);
+                            setLockedFeatureName(`Register New Doctor (Max ${limits.doctors} allowed)`);
+                            setIsUpgradePromptOpen(true);
+                            setShowAddDoctorModal(false);
+                            return;
+                          }
                           await addDoc(collection(db, `hospitals/${hospitalData.uid}/doctors`), {
                             ...newDoctor,
                             liveStatus: 'Active',
@@ -3078,6 +3245,13 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut }: Hos
                         onClick={async () => {
                           if (!walkInForm.patientName || !walkInForm.doctorId || !walkInForm.appointmentSlot) {
                             toast.error("Please fill patient name, doctor, and chosen available time slot.");
+                            return;
+                          }
+                          if (limits && getMonthlyPatientCount() >= limits.patients) {
+                            toast.error(`Plan limit reached! Your plan allows up to ${limits.patients} Patients/month. Please upgrade.`);
+                            setLockedFeatureName(`Register New Patient/Walk-in (Max ${limits.patients} per month allowed)`);
+                            setIsUpgradePromptOpen(true);
+                            setShowWalkInModal(false);
                             return;
                           }
                           setWalkInLoading(true);

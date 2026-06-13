@@ -3,14 +3,15 @@ import {
   Users, Activity, Building2, Ticket, TrendingUp, 
   Search, ShieldAlert, Trash2, Eye, CheckCircle2,
   Bell, List, Clock, Filter, ShieldCheck, Database,
-  ArrowRight, MapPin, LogOut
+  ArrowRight, MapPin, LogOut, CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
-import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
+import { handleFirestoreError, OperationType, sanitizeFirestoreData } from '../lib/firebaseUtils';
 import { 
   collection, query, onSnapshot, doc, 
-  updateDoc, deleteDoc, getDocs, orderBy, limit, where 
+  updateDoc, deleteDoc, getDocs, orderBy, limit, where,
+  serverTimestamp
 } from 'firebase/firestore';
 import { seedHospitals } from '../lib/seedData';
 import { Hospital as HospitalIcon, LayoutDashboard as LayoutIcon } from 'lucide-react';
@@ -18,6 +19,7 @@ import { ListSkeleton, StatSkeleton } from './ui/Skeleton';
 import EmptyState from './ui/EmptyState';
 import { useToast } from '../contexts/ToastContext';
 import { BrandLogo } from './ui/BrandLogo';
+import { PLAN_FEATURES } from '../config/planConfig';
 
 interface SuperAdminDashboardProps {
   onSignOut: () => void;
@@ -28,10 +30,12 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [tokens, setTokens] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'hospitals' | 'monitor' | 'approvals'>('overview');
+  const [subscriptionRequests, setSubscriptionRequests] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'hospitals' | 'monitor' | 'approvals' | 'subscriptions'>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [localSelectedPlans, setLocalSelectedPlans] = useState<Record<string, string>>({});
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -43,7 +47,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
   useEffect(() => {
     // Hospitals listener
     const hospUnsub = onSnapshot(collection(db, 'hospitals'), (snapshot) => {
-      setHospitals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setHospitals(snapshot.docs.map(doc => ({ id: doc.id, ...sanitizeFirestoreData(doc.data()) })));
     }, (err) => {
       handleFirestoreError(err, OperationType.LIST, 'hospitals');
     });
@@ -51,7 +55,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
     // Tokens listener (Live Monitor)
     const tokensQuery = query(collection(db, 'tokens'), orderBy('createdAt', 'desc'), limit(50));
     const tokensUnsub = onSnapshot(tokensQuery, (snapshot) => {
-      setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setTokens(snapshot.docs.map(doc => ({ id: doc.id, ...sanitizeFirestoreData(doc.data()) })));
     }, (err) => {
       handleFirestoreError(err, OperationType.LIST, 'tokens');
     });
@@ -59,17 +63,25 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
     // Patients (Mock stats for now or actually fetch from users collection where role='patient')
     const patientsQuery = query(collection(db, 'users'), where('role', '==', 'patient'));
     const patientsUnsub = onSnapshot(patientsQuery, (snapshot) => {
-       setPatients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+       setPatients(snapshot.docs.map(doc => ({ id: doc.id, ...sanitizeFirestoreData(doc.data()) })));
        setIsLoading(false);
     }, (err) => {
        handleFirestoreError(err, OperationType.LIST, 'users');
        setIsLoading(false);
     });
 
+    // Subscription requests listener
+    const subsUnsub = onSnapshot(collection(db, 'subscriptionRequests'), (snapshot) => {
+      setSubscriptionRequests(snapshot.docs.map(doc => ({ id: doc.id, ...sanitizeFirestoreData(doc.data()) })));
+    }, (err) => {
+      console.error("Firestore error reading subscriptionRequests:", err);
+    });
+
     return () => {
       hospUnsub();
       tokensUnsub();
       patientsUnsub();
+      subsUnsub();
     };
   }, []);
 
@@ -388,6 +400,216 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
     </div>
   );
 
+  const getPlanPriceFormatted = (planId: string) => {
+    switch (planId?.toLowerCase()) {
+      case 'trial': return 'Rs. 0 (Free)';
+      case 'basic': return 'Rs. 1,500';
+      case 'standard': return 'Rs. 3,500';
+      case 'enterprise': return 'Rs. 10,000';
+      default: return 'Rs. 0';
+    }
+  };
+
+  const handleApproveSubscription = async (request: any) => {
+    try {
+      await updateDoc(doc(db, 'subscriptionRequests', request.id), {
+        status: 'approved',
+        updatedAt: new Date()
+      });
+
+      const planId = request.planId || 'trial';
+      const calculatedEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      
+      await updateDoc(doc(db, 'hospitals', request.hospitalId), {
+        currentPlan: planId,
+        planStatus: 'active',
+        planStartDate: new Date(),
+        planEndDate: calculatedEndDate
+      });
+
+      toast.success(`Subscription for ${request.hospitalName || 'Hospital'} approved and plan activated successfully!`);
+    } catch (err) {
+      console.error("Error approving subscription:", err);
+      toast.error("Failed to approve subscription.");
+    }
+  };
+
+  const handleRejectSubscription = async (request: any) => {
+    try {
+      await updateDoc(doc(db, 'subscriptionRequests', request.id), {
+        status: 'rejected',
+        updatedAt: new Date()
+      });
+      toast.warning(`Subscription for ${request.hospitalName || 'Hospital'} was rejected.`);
+    } catch (err) {
+      console.error("Error rejecting subscription:", err);
+      toast.error("Failed to reject subscription.");
+    }
+  };
+
+  const getIsPlanExpired = (h: any) => {
+    const planEndDateRaw = h.planEndDate;
+    const planStatus = h.planStatus || 'active';
+    if (planStatus !== 'active') return true;
+    if (!planEndDateRaw) return false;
+    const endDate = planEndDateRaw.toDate ? planEndDateRaw.toDate() : new Date(planEndDateRaw);
+    return endDate.getTime() <= Date.now();
+  };
+
+  const handleAssignPlan = async (h: any) => {
+    const newPlan = localSelectedPlans[h.id] || h.currentPlan || 'trial';
+    const currentPlan = h.currentPlan || 'trial';
+
+    const PLAN_RANK: Record<string, number> = {
+      trial: 0,
+      basic: 1,
+      standard: 2,
+      premium: 3
+    };
+
+    const currentPlanInfo = PLAN_FEATURES[currentPlan] || PLAN_FEATURES['trial'];
+    const newPlanInfo = PLAN_FEATURES[newPlan] || PLAN_FEATURES['trial'];
+
+    if (PLAN_RANK[newPlan] < PLAN_RANK[currentPlan]) {
+      const confirmMsg = `Are you sure you want to downgrade ${h.hospitalName || 'this hospital'} from ${currentPlanInfo.label} to ${newPlanInfo.label}? Some features will be locked.`;
+      if (!confirm(confirmMsg)) return;
+    }
+
+    try {
+      const duration = PLAN_FEATURES[newPlan].duration || 30;
+      const planEndDate = new Date(Date.now() + duration * 24 * 60 * 60 * 1000);
+
+      await updateDoc(doc(db, 'hospitals', h.id), {
+        currentPlan: newPlan,
+        planStatus: 'active',
+        planStartDate: serverTimestamp(),
+        planEndDate: planEndDate,
+        enabledFeatures: PLAN_FEATURES[newPlan].features
+      });
+
+      toast.success(`Plan assigned successfully to ${h.hospitalName || 'Hospital'}`);
+    } catch (err: any) {
+      console.error("Error assigning plan:", err);
+      toast.error("Failed to assign plan.");
+    }
+  };
+
+  const renderSubscriptions = () => {
+    if (isLoading) {
+      return (
+        <div className="bg-white rounded-[40px] p-8 space-y-6 border border-slate-100 shadow-sm">
+          <div className="h-8 w-64 bg-slate-100 rounded-xl animate-pulse mb-4" />
+          <div className="h-4 w-96 bg-slate-100 rounded-xl animate-pulse mb-8" />
+          <ListSkeleton count={5} />
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="p-8 border-b border-slate-100">
+          <h3 className="text-xl font-bold text-slate-900">Hospital Subscriptions Hub</h3>
+          <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">Monitor subscription health, assign plans, and view expiry details</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[1000px]">
+            <thead className="bg-[#031d33] text-[10px] font-bold text-slate-200 uppercase tracking-widest">
+              <tr>
+                <th className="px-8 py-5">Hospital/Clinic Name</th>
+                <th className="px-8 py-5">Type</th>
+                <th className="px-8 py-5">City</th>
+                <th className="px-8 py-5">Current Plan</th>
+                <th className="px-8 py-5">Plan Status</th>
+                <th className="px-8 py-5">Plan Expiry Date</th>
+                <th className="px-8 py-5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {hospitals.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
+                    No hospitals registered yet.
+                  </td>
+                </tr>
+              ) : (
+                hospitals.map(h => {
+                  const currentPlanKey = h.currentPlan || 'trial';
+                  const planInfo = PLAN_FEATURES[currentPlanKey] || PLAN_FEATURES['trial'];
+                  
+                  // Plan badge colors: Free Trial (gray), Basic (blue), Standard (purple), Premium-Pro (yellow/gold)
+                  let badgeClass = 'bg-slate-50 text-slate-500 border-slate-200';
+                  if (currentPlanKey === 'basic') {
+                    badgeClass = 'bg-blue-50 text-blue-600 border-blue-100';
+                  } else if (currentPlanKey === 'standard') {
+                    badgeClass = 'bg-purple-50 text-purple-600 border-purple-100';
+                  } else if (currentPlanKey === 'premium') {
+                    badgeClass = 'bg-amber-50 text-amber-600 border-amber-200';
+                  }
+
+                  const isExpired = getIsPlanExpired(h);
+                  const expiryDateLabel = h.planEndDate 
+                    ? (h.planEndDate.toDate ? h.planEndDate.toDate().toLocaleDateString() : new Date(h.planEndDate).toLocaleDateString())
+                    : 'N/A';
+
+                  return (
+                    <tr key={h.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-8 py-5 font-bold text-slate-800">
+                        {h.hospitalName || 'Unnamed Facility'}
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className="text-xs font-semibold text-slate-600">{h.type || 'N/A'}</span>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className="text-xs font-semibold text-slate-600">{h.city || 'N/A'}</span>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${badgeClass}`}>
+                          {planInfo.label}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 animate-in fade-in">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          isExpired 
+                            ? 'bg-rose-50 text-rose-500 border border-rose-100 font-bold' 
+                            : 'bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold animate-pulse'
+                        }`}>
+                          {isExpired ? 'Expired' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 text-slate-500 font-mono text-xs">
+                        {expiryDateLabel}
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <select
+                            value={localSelectedPlans[h.id] || currentPlanKey}
+                            onChange={(e) => setLocalSelectedPlans({ ...localSelectedPlans, [h.id]: e.target.value })}
+                            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary focus:outline-none"
+                          >
+                            <option value="trial">Free Trial (7 days)</option>
+                            <option value="basic">Basic (Rs. 1,000/month)</option>
+                            <option value="standard">Standard (Rs. 2,500/month)</option>
+                            <option value="premium">Premium-Pro (Rs. 5,000/month)</option>
+                          </select>
+                          <button
+                            onClick={() => handleAssignPlan(h)}
+                            className="px-4 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold shadow-md shadow-primary/20 transition-all hover:scale-[1.03] active:scale-95 whitespace-nowrap"
+                          >
+                            Assign Plan
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Sidebar / Top Nav */}
@@ -405,7 +627,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
             { id: 'overview', icon: LayoutIcon, label: 'Overview' },
             { id: 'hospitals', icon: Building2, label: 'Hospitals' },
             { id: 'monitor', icon: Activity, label: 'Live Monitor' },
-            { id: 'approvals', icon: CheckCircle2, label: 'Approvals' }
+            { id: 'approvals', icon: CheckCircle2, label: 'Approvals' },
+            { id: 'subscriptions', icon: CreditCard, label: 'Subscriptions' }
           ].map(tab => (
             <button 
               key={tab.id}
@@ -522,6 +745,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onSignOut }) 
              </div>
            </div>
          )}
+          {activeTab === 'subscriptions' && renderSubscriptions()}
       </main>
     </div>
   );

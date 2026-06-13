@@ -12,6 +12,7 @@ import { auth, db } from '../firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
+import { PLAN_FEATURES } from '../config/planConfig';
 
 interface HospitalRegistrationProps {
   onComplete: () => void;
@@ -92,6 +93,11 @@ const HospitalRegistration: React.FC<HospitalRegistrationProps> = ({ onComplete 
         rating: 0,
         totalReviews: 0,
         status: "active",
+        currentPlan: "trial",
+        planStatus: "active",
+        planStartDate: serverTimestamp(),
+        planEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        enabledFeatures: PLAN_FEATURES.trial.features,
         createdAt: serverTimestamp(),
         imageUrl: `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800&h=400&sig=${user.uid}`,
         approved: true,

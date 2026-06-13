@@ -6,7 +6,7 @@ import {
 } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc, getDocFromServer, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
+import { handleFirestoreError, OperationType, sanitizeFirestoreData } from '../lib/firebaseUtils';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unsubDoc = onSnapshot(userDocRef, (docSnap) => {
           if (!isMounted) return;
           if (docSnap.exists()) {
-            setUserData(docSnap.data());
+            setUserData(sanitizeFirestoreData(docSnap.data()));
           } else {
             // Default to patient if doc doesn't exist yet (signup in progress)
             setUserData({ uid: user.uid, email: user.email, role: 'patient', isNew: true });

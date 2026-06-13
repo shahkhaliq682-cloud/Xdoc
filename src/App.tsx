@@ -3137,6 +3137,7 @@ export default function App() {
           <HospitalDashboard 
             hospitalData={userData} 
             onSignOut={() => handleLogoutAction()} 
+            onNavigate={(state: any) => setViewState(state)}
           />
         );
       case 'super_admin':

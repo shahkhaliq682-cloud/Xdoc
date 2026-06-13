@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Check, 
   X, 
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { BrandLogo } from './ui/BrandLogo';
+import PlanPurchaseModal from './PlanPurchaseModal';
 
 interface PricingPageProps {
   onBack: () => void;
@@ -25,6 +26,8 @@ interface PricingPageProps {
 
 export default function PricingPage({ onBack, onSignUp, onLogin, language }: PricingPageProps) {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
 
   const plans = [
     {
@@ -34,8 +37,7 @@ export default function PricingPage({ onBack, onSignUp, onLogin, language }: Pri
       price: 'Rs. 1,000',
       period: language === 'UR' ? '/مہینہ' : '/month',
       desc: language === 'UR' ? 'چھوٹی کلینک اور آغاز کے لیے بہترین' : 'Perfect for small clinics starting their digital journey',
-      ctaText: language === 'UR' ? 'شروع کریں ← واٹس ایپ' : 'Get Started → WhatsApp Us',
-      ctaUrl: 'https://wa.me/923152328605',
+      ctaText: language === 'UR' ? 'شروع کریں ← منصوبہ کی درخواست' : 'Get Started → Request Plan',
       accentColor: 'border-slate-200',
       popular: false,
       badgeColor: 'bg-slate-100 text-slate-700',
@@ -62,8 +64,7 @@ export default function PricingPage({ onBack, onSignUp, onLogin, language }: Pri
       price: 'Rs. 2,500',
       period: language === 'UR' ? '/مہینہ' : '/month',
       desc: language === 'UR' ? 'بڑھتے ہوئے کلینکس اور ہسپتالوں کے لیے' : 'Ideal for growing clinics and expanding hospitals',
-      ctaText: language === 'UR' ? 'شروع کریں ← واٹس ایپ' : 'Get Started → WhatsApp Us',
-      ctaUrl: 'https://wa.me/923152328605',
+      ctaText: language === 'UR' ? 'شروع کریں ← منصوبہ کی درخواست' : 'Get Started → Request Plan',
       accentColor: 'border-[#0B5FFF] ring-4 ring-[#0B5FFF]/10 shadow-[#0B5FFF]/10 shadow-2xl',
       popular: true,
       badgeColor: 'bg-[#0B5FFF] text-white',
@@ -89,13 +90,12 @@ export default function PricingPage({ onBack, onSignUp, onLogin, language }: Pri
       price: 'Rs. 5,000',
       period: language === 'UR' ? '/مہینہ' : '/month',
       desc: language === 'UR' ? 'بڑے ہسپتالوں اور جامع صحت مراکز کے لیے' : 'Unleash full power for custom medical setups',
-      ctaText: language === 'UR' ? 'شروع کریں ← واٹس ایپ' : 'Get Started → WhatsApp Us',
-      ctaUrl: 'https://wa.me/923152328605',
+      ctaText: language === 'UR' ? 'شروع کریں ← منصوبہ کی درخواست' : 'Get Started → Request Plan',
       accentColor: 'border-slate-200',
       popular: false,
       badgeColor: 'bg-indigo-100 text-indigo-700',
       included: [
-        language === 'UR' ? 'لامحدود ڈاکٹرز' : 'Unlimited Doctors',
+        language === 'UR' ? 'امحدود ڈاکٹرز' : 'Unlimited Doctors',
         language === 'UR' ? 'لامحدود مریض' : 'Unlimited Patients',
         language === 'UR' ? 'ٹوکن سسٹم' : 'Token System',
         language === 'UR' ? 'اپوائنٹمنٹس ماڈیول' : 'Appointments Module',
@@ -266,19 +266,20 @@ export default function PricingPage({ onBack, onSignUp, onLogin, language }: Pri
 
               {/* CTA Button */}
               <div>
-                <a
-                  href={plan.ctaUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`w-full py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 ${
+                <button
+                  onClick={() => {
+                    setSelectedPlanId(plan.id);
+                    setIsPurchaseModalOpen(true);
+                  }}
+                  className={`w-full py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 cursor-pointer ${
                     plan.popular
                       ? 'bg-[#0B5FFF] hover:bg-[#0B5FFF]/90 text-white shadow-lg shadow-[#0B5FFF]/20'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                      : 'bg-slate-100 hover:bg-slate-300 text-slate-800'
                   }`}
                 >
-                  <MessageCircle size={16} fill="currentColor" />
+                  <Sparkles size={16} />
                   <span>{plan.ctaText}</span>
-                </a>
+                </button>
               </div>
             </motion.div>
           ))}
@@ -359,6 +360,12 @@ export default function PricingPage({ onBack, onSignUp, onLogin, language }: Pri
           </p>
         </div>
       </footer>
+
+      <PlanPurchaseModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        planId={selectedPlanId}
+      />
 
     </div>
   );
