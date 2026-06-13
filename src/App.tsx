@@ -163,26 +163,22 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
   if (isLanding) {
     return (
       <>
-        <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 h-20 flex items-center border-b ${
-          isScrolled 
-            ? 'bg-gradient-to-r from-white/50 via-sky-50/30 to-white/50 backdrop-blur-2xl border-slate-200/25 shadow-[0_12px_40px_rgba(11,95,255,0.04),_0_1px_2px_rgba(11,95,255,0.02)] h-[72px]' 
-            : 'bg-transparent border-transparent'
-        }`}>
-          <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex justify-between items-center gap-4">
+        <header className="sticky top-0 left-0 w-full z-[100] transition-all duration-300 bg-white border-b border-[#E2E8F0] shadow-sm">
+          <div className="max-w-7xl mx-auto w-full px-4 md:px-6 h-20 flex justify-between items-center gap-4">
             {/* Left: Logo */}
-            <div onClick={onLogoClick} className="flex items-center gap-2.5 cursor-pointer group shrink-0">
-              <BrandLogo size={34} className="transition-transform group-hover:scale-105" />
-              <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 bg-clip-text text-transparent">Xdoc</span>
+            <div onClick={onLogoClick} className="flex items-center gap-2 cursor-pointer group shrink-0">
+              <Stethoscope className="text-[#2563EB] transition-transform group-hover:scale-110" size={28} />
+              <span className="text-2xl font-bold tracking-tight text-[#0F172A] mb-0.5">Xdoc</span>
             </div>
 
             {/* Center: Desktop Nav - Premium floating pill */}
-            <nav className="hidden md:flex items-center gap-1.5 p-1 bg-slate-100/40 backdrop-blur-md rounded-full border border-slate-200/30">
+            <nav className="hidden md:flex items-center gap-1.5 font-medium text-[14px]">
               <button 
                 onClick={() => { setViewState('hero'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                className={`px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all duration-200 rounded-full ${
+                className={`px-4 py-2 text-[14px] font-medium transition-all duration-200 rounded-full ${
                   viewState === 'hero' 
-                    ? 'bg-white text-primary shadow-sm' 
-                    : 'text-slate-600 hover:text-primary'
+                    ? 'bg-[#EFF6FF] text-[#2563EB]' 
+                    : 'text-[#374151] hover:text-[#0F172A]'
                 }`}
               >
                 {t.nav?.home}
@@ -196,10 +192,10 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                     setViewState('auth_choice');
                   }
                 }} 
-                className={`px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all duration-200 rounded-full ${
+                className={`px-4 py-2 text-[14px] font-medium transition-all duration-200 rounded-full ${
                   viewState === 'auth_choice' 
-                    ? 'bg-white text-primary shadow-sm' 
-                    : 'text-slate-600 hover:text-primary'
+                    ? 'bg-[#EFF6FF] text-[#2563EB]' 
+                    : 'text-[#374151] hover:text-[#0F172A]'
                 }`}
               >
                 {t.nav?.findHospital}
@@ -209,7 +205,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                   if (viewState !== 'hero') setViewState('hero');
                   setTimeout(() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }), 100);
                 }} 
-                className="px-4 py-2 text-[11px] font-black uppercase tracking-wider text-slate-600 hover:text-primary transition-all duration-200 rounded-full"
+                className="px-4 py-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A] transition-all duration-200 rounded-full"
               >
                 {t.nav?.about}
               </button>
@@ -217,10 +213,10 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                 onClick={() => {
                   setViewState?.('pricing');
                 }} 
-                className={`px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all duration-200 rounded-full ${
+                className={`px-4 py-2 text-[14px] font-medium transition-all duration-200 rounded-full ${
                   viewState === 'pricing' 
-                    ? 'bg-white text-primary shadow-sm' 
-                    : 'text-slate-600 hover:text-primary'
+                    ? 'bg-[#EFF6FF] text-[#2563EB]' 
+                    : 'text-[#374151] hover:text-[#0F172A]'
                 }`}
               >
                 {language === 'EN' ? 'Pricing' : 'قیمت'}
@@ -231,7 +227,7 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
             <div className="flex items-center gap-3 shrink-0">
               <button 
                 onClick={() => setLanguage(language === 'EN' ? 'UR' : 'EN')}
-                className="hidden sm:flex px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 transition-all duration-200"
+                className="px-3.5 py-2 rounded-xl text-sm font-medium text-[#374151] hover:text-[#0F172A] hover:bg-slate-100/50 transition-all duration-200"
               >
                 {language === 'EN' ? 'اردو' : 'English'}
               </button>
@@ -240,19 +236,19 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                 <>
                   <button 
                     onClick={onLogin}
-                    className="px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-600 hover:text-slate-900 active:scale-95 transition-all duration-200"
+                    className="px-4 py-2 text-sm font-medium text-[#374151] hover:text-[#0F172A] active:scale-95 transition-all duration-200"
                   >
                     {t.nav?.login}
                   </button>
                   <button 
                     onClick={onSignUp}
-                    className="hidden sm:block px-5 py-2.5 rounded-2xl bg-[#0B5FFF] hover:bg-[#0B5FFF]/90 text-white text-[11px] font-black uppercase tracking-wider shadow-lg shadow-[#0B5FFF]/20 active:scale-95 transition-all duration-300"
+                    className="hidden sm:block px-5 py-2 bg-[#2563EB] hover:bg-[#1E40AF] text-white text-sm font-medium rounded-full hover:shadow-md active:scale-95 transition-all duration-300"
                   >
                     {t.nav?.signUpFree}
                   </button>
                   <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="hidden p-2 text-slate-600 hover:bg-slate-100/50 rounded-xl transition-colors"
+                    className="md:hidden p-2 text-[#374151] hover:bg-slate-100/50 rounded-xl transition-colors"
                   >
                     {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                   </button>
@@ -271,6 +267,12 @@ const Header = ({ darkMode = false, hospitalName = "Xdoc", onLogoClick, onSignUp
                     <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
                       <LogOut size={14} className="text-white" />
                     </div>
+                  </button>
+                  <button 
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="md:hidden p-2 text-[#374151] hover:bg-slate-100/50 rounded-xl transition-colors"
+                  >
+                    {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                   </button>
                 </div>
               )}

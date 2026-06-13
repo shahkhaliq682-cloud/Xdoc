@@ -33,243 +33,183 @@ import {
 import { db } from '../firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 
-// --- Stat Item for the Strip ---
-const StatItem = ({ end, label }: { end: number, label: string }) => {
+// --- Step Number with Count-Up Animation on Scroll ---
+const StepNumber = ({ num }: { num: number }) => {
   const [count, setCount] = useState(0);
-  const [actualEnd, setActualEnd] = useState(end);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
 
   useEffect(() => {
-    setActualEnd(end);
-  }, [end]);
-
-  useEffect(() => {
     if (isInView) {
       let start = 0;
-      const duration = 2000;
-      const increment = actualEnd / (duration / 16);
+      const duration = 1000;
+      const increment = num / (duration / 16);
       const timer = setInterval(() => {
         start += increment;
-        if (start >= actualEnd) {
-          setCount(actualEnd);
+        if (start >= num) {
+          setCount(num);
           clearInterval(timer);
         } else {
-          setCount(Math.floor(start));
+          setCount(Math.ceil(start));
         }
       }, 16);
       return () => clearInterval(timer);
     }
-  }, [isInView, actualEnd]);
+  }, [isInView, num]);
 
   return (
-    <div ref={ref} className="flex flex-col items-center justify-center py-8">
-      <h4 className="text-[24px] md:text-[28px] font-bold text-[#0B1D35] mb-1">
-        {count.toLocaleString()}+
-      </h4>
-      <p className="text-[12px] md:text-[14px] text-slate-500 font-medium">{label}</p>
+    <div ref={ref} className="w-12 h-12 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-lg font-bold mb-4 shadow-md transition-all">
+      {count}
     </div>
   );
 };
 
-// --- Feature Card Component ---
-const FeatureCard = ({ title, desc, icon: Icon }: { title: string, desc: string, icon: any }) => (
-  <motion.div 
-    whileHover={{ borderColor: '#0B5FFF', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}
-    className="p-7 bg-white rounded-2xl border border-slate-200 transition-all group text-left h-full"
-  >
-    <div className="w-8 h-8 rounded-lg flex items-center justify-start text-[#0B5FFF] mb-5">
-      <Icon size={32} strokeWidth={1.5} />
-    </div>
-    <h3 className="text-base font-bold text-[#0B1D35] mb-2">{title}</h3>
-    <p className="text-sm text-slate-500 leading-relaxed font-normal">{desc}</p>
-  </motion.div>
-);
-
-// --- Step Component ---
-const Step = ({ number, title, desc, icon: Icon, isLast = false }: { number: number, title: string, desc: string, icon: any, isLast?: boolean }) => (
-  <div className="flex flex-col items-center text-center relative w-full">
-    {!isLast && (
-      <div className="hidden lg:block absolute top-[60px] left-[calc(50%+40px)] w-[calc(100%-80px)] h-px border-t border-dashed border-slate-300 z-0" />
-    )}
-    <div className="w-12 h-12 bg-white text-[#0B5FFF] border border-blue-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm z-10">
-      <Icon size={24} />
-    </div>
-    <div className="w-8 h-8 rounded-full bg-[#0B5FFF] text-white flex items-center justify-center text-xs font-bold mb-4 shadow-lg shadow-blue-500/20 z-10">
-      {number}
-    </div>
-    <h4 className="text-base font-bold text-[#0B1D35] mb-2">{title}</h4>
-    <p className="text-sm text-slate-500 max-w-[200px] leading-relaxed">{desc}</p>
-  </div>
-);
-
-const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate }: { onSignUp: () => void, onLogin: () => void, onSearch: (q: string) => void, onHospitalClick?: (h: any) => void, onNavigate?: (view: 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy' | 'pricing', path: string) => void }) => {
+// --- HomeRedesign Component ---
+const HomeRedesign = ({ 
+  onSignUp, 
+  onLogin, 
+  onSearch, 
+  onHospitalClick, 
+  onNavigate 
+}: { 
+  onSignUp: () => void, 
+  onLogin: () => void, 
+  onSearch: (q: string) => void, 
+  onHospitalClick?: (h: any) => void, 
+  onNavigate?: (view: 'privacy' | 'terms' | 'contact' | 'about' | 'content_policy' | 'pricing', path: string) => void 
+}) => {
   const { t, language } = useLanguage();
   const [searchVal, setSearchVal] = useState('');
-
-  const [counts, setCounts] = useState({
-    hospitals: 500,
-    doctors: 2000,
-    cities: 50,
-    patients: 15000
-  });
-
-  useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const hospitalCount = await getRealCount('users', where('role', '==', 'hospital_admin'));
-        const doctorCount = await getRealCount('doctors');
-        const patientCount = await getRealCount('users', where('role', '==', 'patient'));
-        
-        setCounts(prev => ({
-          ...prev,
-          hospitals: hospitalCount > 0 ? hospitalCount : prev.hospitals,
-          doctors: doctorCount > 0 ? doctorCount : prev.doctors,
-          patients: patientCount > 0 ? patientCount : prev.patients
-        }));
-      } catch (err) {
-        console.error("Error fetching stats:", err);
-      }
-    };
-    fetchCounts();
-  }, []);
-
-  const getRealCount = async (coll: string, qry?: any) => {
-    try {
-      const collRef = collection(db, coll);
-      const snapshot = await getCountFromServer(qry ? query(collRef, qry) : collRef);
-      return snapshot.data().count;
-    } catch (e) {
-      return 0;
-    }
-  };
 
   const h = t.homeRedesign;
 
   return (
-    <div className="bg-[#FAFAFA]">
-      {/* 1. HERO SECTION */}
-      <section className="relative px-6 pt-28 pb-20 md:pt-32 md:pb-24 border-b border-slate-100 overflow-hidden bg-[#FAFAFA]">
-        <div className="max-w-7xl mx-auto flex flex-col items-center text-center relative z-10">
+    <div className="bg-[#F8FAFF] min-h-screen text-[#0F172A] font-sans antialiased overflow-x-hidden">
+      
+      {/* 3. HERO SECTION */}
+      <section className="relative min-h-screen flex flex-col justify-center items-center py-20 px-4 md:px-6 overflow-hidden bg-[#F8FAFF]">
+        {/* Subtle blue radial gradient in top-right corner */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-[#0EA5E9]/10 to-[#2563EB]/5 rounded-full filter blur-[120px] pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto flex flex-col items-center text-center relative z-10 w-full">
           
-          {/* Trust Badge */}
+          {/* Top Badge */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50/50 border border-blue-100/80 rounded-full mb-8 shadow-[0_2px_12px_rgba(11,95,255,0.03)]"
+            className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#EFF6FF] border border-[#BFDBFE] rounded-full mb-8"
           >
-            <ShieldCheck size={14} className="text-[#0B5FFF]" />
-            <span className="text-[12px] font-bold text-slate-700 tracking-wide uppercase">{h.hero.badge}</span>
+            <span className="text-[13px] font-semibold text-[#2563EB] tracking-wide">
+              🏥 {language === 'UR' ? "پاکستان کا نمبر 1 ڈیجیٹل ہیلتھ کیئر پلیٹ فارم" : "Pakistan's #1 Digital Healthcare Platform"}
+            </span>
           </motion.div>
 
-          {/* Heading */}
+          {/* Main Heading */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="max-w-[800px] mb-8"
+            className="max-w-3xl mb-6"
           >
-            <h1 className="text-4xl md:text-[64px] font-bold text-[#0B1D35] tracking-tight leading-[1.15] mb-6">
-              {h.hero.title1} {h.hero.title2}<br />
-              <span className="text-[#0B5FFF]">{h.hero.title3}</span>
+            <h1 className="text-[36px] md:text-[60px] font-bold text-[#0F172A] leading-[1.1] tracking-[-0.02em] mb-4">
+              {language === 'UR' ? "ڈاکٹرز کو آن لائن بک کریں۔" : "Book Doctors Online."}
+              <br />
+              <span className="text-[#2563EB]">
+                {language === 'UR' ? "قطار کو بائی پاس کریں۔" : "Skip the Queue."}
+              </span>
             </h1>
-            <p className="text-base md:text-lg text-slate-700 leading-[1.6] max-w-[620px] mx-auto font-medium">
+            
+            {/* Subtext */}
+            <p className="text-[18px] text-[#64748B] font-normal leading-relaxed max-w-[500px] mx-auto mt-4">
               {language === 'UR' 
-                ? 'پاکستان کی نمبر 1 ڈیجیٹل ہیلتھ کیئر ایپ۔ ڈاکٹرز کو تلاش کریں اور سیکنڈز میں ٹوکن بک کریں۔'
-                : 'Pakistan\'s #1 Digital Healthcare App. Find top doctors and book tokens in seconds.'
+                ? 'تصدیق شدہ ڈاکٹروں کو تلاش کریں، فوری طور پر ٹوکن بک کریں، اور اپنی صحت کی دیکھ بھال کا ڈیجیٹل انتظام کریں۔'
+                : 'Find verified doctors, book tokens instantly, and manage your healthcare digitally.'
               }
             </p>
           </motion.div>
 
-          {/* Optimized Search Container */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="w-full max-w-[720px] mb-8"
+          {/* Animated badge below subtext */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
+            className="mb-8"
           >
-            <div className={`p-4 md:p-5 bg-white rounded-[28px] border border-slate-200/60 shadow-[0_16px_48px_rgba(11,95,255,0.04)] focus-within:border-[#0B5FFF]/40 transition-all text-left ${language === 'UR' ? 'md:text-right' : 'md:text-left'}`}>
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Field 1: Doctor/Hospital Search */}
-                <div className="md:col-span-8 flex flex-col">
-                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1 block">
-                    {language === 'UR' ? 'آپ کس کی تلاش کر رہے ہیں؟' : 'What are you looking for?'}
-                  </label>
-                  <div className="flex items-center px-4 bg-slate-50/60 border border-slate-200/40 hover:border-slate-200 focus-within:bg-white focus-within:border-[#0B5FFF]/50 h-[56px] rounded-2xl transition-all">
-                    <Search className="text-[#0B5FFF] mr-3 shrink-0" size={18} strokeWidth={2.5} />
-                    <input 
-                      type="text" 
-                      placeholder={h.hero.searchPlaceholder}
-                      value={searchVal}
-                      onChange={(e) => setSearchVal(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && onSearch(searchVal)}
-                      className="flex-1 bg-transparent border-none p-0 focus:ring-0 text-sm text-slate-800 placeholder-slate-400 font-semibold"
-                    />
-                  </div>
-                </div>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#F0FDF4] border border-[#BBF7D0] text-[#15803D] rounded-full text-[13px] font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10B981]"></span>
+              </span>
+              <span>{language === 'UR' ? '● آن لائن اپائنٹمنٹس: سٹینڈرڈ اور پریمیم پر دستیاب ہیں' : '● Online Appointments: Available on Standard & Premium'}</span>
+            </div>
+          </motion.div>
 
-                {/* Field 2: Location Selector */}
-                <div className="md:col-span-4 flex flex-col">
-                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-1 block">
-                    {language === 'UR' ? 'آپ کا شہر' : 'Location'}
-                  </label>
-                  <div className="flex items-center justify-between px-4 bg-slate-50/60 border border-slate-200/40 h-[56px] rounded-2xl">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="text-slate-400 shrink-0" size={18} />
-                      <span className="text-slate-700 font-bold text-sm">Karachi</span>
-                    </div>
-                    <span className="text-[10px] font-black bg-blue-100 text-[#0B5FFF] px-2 py-0.5 rounded-full uppercase tracking-wider">PK</span>
-                  </div>
-                </div>
+          {/* Optimized SaaS Search Container */}
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.20 }}
+            className="w-full max-w-2xl bg-white p-4 rounded-3xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-all mb-8 text-left"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+              <div className="md:col-span-8 flex items-center px-4 bg-slate-50 border border-[#E2E8F0] hover:border-slate-300 h-14 rounded-2xl focus-within:bg-white focus-within:border-[#2563EB]/40 transition-all">
+                <Search className="text-[#2563EB] mr-2.5 shrink-0" size={18} strokeWidth={2.5} />
+                <input 
+                  type="text" 
+                  placeholder={h?.hero?.searchPlaceholder || "Doctor, Hospital or City..."}
+                  value={searchVal}
+                  onChange={(e) => setSearchVal(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && onSearch(searchVal)}
+                  className="flex-1 bg-transparent border-none p-0 focus:ring-0 text-sm text-[#0F172A] placeholder-slate-400 font-medium"
+                />
               </div>
-
-              {/* Spaced Search Button */}
-              <div className="mt-5 flex justify-end">
+              
+              <div className="md:col-span-4 h-14 flex items-center shrink-0">
                 <button 
                   onClick={() => onSearch(searchVal)}
-                  className="w-full md:w-auto px-10 py-3.5 bg-[#0B5FFF] hover:bg-[#0B5FFF]/95 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-blue-500/15 active:scale-[0.98] duration-200"
+                  className="w-full h-full bg-[#2563EB] hover:bg-[#1E40AF] text-white font-semibold text-sm rounded-2xl transition-all shadow-md active:scale-[0.98] duration-200"
                 >
-                  {h.hero.searchBtn}
+                  {h?.hero?.searchBtn || "Search"}
                 </button>
               </div>
             </div>
           </motion.div>
 
-          {/* Quick Access Categories (Above the Fold) */}
+          {/* Quick Access Categories */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="w-full max-w-[720px] mb-12 text-left"
+            transition={{ delay: 0.25 }}
+            className="w-full max-w-2xl mb-10 text-left px-4"
           >
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center md:text-left px-1">
+            <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-widest mb-3.5 text-center md:text-left">
               {language === 'UR' ? 'فوری رسائی' : 'Quick Access Categories'}
             </p>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0 scroll-smooth">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none justify-center md:justify-start scroll-smooth">
               {[
                 { 
                   name: language === 'UR' ? 'عام معالج' : 'General Physician', 
                   query: 'General Physician', 
                   icon: Stethoscope,
-                  color: 'bg-blue-50/70 border-blue-100 text-[#0B5FFF] hover:bg-blue-50' 
+                  color: 'bg-[#EFF6FF] border-[#BFDBFE] text-[#2563EB] hover:bg-[#EFF6FF]' 
                 },
                 { 
                   name: language === 'UR' ? 'ماہر امراض' : 'Specialist', 
                   query: 'Specialist', 
                   icon: Activity,
-                  color: 'bg-pink-50/70 border-pink-100 text-pink-600 hover:bg-pink-50' 
+                  color: 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-50' 
                 },
                 { 
                   name: language === 'UR' ? 'دندان ساز' : 'Dentist', 
                   query: 'Dentist', 
-                  icon: Check, // Tooth is Check
-                  color: 'bg-indigo-50/70 border-indigo-100 text-indigo-600 hover:bg-indigo-50' 
+                  icon: Check, 
+                  color: 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:bg-indigo-50' 
                 },
                 { 
                   name: language === 'UR' ? 'ایمرجنسی' : 'Emergency', 
                   query: 'Emergency', 
                   icon: ShieldCheck,
-                  color: 'bg-rose-50/70 border-rose-100 text-rose-600 hover:bg-rose-50' 
+                  color: 'bg-[#FDF2F2] border-[#FDE8E8] text-[#9B1C1C] hover:bg-[#FDF2F2]' 
                 }
               ].map((cat, i) => {
                 const IconComp = cat.icon;
@@ -279,7 +219,7 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
                     whileTap={{ scale: 0.98 }}
                     key={i} 
                     onClick={() => onSearch(cat.query)}
-                    className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl border ${cat.color} font-bold text-xs uppercase tracking-wider shadow-sm transition-all whitespace-nowrap shrink-0`}
+                    className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl border ${cat.color} font-semibold text-xs uppercase tracking-wider shadow-sm transition-all whitespace-nowrap shrink-0`}
                   >
                     <IconComp size={16} strokeWidth={2.5} />
                     <span>{cat.name}</span>
@@ -289,70 +229,115 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
             </div>
           </motion.div>
 
-          {/* Real App Preview - Glassmorphism UI */}
+          {/* CTA buttons row */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center gap-4 mb-8"
+          >
+            <button 
+              onClick={onSignUp}
+              className="w-full sm:w-auto px-8 py-3 bg-[#2563EB] hover:bg-[#1E40AF] text-white font-semibold rounded-full hover:shadow-lg transition-all active:scale-[0.98] duration-200"
+            >
+              {language === 'UR' ? 'مفت ٹرائل شروع کریں' : 'Start Free Trial'}
+            </button>
+            <button 
+              onClick={() => onNavigate?.('pricing', '/pricing')}
+              className="w-full sm:w-auto px-8 py-3 bg-transparent border-2 border-[#2563EB] hover:bg-[#2563EB]/5 text-[#2563EB] font-semibold rounded-full transition-all active:scale-[0.98] duration-200"
+            >
+              {language === 'UR' ? 'قیمتیں دیکھیں' : 'View Pricing'}
+            </button>
+          </motion.div>
+
+          {/* Trust badges below buttons */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-6 text-[#64748B] text-[14px] font-normal mb-16"
+          >
+            <span>✓ {language === 'UR' ? '7 دن کا مفت ٹرائل' : '7-day free trial'}</span>
+            <span>✓ {language === 'UR' ? 'کسی کارڈ کی ضرورت نہیں' : 'No credit card required'}</span>
+            <span>✓ {language === 'UR' ? '5 منٹ میں سیٹ اپ' : 'Setup in 5 minutes'}</span>
+          </motion.div>
+
+          {/* 3 Floating Preview Cards */}
           <motion.div
              initial={{ opacity: 0, y: 40 }}
              animate={{ opacity: 1, y: 0 }}
-             transition={{ delay: 0.5, duration: 0.8 }}
-             className="relative w-full max-w-[1000px] mt-12 mx-auto"
+             transition={{ delay: 0.4, duration: 0.8 }}
+             className="relative w-full max-w-5xl mt-8 mx-auto"
           >
-            <div className="absolute -inset-10 bg-gradient-to-tr from-[#0B5FFF]/10 via-transparent to-[#00C9B1]/10 blur-[100px] opacity-50" />
+            <div className="absolute -inset-10 bg-gradient-to-tr from-[#2563EB]/10 via-transparent to-[#0EA5E9]/10 blur-[100px] opacity-40 pointer-events-none" />
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10 p-4 max-w-4xl mx-auto">
+               
                {/* UI Card 1: Token */}
                <motion.div 
-                 whileHover={{ y: -5 }}
-                 className="bg-white/80 backdrop-blur-xl p-8 rounded-[32px] border border-white shadow-[0_32px_64px_rgba(0,0,0,0.08)] transform -rotate-2"
+                 whileHover={{ y: -6, rotate: -3 }}
+                 className="bg-white p-8 rounded-2xl border border-[#E2E8F0] shadow-xl transform -rotate-2 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between text-left"
                >
                   <div className="flex justify-between items-center mb-6">
-                    <div className="w-10 h-10 bg-[#0B5FFF]/10 text-[#0B5FFF] rounded-xl flex items-center justify-center">
-                      <Zap size={20} fill="currentColor" />
+                    <div className="w-10 h-10 bg-[#2563EB]/10 text-[#2563EB] rounded-xl flex items-center justify-center">
+                      <Zap size={20} className="fill-current" />
                     </div>
-                    <span className="text-[10px] font-bold text-[#00C9B1] uppercase tracking-widest bg-[#00C9B1]/10 px-3 py-1 rounded-full">LIVE</span>
+                    <span className="text-[10px] font-bold text-[#10B981] uppercase tracking-widest bg-[#10B981]/10 px-3 py-1 rounded-full">LIVE</span>
                   </div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Your Token</p>
-                  <h4 className="text-5xl font-black text-[#0B1D35] mb-2 tracking-tighter">T-0047</h4>
-                  <p className="text-sm font-bold text-slate-500">Wait time: ~10 mins</p>
+                  <div>
+                    <p className="text-xs font-bold text-[#64748B] uppercase tracking-widest mb-1">
+                      {language === 'UR' ? 'آپ کا ٹوکن' : 'Your Token'}
+                    </p>
+                    <h4 className="text-5xl font-extrabold text-[#0F172A] mb-2 tracking-tighter">T-0047</h4>
+                    <p className="text-sm font-semibold text-[#64748B]">
+                      {language === 'UR' ? 'باقی وقت: ~10 منٹ' : 'Wait: ~10 mins'}
+                    </p>
+                  </div>
                </motion.div>
 
                {/* UI Card 2: Hospital Info */}
                <motion.div 
-                 whileHover={{ y: -5 }}
-                 className="bg-white/90 backdrop-blur-xl p-8 rounded-[32px] border border-white shadow-[0_40px_80px_rgba(0,0,0,0.1)] z-20 md:mt-12"
+                 whileHover={{ y: -6, scale: 1.07 }}
+                 className="bg-white p-8 rounded-2xl border border-[#E2E8F0] shadow-xl z-20 md:scale-105 hover:shadow-2xl transition-all duration-300 text-left"
                >
                   <div className="flex gap-4 mb-6">
-                    <div className="w-14 h-14 bg-slate-100 rounded-2xl overflow-hidden">
-                       <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80" className="w-full h-full object-cover" />
+                    <div className="w-14 h-14 bg-slate-100 rounded-2xl overflow-hidden shrink-0">
+                       <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80" className="w-full h-full object-cover" referrerPolicy="no-referrer" alt="Hospital logo" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900 leading-tight">Aga Khan Hospital</h4>
-                      <p className="text-xs text-slate-500 font-medium">Karachi, Pakistan</p>
+                      <h4 className="font-bold text-[#0F172A] leading-tight text-base">{language === 'UR' ? 'آغا خان ہسپتال' : 'Aga Khan Hospital'}</h4>
+                      <p className="text-xs text-[#64748B] font-medium">{language === 'UR' ? 'کراچی، پاکستان' : 'Karachi, Pakistan'}</p>
                     </div>
                   </div>
                   <div className="space-y-3">
-                     <div className="h-2 w-full bg-slate-100 rounded-full" />
+                     <div className="h-2 w-full bg-[#EFF6FF] rounded-full" />
                      <div className="h-2 w-2/3 bg-slate-100 rounded-full" />
                   </div>
-                  <button className="w-full mt-8 py-3 bg-[#0B5FFF] text-white font-bold rounded-xl text-xs shadow-lg shadow-blue-500/20">BOOK TOKEN</button>
+                  <button 
+                    onClick={onLogin}
+                    className="w-full mt-8 py-3 bg-[#2563EB] hover:bg-[#1E40AF] text-white font-semibold rounded-full text-xs shadow-md tracking-wider uppercase transition-colors"
+                  >
+                    {language === 'UR' ? 'ٹوکن بک کریں' : 'BOOK TOKEN'}
+                  </button>
                </motion.div>
 
-               {/* UI Card 3: Doctor */}
+               {/* UI Card 3: Doctor Availability */}
                <motion.div 
-                 whileHover={{ y: -5 }}
-                 className="bg-white/80 backdrop-blur-xl p-8 rounded-[32px] border border-white shadow-[0_32px_64px_rgba(0,0,0,0.08)] transform rotate-2 md:mt-4"
+                 whileHover={{ y: -6, rotate: 3 }}
+                 className="bg-white p-8 rounded-2xl border border-[#E2E8F0] shadow-xl transform rotate-2 hover:shadow-2xl transition-all duration-300 text-left"
                >
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-full border-2 border-[#00C9B1] p-0.5">
-                       <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80" className="w-full h-full object-cover rounded-full" />
+                    <div className="w-10 h-10 rounded-full border-2 border-[#10B981] p-0.5 shrink-0">
+                       <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" alt="Doctor profile" />
                     </div>
-                    <span className="text-sm font-bold text-slate-900">Dr. Sarah Khan</span>
+                    <span className="text-sm font-bold text-[#0F172A]">{language === 'UR' ? 'ڈاکٹر سارہ خان' : 'Dr. Sarah Khan'}</span>
                   </div>
                   <div className="flex justify-between items-end">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Available</p>
-                      <p className="text-xs font-bold text-[#00C9B1]">Today, 4:00 PM</p>
+                      <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-widest">{language === 'UR' ? 'دستیاب ہے' : 'Available'}</p>
+                      <p className="text-xs font-bold text-[#10B981]">{language === 'UR' ? 'آج، 4:00 بجے' : 'Today, 4:00 PM'}</p>
                     </div>
-                    <div className="text-lg font-black text-[#0B5FFF]">Rs. 1,500</div>
+                    <div className="text-lg font-black text-[#2563EB]">Rs. 1,500</div>
                   </div>
                </motion.div>
             </div>
@@ -360,112 +345,174 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
         </div>
       </section>
 
-      {/* 2. TRUST STRIP (REPLACING OLD STATS) */}
-      <section className="bg-white py-12 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-wrap justify-center md:justify-between items-center gap-10 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-             <div className="flex items-center gap-3">
-                <ShieldCheck size={28} className="text-[#0B1D35]" />
-                <div>
-                   <p className="text-sm font-black text-[#0B1D35] uppercase tracking-widest leading-none">Verified</p>
-                   <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Hospitals</p>
-                </div>
-             </div>
-             <div className="flex items-center gap-3">
-                <Stethoscope size={28} className="text-[#0B1D35]" />
-                <div>
-                   <p className="text-sm font-black text-[#0B1D35] uppercase tracking-widest leading-none">Real</p>
-                   <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Doctors</p>
-                </div>
-             </div>
-             <div className="flex items-center gap-3">
-                <Zap size={28} className="text-[#0B1D35]" />
-                <div>
-                   <p className="text-sm font-black text-[#0B1D35] uppercase tracking-widest leading-none">Secure</p>
-                   <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Booking</p>
-                </div>
-             </div>
-             <div className="flex items-center gap-3">
-                <Building2 size={28} className="text-[#0B1D35]" />
-                <div>
-                   <p className="text-sm font-black text-[#0B1D35] uppercase tracking-widest leading-none">Pakistan</p>
-                   <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Wide Access</p>
-                </div>
-             </div>
+      {/* 4. TRUST BAR */}
+      <section className="bg-[#0F172A] py-12 text-white border-y border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:divide-x md:divide-slate-800">
+            
+            <div className="flex items-center gap-4 justify-center lg:justify-start lg:pl-0">
+              <span className="text-2xl shrink-0">🛡️</span>
+              <div>
+                <p className="text-sm font-bold tracking-tight text-white uppercase">{language === 'UR' ? 'تصدیق شدہ ہسپتال' : 'VERIFIED HOSPITALS'}</p>
+                <p className="text-xs text-[#94A3B8] font-normal mt-0.5">{language === 'UR' ? 'پاکستان بھر سے تصدیق شدہ' : 'Verified across Pakistan'}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 justify-center lg:justify-start lg:pl-8">
+              <span className="text-2xl shrink-0">🩺</span>
+              <div>
+                <p className="text-sm font-bold tracking-tight text-white uppercase">{language === 'UR' ? 'اصلی ڈاکٹرز' : 'REAL DOCTORS'}</p>
+                <p className="text-xs text-[#94A3B8] font-normal mt-0.5">{language === 'UR' ? 'پی ایم ڈی سی رجسٹرڈ' : 'PMDC registered doctors'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 justify-center lg:justify-start lg:pl-8">
+              <span className="text-2xl shrink-0">⚡</span>
+              <div>
+                <p className="text-sm font-bold tracking-tight text-white uppercase">{language === 'UR' ? 'محفوظ بکنگ' : 'SECURE BOOKING'}</p>
+                <p className="text-xs text-[#94A3B8] font-normal mt-0.5">{language === 'UR' ? 'صرف ایک کلک میں' : 'Instant and safe appointment'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 justify-center lg:justify-start lg:pl-8">
+              <span className="text-2xl shrink-0">🏥</span>
+              <div>
+                <p className="text-sm font-bold tracking-tight text-white uppercase">{language === 'UR' ? 'پاکستان بھر میں رسائی' : 'PAKISTAN WIDE ACCESS'}</p>
+                <p className="text-xs text-[#94A3B8] font-normal mt-0.5">{language === 'UR' ? 'ہر شہر، ہر ہسپتال' : 'Connecting healthcare networks'}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 3. FEATURES SECTION */}
-      <section id="features" className="bg-white py-24 md:py-32 px-6">
+      {/* 5. "WHY XDOC?" SECTION */}
+      <section id="features" className="bg-white py-20 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#0B1D35] mb-4">{h.features.title}</h2>
-            <p className="text-base text-slate-500 font-normal max-w-lg mx-auto leading-relaxed">{h.features.subtitle}</p>
+          
+          <div className="text-center mb-16">
+            <span className="text-[#2563EB] tracking-widest text-[12px] font-bold uppercase block mb-3">
+              {language === 'UR' ? 'کیوں ایکس ڈوک؟' : 'WHY XDOC?'}
+            </span>
+            <h2 className="text-[32px] md:text-[36px] font-bold text-[#0F172A] mb-4 tracking-tight -tracking-[0.02em]">
+              {language === 'UR' ? 'سب کچھ ایک جگہ' : 'Everything in one place'}
+            </h2>
+            <p className="text-base text-[#64748B] font-normal max-w-lg mx-auto leading-relaxed">
+              {h?.features?.subtitle || "Our marketplace simplifies healthcare management for patients and clinics alike."}
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard icon={Calendar} title={h.features.card1.title} desc={h.features.card1.desc} />
-            <FeatureCard icon={Zap} title={h.features.card2.title} desc={h.features.card2.desc} />
-            <FeatureCard icon={DollarSign} title={h.features.card3.title} desc={h.features.card3.desc} />
-            <FeatureCard icon={Building} title={h.features.card4.title} desc={h.features.card4.desc} />
-            <FeatureCard icon={Activity} title={h.features.card5.title} desc={h.features.card5.desc} />
-            <FeatureCard icon={Clock} title={h.features.card6.title} desc={h.features.card6.desc} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              { title: h?.features?.card1?.title || 'Online Token Booking', desc: h?.features?.card1?.desc, icon: Calendar, color: "bg-blue-50 text-[#2563EB]" },
+              { title: h?.features?.card2?.title || 'Real-time Availability', desc: h?.features?.card2?.desc, icon: Zap, color: "bg-amber-50 text-amber-500" },
+              { title: h?.features?.card3?.title || 'Transparent Fees', desc: h?.features?.card3?.desc, icon: DollarSign, color: "bg-green-50 text-[#10B981]" },
+              { title: h?.features?.card4?.title || 'Govt & Private Both', desc: h?.features?.card4?.desc, icon: Building, color: "bg-purple-50 text-purple-600" },
+              { title: h?.features?.card5?.title || 'WhatsApp Alerts', desc: h?.features?.card5?.desc, icon: Activity, color: "bg-rose-50 text-rose-500" },
+              { title: h?.features?.card6?.title || 'Save Time', desc: h?.features?.card6?.desc, icon: Clock, color: "bg-indigo-50 text-indigo-600" },
+            ].map((card, i) => {
+              const IconComp = card.icon;
+              return (
+                <motion.div 
+                  key={i}
+                  whileHover={{ y: -4, borderColor: '#BFDBFE', boxShadow: '0 10px 25px -5px rgba(37,99,235,0.08)' }}
+                  className="p-8 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-lg transition-all duration-300 text-left group"
+                >
+                  <div className={`w-12 h-12 ${card.color} rounded-xl flex items-center justify-center mb-6`}>
+                    <IconComp size={24} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-[#0F172A] mb-3 leading-tight">{card.title}</h3>
+                  <p className="text-sm text-[#64748B] leading-relaxed font-normal">{card.desc}</p>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* 4. HOW IT WORKS SECTION */}
-      <section id="how-it-works" className="bg-[#F8FAFC] py-24 md:py-32 px-6 border-y border-slate-100">
+      {/* 6. "4 EASY STEPS" SECTION */}
+      <section id="how-it-works" className="bg-[#F8FAFF] py-20 px-6 border-y border-[#E2E8F0]">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-3xl font-bold text-[#0B1D35] mb-4">{h.howItWorks.title}</h2>
-            <p className="text-base text-slate-500">{h.howItWorks.subtitle}</p>
+          
+          <div className="text-center mb-16">
+            <h2 className="text-[32px] md:text-[36px] font-bold text-[#0F172A] mb-4 -tracking-[0.02em]">
+              {h?.howItWorks?.title || "4 Easy Steps"}
+            </h2>
+            <p className="text-base text-[#64748B] font-normal leading-relaxed max-w-md mx-auto">
+              {h?.howItWorks?.subtitle || "Experience simplified digital healthcare with our intuitive step-by-step process."}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 relative">
-            <Step number={1} icon={Search} title={h.howItWorks.step1.title} desc={h.howItWorks.step1.desc} />
-            <Step number={2} icon={Stethoscope} title={h.howItWorks.step2.title} desc={h.howItWorks.step2.desc} />
-            <Step number={3} icon={Zap} title={h.howItWorks.step3.title} desc={h.howItWorks.step3.desc} />
-            <Step number={4} icon={Building2} title={h.howItWorks.step4.title} desc={h.howItWorks.step4.desc} isLast />
+            {[
+              { number: 1, title: h?.howItWorks?.step1?.title || "Search", desc: h?.howItWorks?.step1?.desc },
+              { number: 2, title: h?.howItWorks?.step2?.title || "Choose", desc: h?.howItWorks?.step2?.desc },
+              { number: 3, title: h?.howItWorks?.step3?.title || "Book", desc: h?.howItWorks?.step3?.desc },
+              { number: 4, title: h?.howItWorks?.step4?.title || "Visit", desc: h?.howItWorks?.step4?.desc },
+            ].map((step, idx) => {
+              const isLast = idx === 3;
+              return (
+                <div key={idx} className="flex flex-col items-center text-center relative w-full">
+                  {!isLast && (
+                    <div className="hidden lg:block absolute top-[24px] left-[calc(50%+40px)] w-[calc(100%-80px)] h-px border-t-2 border-dotted border-[#E2E8F0] z-0 pointer-events-none" />
+                  )}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <StepNumber num={step.number} />
+                    <h4 className="text-lg font-semibold text-[#0F172A] mb-2">{step.title}</h4>
+                    <p className="text-sm text-[#64748B] max-w-[200px] leading-relaxed font-normal">{step.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* 5. CTA SECTION */}
-      <section className="py-24 px-6 bg-[#0B5FFF] text-white text-center">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight leading-[1.2]">{h.cta.title}</h2>
-          <p className="text-lg text-blue-100 mb-12 max-w-2xl mx-auto">{h.cta.subtitle}</p>
+      {/* 7. CTA BANNER */}
+      <section className="py-20 px-6 bg-gradient-to-r from-[#1E40AF] to-[#2563EB] text-white text-center relative overflow-hidden">
+        {/* Ambient subtle glow lights */}
+        <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full filter blur-2xl pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-black/10 rounded-full filter blur-3xl pointer-events-none" />
+        
+        <div className="max-w-4xl mx-auto relative z-10">
+          <h2 className="text-[32px] md:text-[40px] font-bold mb-4 tracking-tight leading-[1.2] -tracking-[0.02em]">
+            {language === 'UR' ? "کیا آپ ڈیجیٹل ہونے کے لیے تیار ہیں؟" : "Ready to switch to digital?"}
+          </h2>
+          <p className="text-[18px] text-white/80 mb-10 max-w-2xl mx-auto leading-relaxed font-normal">
+            {h?.cta?.subtitle || "Join Pakistan's fastest growing healthcare marketplace and manage your clinic or booking instantly."}
+          </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button 
               onClick={onSignUp}
-              className="w-full sm:w-auto px-10 py-4 bg-white text-[#0B5FFF] font-bold rounded-xl hover:bg-blue-50 transition-all shadow-lg"
+              className="w-full sm:w-auto px-8 py-3.5 bg-white text-[#2563EB] hover:text-[#1E40AF] hover:shadow-lg font-semibold rounded-full transition-all active:scale-[0.98] duration-200"
             >
-              {h.cta.registerBtn}
+              {language === 'UR' ? 'ابھی رجسٹر کریں →' : 'Register Now →'}
             </button>
             <button 
               onClick={() => {
                 document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="w-full sm:w-auto px-10 py-4 bg-transparent border-1.5 border-white/40 text-white font-bold rounded-xl hover:bg-white/10 transition-all"
+              className="w-full sm:w-auto px-8 py-3.5 bg-transparent border-2 border-white/60 hover:border-white text-white hover:bg-white/10 font-semibold rounded-full transition-all active:scale-[0.98] duration-200"
             >
-              See How It Works
+              {language === 'UR' ? 'یہ کیسے کام کرتا ہے؟' : 'See How It Works'}
             </button>
           </div>
         </div>
       </section>
 
-      {/* 6. FOOTER */}
-      <footer className="bg-[#0F172A] pt-24 pb-12 px-6 text-white border-t border-slate-800">
+      {/* 8. FOOTER REDESIGN */}
+      <footer className="bg-[#0F172A] pt-20 pb-12 px-6 text-white border-t border-slate-800 font-sans">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+             
+             {/* Column 1: Logo & Social */}
              <div>
-                <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                   <BrandLogo size={32} />
-                   <span className="text-2xl font-bold tracking-tight">Xdoc</span>
+                <div className="flex items-center gap-2.5 mb-6 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                   <Stethoscope className="text-[#2563EB] transition-transform group-hover:scale-110" size={28} />
+                   <span className="text-2xl font-bold tracking-tight text-white mb-0.5">Xdoc</span>
                 </div>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-xs">{h.footer.desc}</p>
+                <p className="text-[#94A3B8] text-sm leading-relaxed mb-6 max-w-xs">
+                  {h?.footer?.desc || "Pakistan's premium digital healthcare marketplace, connecting patients with verified hospitals and clinics."}
+                </p>
                 <div className="flex gap-3">
                    {[
                       { Icon: Linkedin, url: "https://www.linkedin.com/in/x-doc-a37ba9414", label: "Xdoc LinkedIn", color: "#0A66C2" },
@@ -479,100 +526,107 @@ const HomeRedesign = ({ onSignUp, onLogin, onSearch, onHospitalClick, onNavigate
                         target="_blank" 
                         rel="noopener noreferrer" 
                         aria-label={m.label}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hover:brightness-110 cursor-pointer"
-                        style={m.gradient ? { background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" } : { backgroundColor: m.color }}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-[#1E293B] hover:scale-110 hover:brightness-110 shadow-sm transition-all cursor-pointer"
                       >
                         <m.Icon size={18} />
                       </a>
                     ))}
                 </div>
-
              </div>
 
+             {/* Column 2: Quick Links */}
              <div>
-                <h4 className="text-sm font-bold mb-6 text-white">{h.footer.quickLinks.title}</h4>
-                <ul className="space-y-4 text-slate-400 text-sm">
-                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.quickLinks.hospitals}</button></li>
-                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.quickLinks.login}</button></li>
-                   <li><button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.quickLinks.about}</button></li>
-                   <li><button onClick={onSignUp} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.quickLinks.join}</button></li>
+                <h4 className="text-sm font-semibold mb-6 text-white tracking-wider uppercase text-xs">
+                  {h?.footer?.quickLinks?.title || "Quick Links"}
+                </h4>
+                <ul className="space-y-3.5 text-[#94A3B8] text-[14px]">
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h?.footer?.quickLinks?.hospitals}</button></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h?.footer?.quickLinks?.login}</button></li>
+                   <li><button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors cursor-pointer text-left">{h?.footer?.quickLinks?.about}</button></li>
+                   <li><button onClick={onSignUp} className="hover:text-white transition-colors cursor-pointer text-left">{h?.footer?.quickLinks?.join}</button></li>
                 </ul>
              </div>
 
+             {/* Column 3: Hospital Types */}
              <div>
-                <h4 className="text-sm font-bold mb-6 text-white">{h.footer.hospitalTypes.title}</h4>
-                <ul className="space-y-4 text-slate-400 text-sm">
-                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.hospitalTypes.govt}</button></li>
-                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.hospitalTypes.private}</button></li>
-                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.hospitalTypes.clinic}</button></li>
-                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h.footer.hospitalTypes.govtClinic}</button></li>
+                <h4 className="text-sm font-semibold mb-6 text-white tracking-wider uppercase text-xs">
+                  {h?.footer?.hospitalTypes?.title || "Hospital Types"}
+                </h4>
+                <ul className="space-y-3.5 text-[#94A3B8] text-[14px]">
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h?.footer?.hospitalTypes?.govt}</button></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h?.footer?.hospitalTypes?.private}</button></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h?.footer?.hospitalTypes?.clinic}</button></li>
+                   <li><button onClick={onLogin} className="hover:text-white transition-colors cursor-pointer text-left">{h?.footer?.hospitalTypes?.govtClinic}</button></li>
                 </ul>
              </div>
 
+             {/* Column 4: Company / Meta Links */}
              <div>
-                <h4 className="text-sm font-bold mb-6 text-white tracking-wider uppercase text-xs">{h.footer.company.title}</h4>
-                <ul className="space-y-4 text-slate-400 text-sm">
+                <h4 className="text-sm font-semibold mb-6 text-white tracking-wider uppercase text-xs">
+                  {h?.footer?.company?.title || "Company"}
+                </h4>
+                <ul className="space-y-3 text-[#94A3B8] text-[14px]">
                    <li>
                      <button 
                        onClick={() => onNavigate?.('pricing', '/pricing')}
-                        className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full outline-all-none"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
+                       className="hover:text-white hover:translate-x-1 transition-all duration-200 cursor-pointer text-left font-sans flex items-center gap-2 group w-full"
+                     >
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#2563EB] transition-all"></span>
                         <span>{language === 'UR' ? 'قیمتیں' : 'Pricing'}</span>
                       </button>
                     </li>
                     <li>
                       <button 
                         onClick={() => onNavigate?.('privacy', '/privacy-policy')}
-                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full outline-all-none"
-                     >
-                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
-                       <span>{language === 'UR' ? 'پرائیویسی پالیسی' : 'Privacy Policy'}</span>
-                     </button>
-                   </li>
-                   <li>
-                     <button 
-                       onClick={() => onNavigate?.('terms', '/terms')}
-                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full outline-all-none"
-                     >
-                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
-                       <span>{language === 'UR' ? 'شرائط و ضوابط' : 'Terms of Service'}</span>
-                     </button>
-                   </li>
-                   <li>
-                     <button 
-                       onClick={() => onNavigate?.('content_policy', '/content-policy')}
-                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full"
-                     >
-                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
-                       <span>{language === 'UR' ? 'مواد کی پالیسی' : 'Content Policy'}</span>
-                     </button>
-                   </li>
-                   <li>
-                     <button 
-                       onClick={() => onNavigate?.('about', '/about')}
-                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full"
-                     >
-                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
-                       <span>{language === 'UR' ? 'ہمارے بارے میں' : 'About Us'}</span>
-                     </button>
-                   </li>
-                   <li>
-                     <button 
-                       onClick={() => onNavigate?.('contact', '/contact')}
-                       className="hover:text-[#0B5FFF] hover:translate-x-1.5 transition-all duration-300 cursor-pointer text-left font-sans font-medium flex items-center gap-2 group w-full"
-                     >
-                       <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#0B5FFF] transition-all shrink-0"></span>
-                       <span>{language === 'UR' ? 'ہم سے رابطہ کریں' : 'Contact Us'}</span>
-                     </button>
-                   </li>
+                        className="hover:text-white hover:translate-x-1 transition-all duration-200 cursor-pointer text-left font-sans flex items-center gap-2 group w-full"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#2563EB] transition-all"></span>
+                        <span>{language === 'UR' ? 'پرائیویسی پالیسی' : 'Privacy Policy'}</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        onClick={() => onNavigate?.('terms', '/terms')}
+                        className="hover:text-white hover:translate-x-1 transition-all duration-200 cursor-pointer text-left font-sans flex items-center gap-2 group w-full"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#2563EB] transition-all"></span>
+                        <span>{language === 'UR' ? 'شرائط و ضوابط' : 'Terms of Service'}</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        onClick={() => onNavigate?.('content_policy', '/content-policy')}
+                        className="hover:text-white hover:translate-x-1 transition-all duration-200 cursor-pointer text-left font-sans flex items-center gap-2 group w-full"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#2563EB] transition-all"></span>
+                        <span>{language === 'UR' ? 'مواد کی پالیسی' : 'Content Policy'}</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        onClick={() => onNavigate?.('about', '/about')}
+                        className="hover:text-white hover:translate-x-1 transition-all duration-200 cursor-pointer text-left font-sans flex items-center gap-2 group w-full"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#2563EB] transition-all"></span>
+                        <span>{language === 'UR' ? 'ہمارے بارے میں' : 'About Us'}</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        onClick={() => onNavigate?.('contact', '/contact')}
+                        className="hover:text-white hover:translate-x-1 transition-all duration-200 cursor-pointer text-left font-sans flex items-center gap-2 group w-full"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#2563EB] transition-all"></span>
+                        <span>{language === 'UR' ? 'ہم سے رابطہ کریں' : 'Contact Us'}</span>
+                      </button>
+                    </li>
                 </ul>
              </div>
           </div>
 
-          <div className="pt-8 border-t border-slate-800 text-center">
-             <p className="text-xs text-slate-500 font-medium">
-               {h.footer.copyright}
+          <div className="pt-8 border-t border-[#1E293B] text-center">
+             <p className="text-[14px] text-[#475569] font-medium font-sans">
+               © 2026 Xdoc. Built with ❤️ in Pakistan.
              </p>
           </div>
         </div>
