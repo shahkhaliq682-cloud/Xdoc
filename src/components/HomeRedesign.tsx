@@ -109,22 +109,18 @@ const HomeRedesign = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="max-w-3xl mb-6"
+            className="max-w-[800px] mx-auto mb-6 text-center"
           >
-            <h1 className="text-[36px] md:text-[60px] font-bold text-[#0F172A] leading-[1.1] tracking-[-0.02em] mb-4">
+            <h1 className="text-[40px] md:text-[64px] font-extrabold text-[#0F172A] leading-[1.05] tracking-[-0.03em] mb-4">
               {language === 'UR' ? (
                 <>
-                  اپنی صحت کا انتظام کریں،
-                  <br />
-                  ڈاکٹرز اور اپائنٹمنٹس
+                  اپنی صحت، ڈاکٹرز اور اپائنٹمنٹس کا انتظام کریں
                   <br />
                   <span className="text-[#2563EB]">ڈیجیٹل طور پر</span>
                 </>
               ) : (
                 <>
-                  Manage Your Health,
-                  <br />
-                  Doctors & Appointments
+                  Manage Your Health, Doctors & Appointments
                   <br />
                   <span className="text-[#2563EB]">Digitally</span>
                 </>
