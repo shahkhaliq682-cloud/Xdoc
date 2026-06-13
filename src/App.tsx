@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import ScrollRestoration from './components/ScrollRestoration';
 import { BrandLogo } from './components/ui/BrandLogo';
 import { 
   Search, 
@@ -2044,15 +2046,12 @@ export default function App() {
   const [loginPrompt, setLoginPrompt ] = useState(false);
   const [lastCreatedToken, setLastCreatedTokenRaw] = useState<any>(null);
 
+  const reactNavigate = useNavigate();
+  const location = useLocation();
+
   // Unified Navigation Stack Helper (mimicking react-router-dom navigate)
   const navigate = (path: string, replace = false) => {
-    if (replace) {
-      window.history.replaceState(null, '', path);
-    } else {
-      window.history.pushState(null, '', path);
-    }
-    // Dispatch popstate event to let our listener update state instantly
-    window.dispatchEvent(new Event('popstate'));
+    reactNavigate(path, { replace });
   };
 
   // Wrapped triggers that automatically map changes in React state directly to browser history / URL
@@ -2126,8 +2125,8 @@ export default function App() {
 
   // Universal URL & popstate Sync Logic
   const handleUrlRouting = () => {
-    const path = window.location.pathname;
-    const searchParams = new URLSearchParams(window.location.search);
+    const path = location.pathname;
+    const searchParams = new URLSearchParams(location.search);
     
     // Sync search parameter
     const urlSearch = searchParams.get('search');
@@ -2160,67 +2159,67 @@ export default function App() {
       } else if (hospMatch) {
         const hospId = hospMatch[1];
         const newUrl = `?view=hospital&id=${hospId}`;
-        window.history.replaceState(null, '', newUrl);
+        reactNavigate(newUrl, { replace: true });
         viewQuery = 'hospital';
         idQuery = hospId;
       } else if (bookingMatch) {
         const hospId = bookingMatch[1];
         const docId = bookingMatch[2];
         const newUrl = `?view=doctor&id=${docId}&hosp=${hospId}&book=true`;
-        window.history.replaceState(null, '', newUrl);
+        reactNavigate(newUrl, { replace: true });
         viewQuery = 'doctor';
         idQuery = docId;
         bHospQuery = hospId;
       } else if (successMatch) {
         const tokId = successMatch[1];
         const newUrl = `?view=booking_success&id=${tokId}`;
-        window.history.replaceState(null, '', newUrl);
+        reactNavigate(newUrl, { replace: true });
         viewQuery = 'booking_success';
         idQuery = tokId;
       } else if (path === '/pricing') {
-        window.history.replaceState(null, '', '?view=pricing');
+        reactNavigate('?view=pricing', { replace: true });
         viewQuery = 'pricing';
       } else if (path === '/privacy-policy') {
-        window.history.replaceState(null, '', '?view=privacy');
+        reactNavigate('?view=privacy', { replace: true });
         viewQuery = 'privacy';
       } else if (path === '/terms') {
-        window.history.replaceState(null, '', '?view=terms');
+        reactNavigate('?view=terms', { replace: true });
         viewQuery = 'terms';
       } else if (path === '/contact') {
-        window.history.replaceState(null, '', '?view=contact');
+        reactNavigate('?view=contact', { replace: true });
         viewQuery = 'contact';
       } else if (path === '/about') {
-        window.history.replaceState(null, '', '?view=about');
+        reactNavigate('?view=about', { replace: true });
         viewQuery = 'about';
       } else if (path === '/content-policy') {
-        window.history.replaceState(null, '', '?view=content_policy');
+        reactNavigate('?view=content_policy', { replace: true });
         viewQuery = 'content_policy';
       } else if (path === '/login') {
-        window.history.replaceState(null, '', '?view=login');
+        reactNavigate('?view=login', { replace: true });
         viewQuery = 'login';
       } else if (path === '/auth-choice') {
-        window.history.replaceState(null, '', '?view=auth_choice');
+        reactNavigate('?view=auth_choice', { replace: true });
         viewQuery = 'auth_choice';
       } else if (path === '/hospital-registration') {
-        window.history.replaceState(null, '', '?view=hospital_reg');
+        reactNavigate('?view=hospital_reg', { replace: true });
         viewQuery = 'hospital_reg';
       } else if (path === '/patient-registration') {
-        window.history.replaceState(null, '', '?view=patient_reg');
+        reactNavigate('?view=patient_reg', { replace: true });
         viewQuery = 'patient_reg';
       } else if (path === '/admin-dashboard') {
-        window.history.replaceState(null, '', '?view=admin_dashboard');
+        reactNavigate('?view=admin_dashboard', { replace: true });
         viewQuery = 'admin_dashboard';
       } else if (path === '/super-admin') {
-        window.history.replaceState(null, '', '?view=super_admin');
+        reactNavigate('?view=super_admin', { replace: true });
         viewQuery = 'super_admin';
       } else if (path.startsWith('/patient-dashboard/')) {
         const pTab = path.split('/').pop() || 'hospitals';
         const tabVal = pTab === 'history' ? 'tokens' : pTab;
-        window.history.replaceState(null, '', `?view=patient_home&tab=${tabVal}`);
+        reactNavigate(`?view=patient_home&tab=${tabVal}`, { replace: true });
         viewQuery = 'patient_home';
         tabQuery = tabVal;
       } else if (path === '/patient-dashboard') {
-        window.history.replaceState(null, '', `?view=patient_home`);
+        reactNavigate(`?view=patient_home`, { replace: true });
         viewQuery = 'patient_home';
       }
     }
@@ -2361,9 +2360,7 @@ export default function App() {
   // Run onmount and URL changes
   useEffect(() => {
     handleUrlRouting();
-    window.addEventListener('popstate', handleUrlRouting);
-    return () => window.removeEventListener('popstate', handleUrlRouting);
-  }, [fetchedHospitals]);
+  }, [location.pathname, location.search, fetchedHospitals]);
 
   // Handle lazy placeholder transitions once Firestore fetchedHospitals array completes
   useEffect(() => {
@@ -3291,6 +3288,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen selection:bg-primary/20 ${isDarkMode ? 'bg-bg-dark' : 'bg-white'}`}>
+      <ScrollRestoration />
       <PageProgressBar isLoading={isPageLoading} />
       <AnimatePresence mode="wait">
         <motion.div

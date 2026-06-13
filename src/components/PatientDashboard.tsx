@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, MapPin, Star, CheckCircle2, ShieldCheck, 
   Clock, Calendar, Home, User, Bell, ChevronRight, 
@@ -47,6 +48,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
   onTabChange,
   initialSearchQuery
 }) => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const [activeTab, setActiveTabInner] = useState<'hospitals' | 'history' | 'profile'>(preferredTab || 'hospitals');
@@ -87,16 +89,14 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     const url = new URL(window.location.href);
     url.searchParams.set('modal', 'invoice');
     url.searchParams.set('inv', token.id);
-    window.history.pushState(null, '', url.pathname + url.search);
-    window.dispatchEvent(new Event('popstate'));
+    navigate(url.pathname + url.search);
   };
 
   const closeInvoiceModal = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete('modal');
     url.searchParams.delete('inv');
-    window.history.pushState(null, '', url.pathname + url.search);
-    window.dispatchEvent(new Event('popstate'));
+    navigate(url.pathname + url.search);
   };
 
   useEffect(() => {
@@ -119,7 +119,7 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({
     handleInvoicePopState();
     window.addEventListener('popstate', handleInvoicePopState);
     return () => window.removeEventListener('popstate', handleInvoicePopState);
-  }, [patientTokens]);
+  }, [patientTokens, window.location.search]);
   const prevTokensRef = useRef<any[]>([]);
 
   // Pull to refresh simulation

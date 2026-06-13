@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { 
   LayoutDashboard, 
@@ -102,6 +103,7 @@ interface HospitalDashboardProps {
 }
 
 const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNavigate }: HospitalDashboardProps) => {
+  const navigate = useNavigate();
   const { t, language, setLanguage } = useLanguage();
   const { toast } = useToast();
   const { features, limits, planName, daysRemaining, planEndDate, currentPlan, planStatus } = usePlanFeatures();
@@ -144,15 +146,13 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
   const openReceptionMode = () => {
     const url = new URL(window.location.href);
     url.searchParams.set('reception', 'true');
-    window.history.pushState(null, '', url.pathname + url.search);
-    window.dispatchEvent(new Event('popstate'));
+    navigate(url.pathname + url.search);
   };
 
   const closeReceptionMode = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete('reception');
-    window.history.pushState(null, '', url.pathname + url.search);
-    window.dispatchEvent(new Event('popstate'));
+    navigate(url.pathname + url.search);
   };
 
   useEffect(() => {
@@ -164,7 +164,7 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
     handleReceptionPopState();
     window.addEventListener('popstate', handleReceptionPopState);
     return () => window.removeEventListener('popstate', handleReceptionPopState);
-  }, []);
+  }, [window.location.search]);
   const [isLive, setIsLive] = useState(true);
 
   // Doctors & Walk-in systems states
@@ -306,15 +306,14 @@ const HospitalDashboard = ({ hospitalData: initialHospitalData, onSignOut, onNav
         if (data?.isBlocked === true) {
           signOut(auth).then(() => {
             sessionStorage.setItem('suspended_error', 'Your account has been suspended. Please contact Xdoc support at +92 315 2328605');
-            const navigate = (path: string) => {
+            const customNavigate = (path: string) => {
               if (onNavigate) {
                 onNavigate('login');
               } else {
-                window.history.pushState(null, '', '/?view=login');
-                window.dispatchEvent(new Event('popstate'));
+                navigate('/?view=login');
               }
             };
-            navigate("/login");
+            customNavigate("/login");
           });
           return;
         }

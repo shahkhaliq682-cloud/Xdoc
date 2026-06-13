@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Clock, MapPin, Phone, Hospital, CheckCircle2, AlertTriangle, 
   ChevronRight, Volume2, VolumeX, ArrowLeft, Heart, Globe, Play
@@ -14,6 +15,7 @@ interface TokenTrackingProps {
 }
 
 export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProps) {
+  const navigate = useNavigate();
   const [token, setToken] = useState<any>(null);
   const [hospital, setHospital] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -26,16 +28,14 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
     const url = new URL(window.location.href);
     url.searchParams.set('modal', 'invoice');
     url.searchParams.set('inv', tokenId);
-    window.history.pushState(null, '', url.pathname + url.search);
-    window.dispatchEvent(new Event('popstate'));
+    navigate(url.pathname + url.search);
   };
 
   const closeInvoiceModal = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete('modal');
     url.searchParams.delete('inv');
-    window.history.pushState(null, '', url.pathname + url.search);
-    window.dispatchEvent(new Event('popstate'));
+    navigate(url.pathname + url.search);
   };
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function TokenTrackingPage({ tokenId, onBack }: TokenTrackingProp
     handleInvoicePopState();
     window.addEventListener('popstate', handleInvoicePopState);
     return () => window.removeEventListener('popstate', handleInvoicePopState);
-  }, [tokenId]);
+  }, [tokenId, window.location.search]);
 
   // Dynamic queue stats
   const [queuePos, setQueuePos] = useState<number>(0);

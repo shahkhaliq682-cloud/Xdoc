@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   CheckCircle2, Calendar, Clock, Stethoscope, 
   MapPin, User, ArrowRight, Download, Home,
@@ -15,6 +16,7 @@ interface BookingSuccessProps {
 }
 
 const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onViewBookings }) => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
 
@@ -22,16 +24,14 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
     const url = new URL(window.location.href);
     url.searchParams.set('modal', 'invoice');
     url.searchParams.set('inv', tokenData?.id || 'success');
-    window.history.pushState(null, '', url.pathname + url.search);
-    window.dispatchEvent(new Event('popstate'));
+    navigate(url.pathname + url.search);
   };
 
   const closeInvoiceModal = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete('modal');
     url.searchParams.delete('inv');
-    window.history.pushState(null, '', url.pathname + url.search);
-    window.dispatchEvent(new Event('popstate'));
+    navigate(url.pathname + url.search);
   };
 
   useEffect(() => {
@@ -45,7 +45,7 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ tokenData, onHome, onVi
     handleInvoicePopState();
     window.addEventListener('popstate', handleInvoicePopState);
     return () => window.removeEventListener('popstate', handleInvoicePopState);
-  }, [tokenData?.id]);
+  }, [tokenData?.id, window.location.search]);
 
   return (
     <div className="fixed inset-0 z-[120] bg-white flex flex-col items-center p-6 overflow-y-auto custom-scrollbar">
